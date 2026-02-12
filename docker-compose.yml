@@ -1,0 +1,48 @@
+services:
+  backend:
+    container_name: covoiturage-backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      - database
+    volumes:
+      - ./backend:/app/backend
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - PYTHONPATH=/app
+    command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+
+  frontend:
+    container_name: covoiturage-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  database:
+    image: postgres:16-alpine
+    container_name: covoiturage-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-covoit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-covoit_password}
+      - POSTGRES_DB=${POSTGRES_DB:-covoiturage}
+    volumes:
+      - covoiturage_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  covoiturage_postgres_data:
+    name: covoiturage_postgres_data

@@ -1,0 +1,199 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #f2f7ff;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f8fbff;
+  --color-stroke: #dbe6f3;
+  --color-stroke-strong: #c6d5e7;
+  --color-text: #0f1a2b;
+  --color-text-muted: #50617a;
+  --color-primary: #1d4ed8;
+  --color-primary-soft: #e8f0ff;
+  --color-primary-strong: #123aa7;
+  --color-success: #13804d;
+  --color-success-soft: #eaf9f1;
+  --color-danger: #cc3446;
+  --color-danger-soft: #fff0f2;
+  --color-info: #0b6ea9;
+  --color-info-soft: #eaf6ff;
+  --shadow-card: 0 10px 25px rgba(22, 42, 74, 0.08);
+  --shadow-card-strong: 0 14px 34px rgba(22, 42, 74, 0.14);
+  --radius-card: 1.1rem;
+  --radius-control: 0.85rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  color: var(--color-text);
+  background: var(--color-bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(29, 78, 216, 0.32);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+}
+
+.content-layer {
+  position: relative;
+  z-index: 1;
+}
+
+.card {
+  @apply rounded-[18px] border bg-white;
+  border-color: var(--color-stroke);
+  box-shadow: var(--shadow-card);
+}
+
+.page-shell {
+  @apply space-y-6;
+}
+
+.page-header {
+  @apply space-y-1;
+}
+
+.page-title {
+  @apply text-3xl font-bold tracking-tight md:text-[2rem];
+}
+
+.page-subtitle {
+  color: var(--color-text-muted);
+  @apply text-sm font-medium md:text-base;
+}
+
+.single-card-center {
+  @apply mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-lg items-center justify-center py-8;
+}
+
+.page-card {
+  @apply card w-full p-7 md:p-9;
+}
+
+.input {
+  @apply w-full rounded-[14px] border bg-white px-4 py-3 text-sm font-medium text-slate-900 transition;
+  border-color: var(--color-stroke-strong);
+}
+
+.input-with-icon {
+  padding-left: 2.55rem;
+}
+
+.input::placeholder {
+  color: #8698b0;
+}
+
+.input:hover {
+  border-color: #b2c5dc;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
+  outline: none;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-sm font-semibold text-white transition;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-strong));
+  box-shadow: 0 10px 20px rgba(18, 58, 167, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(18, 58, 167, 0.32);
+}
+
+.btn-primary:disabled {
+  @apply cursor-not-allowed;
+  opacity: 0.58;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-[14px] border bg-white px-4 py-3 text-sm font-semibold transition;
+  border-color: var(--color-stroke-strong);
+  color: var(--color-text-muted);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: #9fb6d2;
+  color: #274a75;
+  background: #f7faff;
+}
+
+.btn-secondary:disabled {
+  @apply cursor-not-allowed;
+  opacity: 0.58;
+}
+
+.helper-note {
+  @apply rounded-xl border px-3 py-2 text-sm font-medium;
+  border-color: #d6e4f5;
+  color: #35557f;
+  background: #f3f8ff;
+}
+
+.advice-banner {
+  @apply rounded-xl border px-4 py-3 text-sm font-semibold;
+  border-color: #b8d2f3;
+  color: #234a7b;
+  background: linear-gradient(90deg, #e8f2ff 0%, #f2f8ff 55%, #f8fbff 100%);
+  box-shadow: 0 8px 20px rgba(30, 74, 137, 0.08);
+}
+
+@media (max-width: 767px) {
+  .single-card-center {
+    min-height: calc(100vh - 2rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
