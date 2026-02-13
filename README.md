@@ -17,13 +17,13 @@ Faciliter les trajets quotidiens entre étudiants en proposant des correspondanc
 ## Demarrage rapide
 
 ```powershell
-./start-local.ps1
+./scripts/start-local.ps1
 ```
 
 Démarrage sans rebuild d'images:
 
 ```powershell
-./start-local-no-build.ps1
+./scripts/start-local-no-build.ps1
 ```
 
 Accès local:

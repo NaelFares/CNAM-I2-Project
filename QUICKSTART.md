@@ -13,7 +13,7 @@
 ## 2) Demarrage recommande (logs explicites)
 
 ```powershell
-./start-local.ps1
+./scripts/start-local.ps1
 ```
 
 Ce script:
@@ -24,7 +24,7 @@ Ce script:
 ### Variante sans rebuild d'images
 
 ```powershell
-./start-local-no-build.ps1
+./scripts/start-local-no-build.ps1
 ```
 
 Utilise ce script quand les images sont deja construites et que tu veux juste relancer rapidement.
@@ -40,6 +40,12 @@ Utilise ce script quand les images sont deja construites et que tu veux juste re
 
 ```bash
 docker compose down
+```
+
+Ou via script:
+
+```powershell
+./scripts/stop-local.ps1
 ```
 
 ### Logs

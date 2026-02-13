@@ -63,8 +63,10 @@ flowchart TB
 |   |   `-- assets/              # styles
 |   `-- tests/                   # unit + e2e frontend
 |-- doc/                         # documentation technique
-|-- start-local.ps1              # demarrage compose + recap URL
-|-- start-local-no-build.ps1     # demarrage compose sans rebuild des images
+|-- scripts/
+|   |-- start-local.ps1          # demarrage compose + recap URL
+|   |-- start-local-no-build.ps1 # demarrage compose sans rebuild des images
+|   `-- stop-local.ps1           # arret des services locaux
 |-- docker-compose.yml           # orchestration locale
 |-- Dockerfile.backend           # image backend
 |-- frontend/Dockerfile.frontend # image frontend
@@ -90,13 +92,13 @@ flowchart TB
 Utiliser le script equipe:
 
 ```powershell
-./start-local.ps1
+./scripts/start-local.ps1
 ```
 
 Variante sans rebuild:
 
 ```powershell
-./start-local-no-build.ps1
+./scripts/start-local-no-build.ps1
 ```
 
 Le script affiche:

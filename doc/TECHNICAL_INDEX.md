@@ -9,5 +9,6 @@
 
 ## Utilitaire equipe
 
-- `start-local.ps1`: demarrage compose avec recap explicite des URLs et services
-- `start-local-no-build.ps1`: demarrage compose sans rebuild, avec le meme recap des URLs/services
+- `scripts/start-local.ps1`: demarrage compose avec recap explicite des URLs et services
+- `scripts/start-local-no-build.ps1`: demarrage compose sans rebuild, avec le meme recap des URLs/services
+- `scripts/stop-local.ps1`: arret de tous les services locaux Docker Compose
