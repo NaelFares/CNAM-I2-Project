@@ -27,8 +27,8 @@ flowchart TB
     end
 
     subgraph C2[Container covoiturage-backend]
-      HTTP[Uvicorn (serveur HTTP)]
-      APP[FastAPI (routes API)]
+      HTTP["Uvicorn (serveur HTTP)"]
+      APP["FastAPI (routes API)"]
       CORE[Services metier]
       HTTP --> APP --> CORE
     end
