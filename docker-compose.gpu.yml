@@ -1,0 +1,9 @@
+services:
+  backend:
+    environment:
+      - IA_ACCELERATION_MODE=gpu
+
+  ia-services:
+    gpus: all
+    environment:
+      - IA_ACCELERATION_MODE=gpu

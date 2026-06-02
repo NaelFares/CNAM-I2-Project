@@ -8,6 +8,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       - database
+      - ia-services
     volumes:
       - ./backend:/app/backend
     env_file:
@@ -15,6 +16,11 @@ services:
     environment:
       - APP_ENV=${APP_ENV:-development}
       - PYTHONPATH=/app
+      - AI_IMPORT_ENABLED=${AI_IMPORT_ENABLED:-true}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ia-services:11434}
+      - AI_IMPORT_MODEL=${AI_IMPORT_MODEL:-qwen2.5:0.5b-instruct}
+      - AI_IMPORT_CONFIDENCE_THRESHOLD=${AI_IMPORT_CONFIDENCE_THRESHOLD:-0.80}
+      - IA_ACCELERATION_MODE=${IA_ACCELERATION_MODE:-cpu}
     command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     restart: unless-stopped
 
@@ -43,6 +49,29 @@ services:
     volumes:
       - covoiturage_postgres_data:/var/lib/postgresql/data
 
+  ia-services:
+    image: ollama/ollama:latest
+    container_name: covoiturage-ia-services
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - covoiturage_ollama_data:/root/.ollama
+    env_file:
+      - .env
+    environment:
+      - IA_ACCELERATION_MODE=${IA_ACCELERATION_MODE:-cpu}
+    entrypoint: ["/bin/sh", "-lc"]
+    command:
+      - |
+        echo "IA acceleration requested: $${IA_ACCELERATION_MODE:-cpu}"
+        ollama serve &
+        sleep 2
+        ollama pull ${AI_IMPORT_MODEL:-qwen2.5:0.5b-instruct}
+        wait
+    restart: unless-stopped
+
 volumes:
   covoiturage_postgres_data:
     name: covoiturage_postgres_data
+  covoiturage_ollama_data:
+    name: covoiturage_ollama_data

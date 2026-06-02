@@ -5,6 +5,7 @@
 - `frontend`: application web utilisateur (Vue.js) servie par Nginx
 - `backend`: API HTTP et orchestration metier (FastAPI + Uvicorn)
 - `database`: persistance relationnelle (PostgreSQL)
+- `ia-services`: inference locale pour mapping CSV (Ollama)
 - `service cartographique externe`: geocodage et geocodage inverse (Nominatim / OpenStreetMap)
 
 ## Schema des flux (mermaid)
@@ -14,6 +15,7 @@ flowchart LR
   U[Utilisateur - Navigateur] -->|HTTP 3000| FE[Frontend Vue.js\ncovoiturage-frontend]
   FE -->|HTTP API + session| BE[Backend FastAPI\ncovoiturage-backend]
   BE -->|Lecture/Ecriture donnees| DB[(PostgreSQL\ncovoiturage-postgres)]
+  BE -->|Mapping CSV IA| IA[Ollama\ncovoiturage-ia-services]
   BE -->|Geocodage| GEO[Nominatim / OpenStreetMap]
 ```
 
@@ -37,8 +39,13 @@ flowchart TB
       DATA[(PostgreSQL)]
     end
 
+    subgraph C4[Container covoiturage-ia-services]
+      LLM[Ollama - modele local]
+    end
+
     UI -->|Appels HTTP| HTTP
     CORE -->|Read/Write SQL| DATA
+    CORE -->|Prompt CSV 6 lignes| LLM
   end
 ```
 
@@ -70,6 +77,10 @@ flowchart TB
 |-- docker-compose.yml           # orchestration locale
 |-- Dockerfile.backend           # image backend
 |-- frontend/Dockerfile.frontend # image frontend
+|-- backend/services/planning_import_services/
+|   |-- planning_import_parser.py # point d'entree import planning
+|   |-- csv_ai/                  # import CSV assiste IA (prompts, schemas, debug)
+|   `-- ics/                     # import ICS
 `-- .env / .env.example          # configuration
 ```
 
@@ -78,6 +89,7 @@ flowchart TB
 - `backend`: build `Dockerfile.backend`, conteneur `covoiturage-backend`, port `${BACKEND_PORT}`
 - `frontend`: build `frontend/Dockerfile.frontend`, conteneur `covoiturage-frontend`, port `${FRONTEND_PORT}`
 - `database`: image `postgres:16-alpine`, conteneur `covoiturage-postgres`, port `5432`
+- `ia-services`: image `ollama/ollama`, conteneur `covoiturage-ia-services`, port `${OLLAMA_PORT}`
 
 ## Services externes
 
@@ -105,4 +117,5 @@ Le script affiche:
 - URL Frontend
 - URL Backend API
 - URL Health API
+- URL IA service (Ollama)
 - et l'etat des conteneurs (`docker compose ps`)

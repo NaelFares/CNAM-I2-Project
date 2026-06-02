@@ -68,6 +68,9 @@ class GeocodeResult(BaseModel):
 
 class SchedulePreviewResponse(BaseModel):
     events: list["EventDTO"]
+    confidence_score: float | None = None
+    requires_user_review: bool = False
+    mapping_explanation: str | None = None
     feedback: ApiMessage
 
 

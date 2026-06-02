@@ -36,3 +36,7 @@ Thumbs.db
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+
+# IA models / cache
+backend/ia-services/ai-planning-import/model/*
+backend/ia-services/ai-planning-import/.cache/

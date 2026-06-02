@@ -38,6 +38,14 @@ class Config:
     # Upload
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "5"))
 
+    # Import IA (CSV)
+    AI_IMPORT_ENABLED = os.getenv("AI_IMPORT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ia-services:11434")
+    AI_IMPORT_MODEL = os.getenv("AI_IMPORT_MODEL", "qwen2.5:0.5b-instruct")
+    AI_IMPORT_CONFIDENCE_THRESHOLD = float(os.getenv("AI_IMPORT_CONFIDENCE_THRESHOLD", "0.80"))
+    OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
+    OLLAMA_REQUEST_TIMEOUT_S = int(os.getenv("OLLAMA_REQUEST_TIMEOUT_S", "300"))
+
     @classmethod
     def is_development(cls) -> bool:
         """Vérifie si on est en mode développement"""

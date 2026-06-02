@@ -4,7 +4,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "Services arretes." -ForegroundColor Yellow
+Write-Host "Services arretes (frontend, backend, database, ia-services)." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Etat des conteneurs:" -ForegroundColor Cyan
 

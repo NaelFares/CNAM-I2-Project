@@ -21,7 +21,7 @@ MESSAGE_CATALOG = {
     "SCHEDULE_EMPTY_FILE": "Le fichier est vide ou illisible.",
     "SCHEDULE_UNSUPPORTED_FORMAT": "Format de fichier non supporte (ICS ou CSV uniquement).",
     "SCHEDULE_PREVIEW_SUCCESS": "{count} cours detectes - Verifiez puis confirmez l'import.",
-    "SCHEDULE_PREVIEW_FAILED": "Impossible de lire le fichier. Verifiez son format.",
+    "SCHEDULE_PREVIEW_FAILED": "Impossible de lire le fichier. Verifiez son format. {reason}",
     "SCHEDULE_IMPORT_EMPTY": "Aucun evenement a importer.",
     "SCHEDULE_IMPORT_SUCCESS": "{count} cours importes avec succes !",
     "SCHEDULE_IMPORT_FAILED": "Impossible d'importer les evenements. Reessayez.",

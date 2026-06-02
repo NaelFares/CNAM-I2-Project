@@ -181,9 +181,188 @@ a {
   box-shadow: 0 8px 20px rgba(30, 74, 137, 0.08);
 }
 
+.loading-overlay {
+  @apply fixed inset-0 z-[60] flex items-center justify-center px-4;
+  background: rgba(15, 26, 43, 0.38);
+  backdrop-filter: blur(6px);
+}
+
+.loading-panel {
+  @apply w-full max-w-md rounded-3xl border px-6 py-7 text-center;
+  border-color: rgba(220, 234, 252, 0.8);
+  background: linear-gradient(160deg, rgba(247, 251, 255, 0.96) 0%, rgba(234, 243, 255, 0.93) 100%);
+  box-shadow: 0 24px 60px rgba(15, 43, 78, 0.25);
+}
+
+.orbit-loader {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  margin: 0 auto 1.25rem;
+}
+
+.orbit-track {
+  position: absolute;
+  inset: 8px;
+  border-radius: 9999px;
+  border: none;
+  box-shadow: none;
+}
+
+.orbit-lane {
+  position: absolute;
+  inset: 22px;
+  border-radius: 9999px;
+  border: 2px dashed rgba(175, 198, 237, 0.85);
+}
+
+.orbit-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle at 30% 30%, #4b7fe6, #1d4ed8 62%, #123aa7 100%);
+  box-shadow:
+    0 8px 18px rgba(17, 42, 89, 0.2),
+    inset 0 1px 0 rgba(181, 205, 250, 0.7);
+  animation: orbit-core-breath 2.2s ease-in-out infinite;
+}
+
+.orbit-car {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 112px;
+  height: 112px;
+  margin-left: -56px;
+  margin-top: -56px;
+  animation: orbit-spin-car 3.2s linear infinite;
+}
+
+.orbit-car-svg {
+  width: 36px;
+  height: 36px;
+  transform: translate(38px, -8px);
+  filter: drop-shadow(0 6px 12px rgba(18, 58, 167, 0.24));
+}
+
+.orbit-dots {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  display: flex;
+  gap: 11px;
+  transform: translateX(-50%);
+}
+
+.orbit-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(67, 119, 216, 0.36);
+  animation: orbit-dot-shift 1.3s ease-in-out infinite;
+}
+
+.orbit-dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.orbit-dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+.loading-title {
+  @apply text-base font-bold text-slate-900 md:text-lg;
+}
+
+.loading-detail {
+  @apply mt-1 text-sm font-medium text-slate-600;
+}
+
+.loading-time {
+  @apply mt-3 text-sm font-bold text-slate-700;
+}
+
+.loading-fade-enter-active,
+.loading-fade-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.loading-fade-enter-from,
+.loading-fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes orbit-spin-car {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-core-breath {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0.9;
+  }
+}
+
+@keyframes orbit-dot-shift {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  45% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 767px) {
   .single-card-center {
     min-height: calc(100vh - 2rem);
+  }
+
+  .orbit-loader {
+    width: 112px;
+    height: 112px;
+  }
+
+  .orbit-track {
+    inset: 8px;
+  }
+
+  .orbit-lane {
+    inset: 21px;
+  }
+
+  .orbit-core {
+    width: 30px;
+    height: 30px;
+  }
+
+  .orbit-car {
+    width: 96px;
+    height: 96px;
+    margin-left: -48px;
+    margin-top: -48px;
+  }
+
+  .orbit-car-svg {
+    width: 32px;
+    height: 32px;
+    transform: translate(32px, -8px);
   }
 }
 
@@ -195,5 +374,11 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .orbit-car,
+  .orbit-core,
+  .orbit-dot {
+    animation: none !important;
   }
 }

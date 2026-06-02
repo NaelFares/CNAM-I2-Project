@@ -35,7 +35,11 @@ export async function reverseAddress(lat, lon) {
 export async function previewSchedule(file) {
   const form = new FormData();
   form.append("file", file);
-  return (await apiClient.post("/schedule/preview", form)).data;
+  return (
+    await apiClient.post("/schedule/preview", form, {
+      timeout: 180000,
+    })
+  ).data;
 }
 
 export async function confirmSchedule() {

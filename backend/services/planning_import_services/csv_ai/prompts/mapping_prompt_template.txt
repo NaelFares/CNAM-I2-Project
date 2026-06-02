@@ -1,0 +1,22 @@
+Analyse l'echantillon JSON suivant (colonnes + lignes) et retourne le mapping JSON.
+
+Champs cibles obligatoires:
+- title
+- start_time
+- end_time
+- location
+- description
+
+Echantillon JSON:
+{sample_payload}
+
+Rappels:
+- `mode` autorises: single, concat, datetime_combine, empty
+- `single`: exactement 1 colonne
+- `datetime_combine`: exactement 2 colonnes, date puis heure
+- `concat`: 1 colonne ou plus
+- `empty`: aucune colonne
+- `columns` contient uniquement des noms de colonnes exacts
+- `separator` utile uniquement pour concat
+- `summary` court et utile
+- `overall_confidence` entre 0 et 1

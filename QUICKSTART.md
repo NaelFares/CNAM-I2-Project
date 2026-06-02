@@ -18,8 +18,24 @@
 
 Ce script:
 - lance `docker compose up -d --build --remove-orphans`
-- affiche les URLs frontend/backend
+- affiche les URLs frontend/backend/ia-services
+- demarre Ollama en CPU par defaut
+- utilise le GPU uniquement avec l'option explicite `-ForceGpu`
 - affiche l'etat des conteneurs
+- puis suit les logs en direct (`docker compose logs -f`)
+
+Pour demarrer sans suivre les logs:
+
+```powershell
+./scripts/start-local.ps1 -NoLogs
+```
+
+Pour choisir le mode IA:
+
+```powershell
+./scripts/start-local.ps1 -ForceCpu
+./scripts/start-local.ps1 -ForceGpu
+```
 
 ### Variante sans rebuild d'images
 
@@ -33,6 +49,7 @@ Utilise ce script quand les images sont deja construites et que tu veux juste re
 
 - Frontend: `http://localhost:${FRONTEND_PORT}` (defaut 3000)
 - API health: `http://localhost:${BACKEND_PORT}/health` (defaut 8000)
+- Ollama: `http://localhost:${OLLAMA_PORT}` (defaut 11434)
 
 ## Commandes utiles
 
@@ -53,6 +70,22 @@ Ou via script:
 ```bash
 docker compose logs -f
 ```
+
+### Verifier le modele IA charge
+
+```bash
+docker compose exec ia-services ollama list
+```
+
+### Benchmarker les modeles IA CSV
+
+Depuis le conteneur backend, avec le service IA demarre:
+
+```bash
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py --pull
+```
+
+Modeles compares par defaut: `qwen2.5:0.5b-instruct`, `qwen3:0.6b`, `gemma3:1b`.
 
 ### Rebuild complet
 

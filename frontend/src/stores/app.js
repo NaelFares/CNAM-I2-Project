@@ -22,8 +22,23 @@ export const useAppStore = defineStore("app", {
     matches: [],
     summary: null,
     loading: false,
+    loadingLabel: "",
+    loadingDetail: "",
+    loadingStartedAt: null,
   }),
   actions: {
+    startLoading(label, detail = "") {
+      this.loading = true;
+      this.loadingLabel = label;
+      this.loadingDetail = detail;
+      this.loadingStartedAt = Date.now();
+    },
+    stopLoading() {
+      this.loading = false;
+      this.loadingLabel = "";
+      this.loadingDetail = "";
+      this.loadingStartedAt = null;
+    },
     async loadProfile() {
       try {
         this.profile = await getProfile();
@@ -33,7 +48,7 @@ export const useAppStore = defineStore("app", {
     },
     async saveProfile(payload) {
       const feedback = useFeedbackStore();
-      this.loading = true;
+      this.startLoading("Sauvegarde du profil...", "Mise a jour de vos informations.");
       try {
         this.profile = await updateProfile(payload);
         feedback.showSuccess("Profil sauvegarde avec succes.");
@@ -42,7 +57,7 @@ export const useAppStore = defineStore("app", {
         feedback.showError(extractApiError(err).message);
         return false;
       } finally {
-        this.loading = false;
+        this.stopLoading();
       }
     },
     async loadSummary() {
@@ -62,22 +77,27 @@ export const useAppStore = defineStore("app", {
     },
     async previewSchedule(file) {
       const feedback = useFeedbackStore();
-      this.loading = true;
+      this.startLoading("Analyse du planning...", "Le modele identifie les colonnes et horaires.");
       try {
         const data = await previewSchedule(file);
         this.previewEvents = data.events;
-        feedback.showSuccess(data.feedback.message);
+        if (data.requires_user_review) {
+          const score = typeof data.confidence_score === "number" ? ` (${Math.round(data.confidence_score * 100)}%)` : "";
+          feedback.showInfo(`Verification recommandee: confiance IA faible${score}.`);
+        } else {
+          feedback.showSuccess(data.feedback.message);
+        }
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
         return false;
       } finally {
-        this.loading = false;
+        this.stopLoading();
       }
     },
     async confirmSchedule() {
       const feedback = useFeedbackStore();
-      this.loading = true;
+      this.startLoading("Confirmation et enregistrement...", "Enregistrement des cours importes.");
       try {
         const data = await confirmSchedule();
         this.events = data.events;
@@ -86,12 +106,12 @@ export const useAppStore = defineStore("app", {
       } catch (err) {
         feedback.showError(extractApiError(err).message);
       } finally {
-        this.loading = false;
+        this.stopLoading();
       }
     },
     async generateRides() {
       const feedback = useFeedbackStore();
-      this.loading = true;
+      this.startLoading("Generation des trajets...", "Calcul des trajets aller/retour campus.");
       try {
         const data = await generateRides();
         this.rides = data.rides;
@@ -99,12 +119,12 @@ export const useAppStore = defineStore("app", {
       } catch (err) {
         feedback.showError(extractApiError(err).message);
       } finally {
-        this.loading = false;
+        this.stopLoading();
       }
     },
     async findMatches() {
       const feedback = useFeedbackStore();
-      this.loading = true;
+      this.startLoading("Recherche des correspondances...", "Comparaison des trajets disponibles.");
       try {
         const data = await findMatches();
         this.matches = data.matches;
@@ -112,7 +132,7 @@ export const useAppStore = defineStore("app", {
       } catch (err) {
         feedback.showError(extractApiError(err).message);
       } finally {
-        this.loading = false;
+        this.stopLoading();
       }
     },
   },

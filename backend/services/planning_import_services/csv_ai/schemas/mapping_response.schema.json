@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "required": ["summary", "overall_confidence", "fields"],
+  "properties": {
+    "summary": { "type": "string" },
+    "overall_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "fields": {
+      "type": "object",
+      "required": ["title", "start_time", "end_time", "location", "description"],
+      "properties": {
+        "title": { "$ref": "#/$defs/fieldMapping" },
+        "start_time": { "$ref": "#/$defs/fieldMapping" },
+        "end_time": { "$ref": "#/$defs/fieldMapping" },
+        "location": { "$ref": "#/$defs/fieldMapping" },
+        "description": { "$ref": "#/$defs/fieldMapping" }
+      }
+    }
+  },
+  "$defs": {
+    "fieldMapping": {
+      "type": "object",
+      "required": ["mode", "columns", "confidence"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["single", "concat", "datetime_combine", "empty"]
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "separator": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}
