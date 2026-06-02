@@ -40,11 +40,15 @@ class Config:
 
     # Import IA (CSV)
     AI_IMPORT_ENABLED = os.getenv("AI_IMPORT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
-    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ia-services:11434")
+    AI_IMPORT_PROVIDER = os.getenv("AI_IMPORT_PROVIDER", "ollama")  # "ollama" | "groq"
     AI_IMPORT_MODEL = os.getenv("AI_IMPORT_MODEL", "qwen2.5:0.5b-instruct")
     AI_IMPORT_CONFIDENCE_THRESHOLD = float(os.getenv("AI_IMPORT_CONFIDENCE_THRESHOLD", "0.80"))
+    # Ollama
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ia-services:11434")
     OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
     OLLAMA_REQUEST_TIMEOUT_S = int(os.getenv("OLLAMA_REQUEST_TIMEOUT_S", "300"))
+    # Groq
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
     @classmethod
     def is_development(cls) -> bool:

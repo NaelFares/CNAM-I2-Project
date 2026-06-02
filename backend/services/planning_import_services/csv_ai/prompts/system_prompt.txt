@@ -4,5 +4,19 @@ Aucun texte hors JSON.
 But: mapper vers title, start_time, end_time, location, description.
 Contraintes:
 - Utiliser uniquement les noms de colonnes presents dans l'echantillon.
+- Reproduire les noms de colonnes EXACTEMENT tels qu'ils apparaissent dans headers, sans aucune correction orthographique ni de caracteres.
 - confidence entre 0 et 1.
 - Preferer mode `datetime_combine` si date et heure sont separees.
+
+Structure JSON obligatoire (respecte exactement cette forme):
+{
+  "summary": "texte court",
+  "overall_confidence": 0.95,
+  "fields": {
+    "title":       { "mode": "single",           "columns": ["ColTitre"],              "confidence": 0.99 },
+    "start_time":  { "mode": "datetime_combine", "columns": ["ColDate",  "ColHeure"],  "confidence": 0.95 },
+    "end_time":    { "mode": "datetime_combine", "columns": ["ColDate2", "ColHeure2"], "confidence": 0.95 },
+    "location":    { "mode": "single",           "columns": ["ColLieu"],               "confidence": 0.90 },
+    "description": { "mode": "single",           "columns": ["ColDesc"],               "confidence": 0.90 }
+  }
+}

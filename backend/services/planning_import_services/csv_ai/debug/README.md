@@ -1,8 +1,10 @@
 # Debug CSV IA
 
-Ce dossier contient deux scripts a lancer depuis le conteneur `backend`.
+Ce dossier contient deux scripts à lancer depuis le conteneur `backend`.
 
-Le service `ia-services` doit etre demarre, car les scripts appellent Ollama via `http://ia-services:11434`.
+**Mode Groq** (`AI_IMPORT_PROVIDER=groq`) : aucun service supplémentaire requis, les appels partent vers l'API cloud Groq.
+
+**Mode Ollama** (`AI_IMPORT_PROVIDER=ollama`) : le service `ia-services` doit être démarré (`http://ia-services:11434`).
 
 ## Demarrer les services
 
@@ -32,10 +34,10 @@ docker compose up -d backend ia-services
 
 ## Benchmark des modeles
 
-Compare les modeles sur le meme workflow que le backend: lecture CSV, prompt, appel Ollama, validation du mapping, reconstruction des evenements et score de confiance.
+Compare des modèles Ollama locaux sur le même workflow que le backend : lecture CSV, prompt, appel Ollama, validation du mapping, reconstruction des événements et score de confiance. Réservé au mode `AI_IMPORT_PROVIDER=ollama`.
 
 ```bash
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py --pull
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --pull
 ```
 
 Chaque execution ecrit aussi un rapport Markdown date dans:
@@ -62,23 +64,23 @@ Options utiles:
 
 ```bash
 # Un seul passage par modele
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py --repeats 1
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --repeats 1
 
 # Choisir les modeles
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py --models qwen2.5:0.5b-instruct qwen3:0.6b --pull
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --models qwen2.5:0.5b-instruct qwen3:0.6b --pull
 
 # Tester un autre CSV
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py /app/backend/services/planning_import_services/csv_ai/debug/CNAM_Planning_18122025024326_158904.csv --pull
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py /app/backend/services/planning_import_services/csv_ai/debug/CNAM_Planning_18122025024326_158904.csv --pull
 
 # Sortie JSON uniquement
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py --json
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --json
 ```
 
 Sans `--pull`, le script echoue si un modele demande n'est pas deja present dans Ollama.
 
 ## Debug pas a pas du mapping CSV
 
-Affiche les colonnes detectees, le payload envoye a Ollama, la reponse brute, le mapping resolu et les evenements reconstruits.
+Affiche les colonnes détectées, le prompt envoyé, le mapping reçu, le mapping résolu et les événements reconstruits. Fonctionne avec les deux fournisseurs (Ollama et Groq).
 
 ```bash
 docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/debug_csv_ai_mapping.py /app/backend/services/planning_import_services/csv_ai/debug/CNAM_Planning_18122025024326_158904.csv

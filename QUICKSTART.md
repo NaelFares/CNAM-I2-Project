@@ -82,7 +82,7 @@ docker compose exec ia-services ollama list
 Depuis le conteneur backend, avec le service IA demarre:
 
 ```bash
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models.py --pull
+docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --pull
 ```
 
 Modeles compares par defaut: `qwen2.5:0.5b-instruct`, `qwen3:0.6b`, `gemma3:1b`.
