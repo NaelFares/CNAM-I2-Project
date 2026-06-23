@@ -12,6 +12,7 @@ class User:
     id: Optional[int] = None
     name: str = ""
     email: str = ""
+    hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
     role: str = "both"  # "driver", "passenger", "both"
     start_address: str = ""  # Adresse lisible (ex: "15 rue de la République, Paris")
     start_lat: float = 0.0

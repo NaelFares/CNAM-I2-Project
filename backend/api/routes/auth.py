@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Response, status
 from backend.database.manager import db
 
 from backend.api.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
+from passlib.context import CryptContext
 from backend.api.deps import get_current_user
 from backend.api.feedback import make_feedback, raise_api_error
 from backend.api.schemas import LoginRequest, LoginResponse, RegisterRequest, SessionResponse, UserDTO
@@ -15,6 +16,14 @@ from backend.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+"""Hash de mot de passe et vérification"""
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def _verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 def _set_session_cookie(response: Response, user_id: int, email: str):
     token = create_session_token(user_id=user_id, email=email, ttl_seconds=SESSION_TTL_SECONDS)
@@ -40,6 +49,10 @@ def login(payload: LoginRequest, response: Response):
             feedback=make_feedback("AUTH_UNKNOWN_EMAIL_REDIRECT"),
         )
 
+    # Vérification du mot de passe
+    if not _verify_password(payload.password, user.hashed_password):
+        raise_api_error("AUTH_INVALID_CREDENTIALS", http_status=status.HTTP_401_UNAUTHORIZED)
+
     _set_session_cookie(response, user.id, user.email)
     return LoginResponse(
         status="ok",
@@ -61,6 +74,7 @@ def register(payload: RegisterRequest, response: Response):
         name=payload.name.strip(),
         email=str(payload.email).strip().lower(),
         role=payload.role,
+        hashed_password=_hash_password(payload.password),
         start_address=payload.start_address.strip(),
         start_lat=payload.start_lat,
         start_lon=payload.start_lon,
