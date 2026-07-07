@@ -1,7 +1,7 @@
 import { apiClient } from "./api";
 
-export async function login(email) {
-  return (await apiClient.post("/auth/login", { email })).data;
+export async function login(email, password) {
+  return (await apiClient.post("/auth/login", { email, password })).data;
 }
 
 export async function register(payload) {

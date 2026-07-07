@@ -22,11 +22,11 @@ export const useAuthStore = defineStore("auth", {
         this.initialized = true;
       }
     },
-    async loginWithEmail(email) {
+    async loginWithEmail(email, password) {
       const feedback = useFeedbackStore();
       this.loading = true;
       try {
-        const data = await login(email);
+        const data = await login(email, password);
         if (data.status === "register_required") {
           this.pendingEmail = email;
           this.isLoggedIn = false;
@@ -70,5 +70,3 @@ export const useAuthStore = defineStore("auth", {
     },
   },
 });
-
-
