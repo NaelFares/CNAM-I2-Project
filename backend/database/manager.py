@@ -2,6 +2,7 @@
 Service de gestion de la base de données PostgreSQL.
 Gère la création des tables et les opérations CRUD.
 """
+
 import time
 from typing import List, Optional
 
@@ -41,27 +42,32 @@ class Database:
         cursor = conn.cursor()
 
         # Table des utilisateurs
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
+                hashed_password TEXT NOT NULL DEFAULT '',
                 role TEXT NOT NULL,
                 start_address TEXT DEFAULT '',
                 start_lat DOUBLE PRECISION NOT NULL,
                 start_lon DOUBLE PRECISION NOT NULL,
                 time_tolerance_min INTEGER NOT NULL
             )
-            """
-        )
+            """)
 
         # Migration: ajouter start_address si elle n'existe pas
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS start_address TEXT DEFAULT ''")
+        cursor.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_address TEXT DEFAULT ''"
+        )
+
+        # Migration: ajouter hashed_password si elle n'existe pas
+        cursor.execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password TEXT NOT NULL DEFAULT ''"
+        )
 
         # Table des événements
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS events (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users (id),
@@ -71,12 +77,10 @@ class Database:
                 location TEXT,
                 description TEXT
             )
-            """
-        )
+            """)
 
         # Table des trajets
-        cursor.execute(
-            """
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS rides (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users (id),
@@ -88,30 +92,35 @@ class Database:
                 end_lat DOUBLE PRECISION NOT NULL,
                 end_lon DOUBLE PRECISION NOT NULL
             )
-            """
-        )
+            """)
 
         # One-shot migration for legacy ride_type values.
-        cursor.execute("UPDATE rides SET ride_type = 'to_campus' WHERE ride_type = 'aller'")
-        cursor.execute("UPDATE rides SET ride_type = 'from_campus' WHERE ride_type = 'retour'")
+        cursor.execute(
+            "UPDATE rides SET ride_type = 'to_campus' WHERE ride_type = 'aller'"
+        )
+        cursor.execute(
+            "UPDATE rides SET ride_type = 'from_campus' WHERE ride_type = 'retour'"
+        )
 
         conn.commit()
         conn.close()
 
     # --- USERS ---
+    """Crée un nouvel utilisateur"""
+
     def create_user(self, user: User) -> int:
-        """Crée un nouvel utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, role, start_address, start_lat, start_lon, time_tolerance_min)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (name, email, hashed_password, role, start_address, start_lat, start_lon, time_tolerance_min)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
                 user.name,
                 user.email,
+                user.hashed_password,
                 user.role,
                 user.start_address,
                 user.start_lat,
@@ -208,7 +217,9 @@ class Database:
         """Récupère tous les événements d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM events WHERE user_id = %s ORDER BY start_time", (user_id,))
+        cursor.execute(
+            "SELECT * FROM events WHERE user_id = %s ORDER BY start_time", (user_id,)
+        )
         rows = cursor.fetchall()
         conn.close()
         return [Event.from_dict(row) for row in rows]
@@ -252,7 +263,9 @@ class Database:
         """Récupère tous les trajets d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM rides WHERE user_id = %s ORDER BY ride_time", (user_id,))
+        cursor.execute(
+            "SELECT * FROM rides WHERE user_id = %s ORDER BY ride_time", (user_id,)
+        )
         rows = cursor.fetchall()
         conn.close()
         return [Ride.from_dict(row) for row in rows]

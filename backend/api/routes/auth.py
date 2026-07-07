@@ -65,7 +65,7 @@ def login(payload: LoginRequest, response: Response):
 def register(payload: RegisterRequest, response: Response):
     existing = db.get_user_by_email(str(payload.email).strip().lower())
     if existing:
-        raise_api_error("REGISTER_REQUIRED_FIELDS", http_status=status.HTTP_409_CONFLICT)
+        raise_api_error("REGISTER_USER_EXISTING", http_status=status.HTTP_409_CONFLICT)
 
     if payload.time_tolerance_min < 5 or payload.time_tolerance_min > 60:
         raise_api_error("VALIDATION_TIME_TOLERANCE_INVALID")
