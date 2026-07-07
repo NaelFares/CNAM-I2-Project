@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.core.config import config
+from backend.database.setup import run_startup
 
 from backend.api.routes.auth import router as auth_router
 from backend.api.routes.dashboard import router as dashboard_router
@@ -17,6 +18,11 @@ from backend.api.routes.rides import router as rides_router
 from backend.api.routes.schedule import router as schedule_router
 
 app = FastAPI(title=f"{config.APP_NAME} API", version="1.0.0")
+
+
+@app.on_event("startup")
+def startup_event():
+    run_startup()
 
 app.add_middleware(
     CORSMiddleware,

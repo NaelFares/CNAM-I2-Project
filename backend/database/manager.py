@@ -1,7 +1,4 @@
-"""
-Service de gestion de la base de données PostgreSQL.
-Gère la création des tables et les opérations CRUD.
-"""
+"""Service de gestion de la base de données PostgreSQL – opérations CRUD."""
 import time
 from typing import List, Optional
 
@@ -16,11 +13,8 @@ from backend.models.ride import Ride
 
 
 class Database:
-    """Gestionnaire de base de données PostgreSQL"""
-
     def __init__(self):
         self.db_url = config.DATABASE_URL
-        self.init_database()
 
     def get_connection(self) -> psycopg2.extensions.connection:
         """Crée une connexion à la base de données"""
@@ -35,69 +29,6 @@ class Database:
                 time.sleep(2)
         raise OperationalError("Impossible de se connecter à la base de données")
 
-    def init_database(self):
-        """Initialise les tables de la base de données"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-
-        # Table des utilisateurs
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                role TEXT NOT NULL,
-                start_address TEXT DEFAULT '',
-                start_lat DOUBLE PRECISION NOT NULL,
-                start_lon DOUBLE PRECISION NOT NULL,
-                time_tolerance_min INTEGER NOT NULL
-            )
-            """
-        )
-
-        # Migration: ajouter start_address si elle n'existe pas
-        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS start_address TEXT DEFAULT ''")
-
-        # Table des événements
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS events (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL REFERENCES users (id),
-                title TEXT NOT NULL,
-                start_time TIMESTAMP NOT NULL,
-                end_time TIMESTAMP NOT NULL,
-                location TEXT,
-                description TEXT
-            )
-            """
-        )
-
-        # Table des trajets
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS rides (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL REFERENCES users (id),
-                event_id INTEGER NOT NULL REFERENCES events (id),
-                ride_type TEXT NOT NULL,
-                ride_time TIMESTAMP NOT NULL,
-                start_lat DOUBLE PRECISION NOT NULL,
-                start_lon DOUBLE PRECISION NOT NULL,
-                end_lat DOUBLE PRECISION NOT NULL,
-                end_lon DOUBLE PRECISION NOT NULL
-            )
-            """
-        )
-
-        # One-shot migration for legacy ride_type values.
-        cursor.execute("UPDATE rides SET ride_type = 'to_campus' WHERE ride_type = 'aller'")
-        cursor.execute("UPDATE rides SET ride_type = 'from_campus' WHERE ride_type = 'retour'")
-
-        conn.commit()
-        conn.close()
-
     # --- USERS ---
     def create_user(self, user: User) -> int:
         """Crée un nouvel utilisateur"""
@@ -105,8 +36,9 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, role, start_address, start_lat, start_lon, time_tolerance_min)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO users (name, email, role, start_address, start_lat, start_lon, time_tolerance_min,
+                               school_address, school_lat, school_lon)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -117,6 +49,9 @@ class Database:
                 user.start_lat,
                 user.start_lon,
                 user.time_tolerance_min,
+                user.school_address,
+                user.school_lat,
+                user.school_lon,
             ),
         )
         user_id = cursor.fetchone()[0]
@@ -162,7 +97,8 @@ class Database:
         cursor.execute(
             """
             UPDATE users
-            SET name = %s, email = %s, role = %s, start_address = %s, start_lat = %s, start_lon = %s, time_tolerance_min = %s
+            SET name = %s, email = %s, role = %s, start_address = %s, start_lat = %s, start_lon = %s,
+                time_tolerance_min = %s, school_address = %s, school_lat = %s, school_lon = %s
             WHERE id = %s
             """,
             (
@@ -173,6 +109,9 @@ class Database:
                 user.start_lat,
                 user.start_lon,
                 user.time_tolerance_min,
+                user.school_address,
+                user.school_lat,
+                user.school_lon,
                 user.id,
             ),
         )
