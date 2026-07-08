@@ -65,6 +65,9 @@ def register(payload: RegisterRequest, response: Response):
         start_lat=payload.start_lat,
         start_lon=payload.start_lon,
         time_tolerance_min=payload.time_tolerance_min,
+        school_address=payload.school_address.strip(),
+        school_lat=payload.school_lat,
+        school_lon=payload.school_lon,
     )
     user.id = db.create_user(user)
     _set_session_cookie(response, user.id, user.email)

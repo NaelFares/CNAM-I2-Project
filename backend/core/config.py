@@ -34,6 +34,10 @@ class Config:
     DEFAULT_TIME_TOLERANCE_MIN = int(os.getenv("DEFAULT_TIME_TOLERANCE_MIN", "15"))
     MAX_DISTANCE_KM = float(os.getenv("MAX_DISTANCE_KM", "10.0"))
     MIN_MATCH_SCORE = int(os.getenv("MIN_MATCH_SCORE", "60"))
+    MAX_ROUTE_DETOUR_KM = float(os.getenv("MAX_ROUTE_DETOUR_KM", "1.5"))
+
+    # Routing (OpenRouteService)
+    ORS_API_KEY = os.getenv("ORS_API_KEY", "")
 
     # Upload
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "5"))

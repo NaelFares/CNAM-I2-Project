@@ -25,6 +25,9 @@ class RegisterRequest(BaseModel):
     start_lat: float = 0.0
     start_lon: float = 0.0
     time_tolerance_min: int = 15
+    school_address: str = ""
+    school_lat: float = 0.0
+    school_lon: float = 0.0
 
 
 class LoginResponse(BaseModel):
@@ -42,6 +45,9 @@ class UserDTO(BaseModel):
     start_lat: float
     start_lon: float
     time_tolerance_min: int
+    school_address: str = ""
+    school_lat: float = 0.0
+    school_lon: float = 0.0
 
 
 class SessionResponse(BaseModel):
@@ -57,6 +63,9 @@ class ProfileUpdateRequest(BaseModel):
     start_lat: float = 0.0
     start_lon: float = 0.0
     time_tolerance_min: int = 15
+    school_address: str = ""
+    school_lat: float = 0.0
+    school_lon: float = 0.0
 
 
 class GeocodeResult(BaseModel):
@@ -123,6 +132,8 @@ class MatchDTO(BaseModel):
     driver_coords: tuple[float, float]
     passenger_coords: tuple[float, float]
     campus_coords: tuple[float, float]
+    route_geometry: list[list[float]] = []
+    route_distance_km: float = 0.0
 
 
 class MatchesResponse(BaseModel):
