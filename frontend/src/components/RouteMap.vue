@@ -9,6 +9,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { COLORS } from "../lib/colors";
 
 const props = defineProps({
   routeGeometry: { type: Array, default: () => [] }, // [[lat, lon], ...]
@@ -38,26 +39,26 @@ function buildMap() {
   const bounds = [];
 
   if (props.routeGeometry?.length) {
-    const polyline = L.polyline(props.routeGeometry, { color: "#3b82f6", weight: 4, opacity: 0.8 }).addTo(map);
+    const polyline = L.polyline(props.routeGeometry, { color: COLORS.routeLine, weight: 4, opacity: 0.8 }).addTo(map);
     bounds.push(...props.routeGeometry);
   }
 
   const driverIcon = L.divIcon({
-    html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
+    html: `<div style="background:${COLORS.driver};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
     className: "",
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
 
   const passengerIcon = L.divIcon({
-    html: '<div style="background:#f97316;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
+    html: `<div style="background:${COLORS.passenger};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
     className: "",
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
 
   const destIcon = L.divIcon({
-    html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>',
+    html: `<div style="background:${COLORS.destination};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
     className: "",
     iconSize: [14, 14],
     iconAnchor: [7, 7],

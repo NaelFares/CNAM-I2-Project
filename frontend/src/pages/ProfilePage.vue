@@ -7,7 +7,7 @@
 
     <form class="space-y-5" @submit.prevent="onSubmit">
       <!-- Infos de base -->
-      <div class="card p-6">
+      <Card>
         <h2 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
           <Info class="h-4 w-4" />
           Informations générales
@@ -15,11 +15,11 @@
         <div class="grid gap-4 md:grid-cols-2">
           <div class="md:col-span-2">
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Nom complet</label>
-            <input v-model="form.name" class="input" required />
+            <Input v-model="form.name" required />
           </div>
           <div class="md:col-span-2">
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Email</label>
-            <input v-model="form.email" type="email" class="input" required />
+            <Input v-model="form.email" type="email" required />
           </div>
           <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Rôle</label>
@@ -31,29 +31,28 @@
           </div>
           <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tolérance horaire (minutes)</label>
-            <input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" class="input" />
+            <Input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
           </div>
         </div>
-      </div>
+      </Card>
 
       <!-- Deux cards adresses côte à côte -->
       <div class="grid gap-5 lg:grid-cols-2">
 
         <!-- Card Domicile -->
-        <div class="card p-6 space-y-4">
+        <Card class="space-y-4">
           <h2 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-            <MapPin class="h-4 w-4 text-blue-600" />
+            <MapPin class="h-4 w-4 text-primary" />
             Adresse de départ (domicile)
           </h2>
 
-          <div class="relative">
-            <MapPin class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input v-model="form.start_address" class="input input-with-icon" placeholder="Numéro, rue, ville…" @input="onAddressInput" />
-          </div>
+          <Input v-model="form.start_address" placeholder="Numéro, rue, ville…" @input="onAddressInput">
+            <template #icon><MapPin class="h-4 w-4" /></template>
+          </Input>
 
           <ul v-if="suggestions.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
             <li v-for="item in suggestions" :key="`${item.display_name}-${item.lat}`">
-              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-blue-50" @click="selectSuggestion(item)">
+              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-primary-soft" @click="selectSuggestion(item)">
                 <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
                 <div class="text-xs text-slate-500">{{ item.place_label }}</div>
               </button>
@@ -61,36 +60,35 @@
           </ul>
 
           <div class="flex flex-wrap items-center gap-3">
-            <button type="button" class="btn-secondary" @click="locateAddress">
+            <Button variant="secondary" @click="locateAddress">
               <LocateFixed class="h-4 w-4" />
               Localiser automatiquement
-            </button>
-            <p v-if="placeLabel" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+            </Button>
+            <Badge v-if="placeLabel" variant="primary">
               <MapPinned class="h-3.5 w-3.5" />
               {{ placeLabel }}
-            </p>
+            </Badge>
           </div>
 
           <MapPicker :lat="form.start_lat" :lon="form.start_lon" @moved="onMapMoved" />
           <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
-        </div>
+        </Card>
 
         <!-- Card École -->
-        <div class="card p-6 space-y-4">
+        <Card class="space-y-4">
           <h2 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-            <School class="h-4 w-4 text-emerald-600" />
+            <School class="h-4 w-4 text-success" />
             Adresse de l'école
             <span class="ml-1 text-xs font-normal normal-case text-slate-400">(destination par défaut)</span>
           </h2>
 
-          <div class="relative">
-            <School class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input v-model="form.school_address" class="input input-with-icon" placeholder="Nom ou adresse de l'établissement…" @input="onSchoolInput" />
-          </div>
+          <Input v-model="form.school_address" placeholder="Nom ou adresse de l'établissement…" @input="onSchoolInput">
+            <template #icon><School class="h-4 w-4" /></template>
+          </Input>
 
           <ul v-if="schoolSuggestions.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
             <li v-for="item in schoolSuggestions" :key="`${item.display_name}-${item.lat}`">
-              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-emerald-50" @click="selectSchoolSuggestion(item)">
+              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-success-soft" @click="selectSchoolSuggestion(item)">
                 <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
                 <div class="text-xs text-slate-500">{{ item.place_label }}</div>
               </button>
@@ -98,27 +96,27 @@
           </ul>
 
           <div class="flex flex-wrap items-center gap-3">
-            <button type="button" class="btn-secondary" @click="locateSchool">
+            <Button variant="secondary" @click="locateSchool">
               <LocateFixed class="h-4 w-4" />
               Localiser automatiquement
-            </button>
-            <p v-if="schoolPlaceLabel" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+            </Button>
+            <Badge v-if="schoolPlaceLabel" variant="success">
               <MapPinned class="h-3.5 w-3.5" />
               {{ schoolPlaceLabel }}
-            </p>
+            </Badge>
           </div>
 
           <MapPicker :lat="form.school_lat || 46.603354" :lon="form.school_lon || 1.888334" @moved="onSchoolMapMoved" />
           <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
-        </div>
+        </Card>
       </div>
 
       <!-- Bouton de sauvegarde -->
       <div class="flex justify-end">
-        <button class="btn-primary" :disabled="app.loading">
+        <Button type="submit" :disabled="app.loading">
           <Save class="h-4 w-4" />
           Sauvegarder le profil
-        </button>
+        </Button>
       </div>
     </form>
   </section>
@@ -129,6 +127,7 @@ import { onMounted, reactive, ref } from "vue";
 import { Info, LocateFixed, MapPin, MapPinned, Save, School } from "lucide-vue-next";
 
 import MapPicker from "../components/MapPicker.vue";
+import { Badge, Button, Card, Input } from "../components/ui";
 import { reverseAddress, searchAddress } from "../api/endpoints";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";

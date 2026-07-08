@@ -9,12 +9,12 @@
       Conseil: plus le profil et le planning sont précis, plus le score de compatibilité est fiable.
     </div>
 
-    <div class="card p-6">
-      <button class="btn-primary" :disabled="app.loading" @click="app.findMatches">
+    <Card>
+      <Button :disabled="app.loading" @click="app.findMatches">
         <UsersRound class="h-4 w-4" />
         Rechercher des correspondances
-      </button>
-    </div>
+      </Button>
+    </Card>
 
     <div v-if="app.matches.length" class="grid gap-4 md:grid-cols-2">
       <article
@@ -25,7 +25,7 @@
         <div class="p-5">
           <div class="mb-2 flex items-center justify-between gap-3">
             <h3 class="text-lg font-bold text-slate-900">{{ match.score }}% de compatibilité</h3>
-            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{{ match.ride_type }}</span>
+            <Badge variant="primary">{{ match.ride_type }}</Badge>
           </div>
           <p class="text-sm font-semibold text-slate-700">{{ match.driver_name }} → {{ match.passenger_name }}</p>
           <div class="mt-2 space-y-1 text-sm text-slate-600">
@@ -57,6 +57,7 @@
 import { UsersRound } from "lucide-vue-next";
 
 import RouteMap from "../components/RouteMap.vue";
+import { Badge, Button, Card } from "../components/ui";
 import { useAppStore } from "../stores/app";
 
 const app = useAppStore();
