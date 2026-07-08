@@ -8,6 +8,7 @@ MESSAGE_CATALOG = {
     "AUTH_EMAIL_INVALID": "Format d'email invalide.",
     "AUTH_UNKNOWN_EMAIL_REDIRECT": "Aucun compte trouve. Completez l'inscription pour continuer.",
     "REGISTER_REQUIRED_FIELDS": "Nom et email sont obligatoires.",
+    "REGISTER_USER_EXISTING" : "L'utilisateur existe déjà. Veuillez vous connecter.",
     "PROFILE_REQUIRED_FIRST": "Vous devez d'abord creer votre profil.",
     "PROFILE_SAVE_SUCCESS": "Profil sauvegarde avec succes.",
     "PROFILE_SAVE_FAILED": "Impossible de sauvegarder le profil. Reessayez.",

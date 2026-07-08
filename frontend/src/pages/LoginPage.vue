@@ -16,6 +16,10 @@
           <label class="mb-1.5 block text-sm font-semibold text-slate-700">Adresse email</label>
           <input v-model="email" type="email" required class="input" placeholder="prenom.nom@etudiant.fr" />
         </div>
+        <div>
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Mot de passe</label>
+          <input v-model="password" type="password" required class="input" placeholder="Veuillez taper votre mot de passe" />
+        </div>
         <button class="btn-primary w-full" :disabled="auth.loading">
           <LoaderCircle v-if="auth.loading" class="h-4 w-4 animate-spin" />
           <LogIn v-else class="h-4 w-4" />
@@ -25,7 +29,8 @@
 
       <p class="mt-6 text-center text-sm text-slate-600">
         Nouveau sur la plateforme ?
-        <RouterLink to="/register" class="font-semibold text-blue-700 transition hover:text-blue-800">Créer un compte</RouterLink>
+        <RouterLink to="/register" class="font-semibold text-blue-700 transition hover:text-blue-800">Créer un compte
+        </RouterLink>
       </p>
     </div>
   </section>
@@ -41,9 +46,10 @@ import { useAuthStore } from "../stores/auth";
 const auth = useAuthStore();
 const router = useRouter();
 const email = ref(auth.pendingEmail || "");
+const password = ref("");
 
 async function onSubmit() {
-  const result = await auth.loginWithEmail(email.value);
+  const result = await auth.loginWithEmail(email.value, password.value);
   if (result.registerRequired) {
     router.push("/register");
     return;

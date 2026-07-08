@@ -12,6 +12,7 @@ class User:
     id: Optional[int] = None
     name: str = ""
     email: str = ""
+    hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
     role: str = "both"  # "driver", "passenger", "both"
     start_address: str = ""
     start_lat: float = 0.0
@@ -38,6 +39,7 @@ class User:
             "id": self.id,
             "name": self.name,
             "email": self.email,
+            "hashed_password": self.hashed_password,
             "role": self.role,
             "start_address": self.start_address,
             "start_lat": self.start_lat,
@@ -55,6 +57,7 @@ class User:
             id=data.get("id"),
             name=data.get("name", ""),
             email=data.get("email", ""),
+            hashed_password=data.get("hashed_password", ""),
             role=data.get("role", "both"),
             start_address=data.get("start_address", ""),
             start_lat=data.get("start_lat", 0.0),

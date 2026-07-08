@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     id                  SERIAL PRIMARY KEY,
     name                TEXT NOT NULL,
     email               TEXT UNIQUE NOT NULL,
+    hashed_password     TEXT NOT NULL DEFAULT '',
     role                TEXT NOT NULL DEFAULT 'both',
     start_address       TEXT DEFAULT '',
     start_lat           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Migrations : colonnes ajoutees apres le deploiement initial
 -- Safe meme si la table users existait deja sans ces colonnes
 ALTER TABLE users ADD COLUMN IF NOT EXISTS start_address   TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password TEXT NOT NULL DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_address  TEXT DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lat      DOUBLE PRECISION DEFAULT 0.0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lon      DOUBLE PRECISION DEFAULT 0.0;

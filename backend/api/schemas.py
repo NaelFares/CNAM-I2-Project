@@ -15,11 +15,12 @@ class ApiMessage(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-
+    password: str
 
 class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
+    password: str = Field(min_length=8)
     role: Literal["both", "driver", "passenger"] = "both"
     start_address: str = ""
     start_lat: float = 0.0

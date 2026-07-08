@@ -22,6 +22,19 @@
           <input v-model="form.email" type="email" required class="input" />
         </div>
 
+        <div class="md:col-span-2">
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Mot de passe</label>
+          <input v-model="form.password" type="password" required minlength="8" class="input" />
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Confirmation de mot de passe</label>
+          <input v-model="form.passwordConfirmation" type="password" required class="input" />
+          <p v-if="passwordMismatch" class="mt-1 text-sm text-red-600">
+            Les mots de passe ne correspondent pas.
+          </p>
+        </div>
+
         <div class="md:col-span-2 mt-2">
           <button class="btn-primary w-full" :disabled="auth.loading">
             <LoaderCircle v-if="auth.loading" class="h-4 w-4 animate-spin" />
@@ -33,14 +46,15 @@
 
       <p class="mt-6 text-center text-sm text-slate-600">
         Déjà un compte ?
-        <RouterLink to="/login" class="font-semibold text-blue-700 transition hover:text-blue-800">Se connecter</RouterLink>
+        <RouterLink to="/login" class="font-semibold text-blue-700 transition hover:text-blue-800">Se connecter
+        </RouterLink>
       </p>
     </div>
   </section>
 </template>
 
 <script setup>
-import { reactive } from "vue";
+import { computed, reactive } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { LoaderCircle, UserRoundPlus } from "lucide-vue-next";
 
@@ -52,10 +66,19 @@ const router = useRouter();
 const form = reactive({
   name: "",
   email: auth.pendingEmail || "",
+  password: "",
+  passwordConfirmation: "",
 });
 
+const passwordMismatch = computed(
+  () => form.passwordConfirmation.length > 0 && form.password !== form.passwordConfirmation
+);
+
 async function onSubmit() {
-  const ok = await auth.registerUser(form);
+  if (form.password !== form.passwordConfirmation) return;
+  // détachement de passwordConfirmation car il ne doit pas être stocké
+  const { passwordConfirmation, ...payload } = form;
+  const ok = await auth.registerUser(payload);
   if (ok) {
     router.push("/");
   }

@@ -30,20 +30,22 @@ class Database:
         raise OperationalError("Impossible de se connecter à la base de données")
 
     # --- USERS ---
+    """Crée un nouvel utilisateur"""
+
     def create_user(self, user: User) -> int:
-        """Crée un nouvel utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, role, start_address, start_lat, start_lon, time_tolerance_min,
+            INSERT INTO users (name, email, hashed_password, role, start_address, start_lat, start_lon, time_tolerance_min,
                                school_address, school_lat, school_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
                 user.name,
                 user.email,
+                user.hashed_password,
                 user.role,
                 user.start_address,
                 user.start_lat,
@@ -147,7 +149,9 @@ class Database:
         """Récupère tous les événements d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM events WHERE user_id = %s ORDER BY start_time", (user_id,))
+        cursor.execute(
+            "SELECT * FROM events WHERE user_id = %s ORDER BY start_time", (user_id,)
+        )
         rows = cursor.fetchall()
         conn.close()
         return [Event.from_dict(row) for row in rows]
@@ -191,7 +195,9 @@ class Database:
         """Récupère tous les trajets d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM rides WHERE user_id = %s ORDER BY ride_time", (user_id,))
+        cursor.execute(
+            "SELECT * FROM rides WHERE user_id = %s ORDER BY ride_time", (user_id,)
+        )
         rows = cursor.fetchall()
         conn.close()
         return [Ride.from_dict(row) for row in rows]
