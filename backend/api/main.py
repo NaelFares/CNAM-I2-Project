@@ -15,6 +15,7 @@ from backend.api.routes.geocode import router as geocode_router
 from backend.api.routes.matches import router as matches_router
 from backend.api.routes.profile import router as profile_router
 from backend.api.routes.rides import router as rides_router
+from backend.api.routes.routing import router as routing_router
 from backend.api.routes.schedule import router as schedule_router
 
 app = FastAPI(title=f"{config.APP_NAME} API", version="1.0.0")
@@ -55,4 +56,5 @@ app.include_router(geocode_router)
 app.include_router(schedule_router)
 app.include_router(rides_router)
 app.include_router(matches_router)
+app.include_router(routing_router)
 app.include_router(dashboard_router)

@@ -101,12 +101,12 @@ class RoutingService:
         return min(haversine_distance(lat, lon, rp_lat, rp_lon) for rp_lat, rp_lon in route_points)
 
     @classmethod
-    def distance_duration_between_points(
+    def get_route_details(
         cls,
         start: Tuple[float, float],
         end: Tuple[float, float],
-    ) -> Optional[Dict[str, float]]:
-        """Retourne la distance (m) et la durée (s) de l'itinéraire."""
+    ) -> Optional[Dict]:
+        """Géométrie + distance (m) + durée (s) de l'itinéraire, en un seul appel ORS."""
         start_lat, start_lon = start
         end_lat, end_lon = end
         try:
@@ -125,8 +125,10 @@ class RoutingService:
             features = data.get("features", [])
             if not features:
                 return None
+            coords = features[0]["geometry"]["coordinates"]
             summary = features[0]["properties"]["summary"]
             return {
+                "geometry": [(lat, lon) for lon, lat in coords],
                 "distance_m": float(summary.get("distance", 0.0)),
                 "duration_s": float(summary.get("duration", 0.0)),
             }

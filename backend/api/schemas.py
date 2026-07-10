@@ -142,6 +142,21 @@ class MatchesResponse(BaseModel):
     feedback: ApiMessage
 
 
+class MatchSearchRequest(BaseModel):
+    origin_lat: float
+    origin_lon: float
+    dest_lat: float
+    dest_lon: float
+    ride_time: datetime
+    ride_type: Literal["to_campus", "from_campus"]
+
+
+class MatchSearchResponse(BaseModel):
+    matches: list[MatchDTO]
+    search_route_geometry: list[list[float]] = []
+    feedback: ApiMessage
+
+
 class DashboardSummaryResponse(BaseModel):
     events_count: int
     rides_count: int
