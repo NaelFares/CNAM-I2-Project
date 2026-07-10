@@ -62,6 +62,14 @@ export async function findMatches() {
   return (await apiClient.post("/matches/find")).data;
 }
 
+export async function searchCarpoolMatches(payload) {
+  return (await apiClient.post("/matches/search", payload)).data;
+}
+
+export async function getRoutePreview(params) {
+  return (await apiClient.get("/routing/preview", { params })).data;
+}
+
 export async function dashboardSummary() {
   return (await apiClient.get("/dashboard/summary")).data;
 }

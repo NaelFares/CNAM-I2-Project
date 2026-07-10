@@ -1,5 +1,5 @@
 <template>
-  <div ref="mapEl" class="h-[280px] w-full rounded-xl border border-slate-200 shadow-sm"></div>
+  <div ref="mapEl" class="w-full rounded-xl border border-slate-200 shadow-sm" :style="{ height }"></div>
 </template>
 
 <script setup>
@@ -12,10 +12,13 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { COLORS } from "../lib/colors";
 
 const props = defineProps({
-  routeGeometry: { type: Array, default: () => [] }, // [[lat, lon], ...]
-  driverCoords: { type: Array, default: null },       // [lat, lon]
-  passengerCoords: { type: Array, default: null },    // [lat, lon]
-  destCoords: { type: Array, default: null },         // [lat, lon]
+  routeGeometry: { type: Array, default: () => [] },   // [[lat, lon], ...]
+  myRouteGeometry: { type: Array, default: () => [] }, // [[lat, lon], ...] — drawn dashed, distinct color
+  driverCoords: { type: Array, default: null },        // [lat, lon]
+  passengerCoords: { type: Array, default: null },     // [lat, lon]
+  destCoords: { type: Array, default: null },          // [lat, lon]
+  height: { type: String, default: "280px" },
+  routeLabel: { type: String, default: "" },           // ex. "18 min · 12.4 km", badge ancré sur le tracé
 });
 
 L.Icon.Default.mergeOptions({
@@ -39,8 +42,20 @@ function buildMap() {
   const bounds = [];
 
   if (props.routeGeometry?.length) {
-    const polyline = L.polyline(props.routeGeometry, { color: COLORS.routeLine, weight: 4, opacity: 0.8 }).addTo(map);
+    L.polyline(props.routeGeometry, { color: COLORS.routeLine, weight: 4, opacity: 0.8 }).addTo(map);
     bounds.push(...props.routeGeometry);
+
+    if (props.routeLabel) {
+      const midpoint = props.routeGeometry[Math.floor(props.routeGeometry.length / 2)];
+      L.marker(midpoint, { icon: L.divIcon({ className: "", html: "", iconSize: [0, 0] }), interactive: false })
+        .bindTooltip(props.routeLabel, { permanent: true, direction: "top", className: "route-badge", offset: [0, -2] })
+        .addTo(map);
+    }
+  }
+
+  if (props.myRouteGeometry?.length) {
+    L.polyline(props.myRouteGeometry, { color: COLORS.myRoute, weight: 4, opacity: 0.85, dashArray: "8 6" }).addTo(map);
+    bounds.push(...props.myRouteGeometry);
   }
 
   const driverIcon = L.divIcon({
@@ -87,7 +102,7 @@ function buildMap() {
 onMounted(() => buildMap());
 
 watch(
-  () => [props.routeGeometry, props.driverCoords, props.passengerCoords, props.destCoords],
+  () => [props.routeGeometry, props.myRouteGeometry, props.driverCoords, props.passengerCoords, props.destCoords, props.routeLabel],
   () => {
     map?.remove();
     map = null;
