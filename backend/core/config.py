@@ -13,7 +13,7 @@ class Config:
     """Classe de configuration centralisée"""
 
     # Application
-    APP_NAME = os.getenv("APP_NAME", "CovoitEtudiant")
+    APP_NAME = os.getenv("APP_NAME", "Stud'Ride")
     APP_ENV = os.getenv("APP_ENV", "development")
     APP_PORT = int(os.getenv("APP_PORT", "8501"))
     STORAGE_SECRET = os.getenv("STORAGE_SECRET", "covoiturage-secret-key-change-in-production")

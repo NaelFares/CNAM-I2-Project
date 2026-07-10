@@ -1,4 +1,4 @@
-# CovoitEtudiant
+# Stud'Ride
 
 Application de covoiturage étudiant, basée sur l'emploi du temps.
 

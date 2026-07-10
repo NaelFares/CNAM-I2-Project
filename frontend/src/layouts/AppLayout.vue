@@ -3,9 +3,9 @@
     <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
       <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         <div class="flex items-center gap-3">
-          <Car class="h-7 w-7 text-primary" />
+          <img src="/logo.png" alt="Stud'Ride" class="h-16 w-16 rounded-full" />
           <div>
-            <p class="font-display text-base font-bold leading-tight text-slate-900">CovoitEtudiant</p>
+            <p class="font-display text-base font-bold leading-tight text-slate-900">Stud'Ride</p>
             <p class="text-xs font-semibold text-slate-500">Mobilité campus</p>
           </div>
         </div>
@@ -51,7 +51,7 @@
 
 <script setup>
 import { useRouter, RouterLink, RouterView } from "vue-router";
-import { Car, CalendarDays, LayoutDashboard, LogOut, Route, UserRound, UsersRound } from "lucide-vue-next";
+import { CalendarDays, LayoutDashboard, LogOut, UserRound, UsersRound } from "lucide-vue-next";
 
 import { Button } from "../components/ui";
 import { useAuthStore } from "../stores/auth";
@@ -63,8 +63,7 @@ const links = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/profile", label: "Profil", icon: UserRound },
   { to: "/schedule", label: "Planning", icon: CalendarDays },
-  { to: "/rides", label: "Trajets", icon: Route },
-  { to: "/matches", label: "Correspondances", icon: UsersRound },
+  { to: "/matches", label: "Covoiturage", icon: UsersRound },
 ];
 
 async function handleLogout() {

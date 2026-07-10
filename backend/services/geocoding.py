@@ -12,7 +12,7 @@ class GeocodingService:
     """Service de recherche et geocodage d'adresses."""
 
     BASE_URL = "https://nominatim.openstreetmap.org"
-    USER_AGENT = "CovoitEtudiant/1.0"
+    USER_AGENT = "StudRide/1.0"
 
     @staticmethod
     def _extract_place_label(address_details: Dict) -> str:
