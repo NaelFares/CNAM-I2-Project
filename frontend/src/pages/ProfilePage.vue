@@ -46,13 +46,13 @@
             Adresse de départ (domicile)
           </h2>
 
-          <Input v-model="form.start_address" placeholder="Numéro, rue, ville…" @input="onAddressInput">
+          <Input v-model="startTarget.address" placeholder="Numéro, rue, ville…" @input="startAuto.onInput">
             <template #icon><MapPin class="h-4 w-4" /></template>
           </Input>
 
-          <ul v-if="suggestions.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-            <li v-for="item in suggestions" :key="`${item.display_name}-${item.lat}`">
-              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-primary-soft" @click="selectSuggestion(item)">
+          <ul v-if="startAuto.suggestions.value.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+            <li v-for="item in startAuto.suggestions.value" :key="`${item.display_name}-${item.lat}`">
+              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-primary-soft" @click="startAuto.select(item)">
                 <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
                 <div class="text-xs text-slate-500">{{ item.place_label }}</div>
               </button>
@@ -60,18 +60,23 @@
           </ul>
 
           <div class="flex flex-wrap items-center gap-3">
-            <Button variant="secondary" @click="locateAddress">
+            <Button variant="secondary" @click="startAuto.locate">
               <LocateFixed class="h-4 w-4" />
               Localiser automatiquement
             </Button>
-            <Badge v-if="placeLabel" variant="primary">
+            <Badge v-if="startPlaceLabel" variant="primary">
               <MapPinned class="h-3.5 w-3.5" />
-              {{ placeLabel }}
+              {{ startPlaceLabel }}
             </Badge>
           </div>
 
-          <MapPicker :lat="form.start_lat" :lon="form.start_lon" @moved="onMapMoved" />
-          <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
+          <button type="button" class="text-sm font-semibold text-primary" @click="showStartMap = !showStartMap">
+            {{ showStartMap ? "Masquer la carte" : "Ajuster sur la carte" }}
+          </button>
+          <div v-if="showStartMap" class="space-y-2">
+            <MapPicker :lat="form.start_lat" :lon="form.start_lon" @moved="startAuto.onMapMoved" />
+            <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
+          </div>
         </Card>
 
         <!-- Card École -->
@@ -82,13 +87,13 @@
             <span class="ml-1 text-xs font-normal normal-case text-slate-400">(destination par défaut)</span>
           </h2>
 
-          <Input v-model="form.school_address" placeholder="Nom ou adresse de l'établissement…" @input="onSchoolInput">
+          <Input v-model="schoolTarget.address" placeholder="Nom ou adresse de l'établissement…" @input="schoolAuto.onInput">
             <template #icon><School class="h-4 w-4" /></template>
           </Input>
 
-          <ul v-if="schoolSuggestions.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-            <li v-for="item in schoolSuggestions" :key="`${item.display_name}-${item.lat}`">
-              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-success-soft" @click="selectSchoolSuggestion(item)">
+          <ul v-if="schoolAuto.suggestions.value.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+            <li v-for="item in schoolAuto.suggestions.value" :key="`${item.display_name}-${item.lat}`">
+              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-success-soft" @click="schoolAuto.select(item)">
                 <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
                 <div class="text-xs text-slate-500">{{ item.place_label }}</div>
               </button>
@@ -96,7 +101,7 @@
           </ul>
 
           <div class="flex flex-wrap items-center gap-3">
-            <Button variant="secondary" @click="locateSchool">
+            <Button variant="secondary" @click="schoolAuto.locate">
               <LocateFixed class="h-4 w-4" />
               Localiser automatiquement
             </Button>
@@ -106,10 +111,32 @@
             </Badge>
           </div>
 
-          <MapPicker :lat="form.school_lat || 46.603354" :lon="form.school_lon || 1.888334" @moved="onSchoolMapMoved" />
-          <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
+          <button type="button" class="text-sm font-semibold text-primary" @click="showSchoolMap = !showSchoolMap">
+            {{ showSchoolMap ? "Masquer la carte" : "Ajuster sur la carte" }}
+          </button>
+          <div v-if="showSchoolMap" class="space-y-2">
+            <MapPicker :lat="form.school_lat || 46.603354" :lon="form.school_lon || 1.888334" @moved="schoolAuto.onMapMoved" />
+            <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
+          </div>
         </Card>
       </div>
+
+      <!-- Aperçu du trajet domicile <-> école -->
+      <Card padding="responsive">
+        <h2 class="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+          <Route class="h-4 w-4 text-primary" />
+          Aperçu du trajet domicile ↔ école
+        </h2>
+        <RouteMap
+          :route-geometry="previewRoute.geometry"
+          :driver-coords="[form.start_lat, form.start_lon]"
+          :dest-coords="[form.school_lat, form.school_lon]"
+          :route-label="previewRoute.geometry.length ? `${formattedDuration} · ${previewRoute.distanceKm.toFixed(1)} km` : ''"
+        />
+        <p class="mt-2 text-xs text-slate-500">
+          Recalculé automatiquement à chaque changement d'adresse — non enregistré.
+        </p>
+      </Card>
 
       <!-- Bouton de sauvegarde -->
       <div class="flex justify-end">
@@ -123,24 +150,24 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
-import { Info, LocateFixed, MapPin, MapPinned, Save, School } from "lucide-vue-next";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { Info, LocateFixed, MapPin, MapPinned, Route, Save, School } from "lucide-vue-next";
 
 import MapPicker from "../components/MapPicker.vue";
+import RouteMap from "../components/RouteMap.vue";
 import { Badge, Button, Card, Input } from "../components/ui";
-import { reverseAddress, searchAddress } from "../api/endpoints";
+import { getRoutePreview } from "../api/endpoints";
+import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";
-import { useFeedbackStore } from "../stores/feedback";
 
 const auth = useAuthStore();
 const app = useAppStore();
-const feedback = useFeedbackStore();
 
-const suggestions = ref([]);
-const placeLabel = ref("");
-const schoolSuggestions = ref([]);
+const startPlaceLabel = ref("");
 const schoolPlaceLabel = ref("");
+const showStartMap = ref(false);
+const showSchoolMap = ref(false);
 
 const form = reactive({
   name: "",
@@ -154,6 +181,56 @@ const form = reactive({
   school_lat: 0,
   school_lon: 0,
 });
+
+const startTarget = reactive({
+  address: computed({ get: () => form.start_address, set: (v) => (form.start_address = v) }),
+  lat: computed({ get: () => form.start_lat, set: (v) => (form.start_lat = v) }),
+  lon: computed({ get: () => form.start_lon, set: (v) => (form.start_lon = v) }),
+  placeLabel: startPlaceLabel,
+});
+const schoolTarget = reactive({
+  address: computed({ get: () => form.school_address, set: (v) => (form.school_address = v) }),
+  lat: computed({ get: () => form.school_lat, set: (v) => (form.school_lat = v) }),
+  lon: computed({ get: () => form.school_lon, set: (v) => (form.school_lon = v) }),
+  placeLabel: schoolPlaceLabel,
+});
+
+const startAuto = useAddressAutocomplete(startTarget);
+const schoolAuto = useAddressAutocomplete(schoolTarget);
+
+const previewRoute = ref({ geometry: [], distanceKm: 0, durationMin: 0 });
+let previewTimer = null;
+
+const formattedDuration = computed(() => {
+  const minutes = Math.round(previewRoute.value.durationMin);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = String(minutes % 60).padStart(2, "0");
+  return `${hours} h ${rest}`;
+});
+
+function scheduleRoutePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    try {
+      const data = await getRoutePreview({
+        start_lat: form.start_lat,
+        start_lon: form.start_lon,
+        end_lat: form.school_lat,
+        end_lon: form.school_lon,
+      });
+      previewRoute.value = {
+        geometry: data.geometry,
+        distanceKm: data.distance_m / 1000,
+        durationMin: data.duration_s / 60,
+      };
+    } catch {
+      previewRoute.value = { geometry: [], distanceKm: 0, durationMin: 0 };
+    }
+  }, 300);
+}
+
+watch(() => [form.start_lat, form.start_lon, form.school_lat, form.school_lon], scheduleRoutePreview);
 
 onMounted(async () => {
   await app.loadProfile();
@@ -170,74 +247,6 @@ onMounted(async () => {
   form.school_lat = source.school_lat || 0;
   form.school_lon = source.school_lon || 0;
 });
-
-// --- Domicile ---
-async function onAddressInput() {
-  if (form.start_address.trim().length < 3) { suggestions.value = []; return; }
-  try { suggestions.value = await searchAddress(form.start_address.trim()); }
-  catch { suggestions.value = []; }
-}
-
-function selectSuggestion(item) {
-  form.start_address = item.display_name;
-  form.start_lat = item.lat;
-  form.start_lon = item.lon;
-  placeLabel.value = item.place_label;
-  suggestions.value = [];
-}
-
-async function locateAddress() {
-  if (!form.start_address.trim()) { feedback.showInfo("Saisissez d'abord une adresse."); return; }
-  try {
-    const results = await searchAddress(form.start_address.trim());
-    if (!results.length) { feedback.showError("Adresse introuvable."); return; }
-    selectSuggestion(results[0]);
-    feedback.showSuccess("Adresse localisée sur la carte.");
-  } catch { feedback.showError("La recherche d'adresse a échoué."); }
-}
-
-async function onMapMoved(lat, lon) {
-  form.start_lat = lat;
-  form.start_lon = lon;
-  const result = await reverseAddress(lat, lon).catch(() => null);
-  if (!result) return;
-  form.start_address = result.display_name;
-  placeLabel.value = result.place_label;
-}
-
-// --- École ---
-async function onSchoolInput() {
-  if (form.school_address.trim().length < 3) { schoolSuggestions.value = []; return; }
-  try { schoolSuggestions.value = await searchAddress(form.school_address.trim()); }
-  catch { schoolSuggestions.value = []; }
-}
-
-function selectSchoolSuggestion(item) {
-  form.school_address = item.display_name;
-  form.school_lat = item.lat;
-  form.school_lon = item.lon;
-  schoolPlaceLabel.value = item.place_label;
-  schoolSuggestions.value = [];
-}
-
-async function locateSchool() {
-  if (!form.school_address.trim()) { feedback.showInfo("Saisissez d'abord l'adresse de votre école."); return; }
-  try {
-    const results = await searchAddress(form.school_address.trim());
-    if (!results.length) { feedback.showError("Adresse introuvable."); return; }
-    selectSchoolSuggestion(results[0]);
-    feedback.showSuccess("École localisée sur la carte.");
-  } catch { feedback.showError("La recherche d'adresse a échoué."); }
-}
-
-async function onSchoolMapMoved(lat, lon) {
-  form.school_lat = lat;
-  form.school_lon = lon;
-  const result = await reverseAddress(lat, lon).catch(() => null);
-  if (!result) return;
-  form.school_address = result.display_name;
-  schoolPlaceLabel.value = result.place_label;
-}
 
 // --- Soumission ---
 async function onSubmit() {
