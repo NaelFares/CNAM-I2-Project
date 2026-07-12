@@ -20,6 +20,14 @@ function Invoke-ComposeUp {
   docker compose @args
 }
 
+$resetSeedAnswer = Read-Host "Reinitialiser les donnees de test (seed) au demarrage ? [o/N]"
+if ($resetSeedAnswer -match '^(o|oui|y|yes)$') {
+  $env:RESET_SEED = "1"
+  Write-Host "Les donnees de test seront regenerees au demarrage du backend." -ForegroundColor Cyan
+} else {
+  $env:RESET_SEED = "0"
+}
+
 $baseComposeFiles = @("-f", "docker-compose.yml")
 $gpuComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.gpu.yml")
 $activeComposeFiles = $baseComposeFiles

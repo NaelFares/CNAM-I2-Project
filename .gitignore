@@ -18,6 +18,7 @@ dist/
 *.db
 *.sqlite
 *.sqlite3
+backend/database/seed_accounts.txt
 
 # IDE
 .vscode/

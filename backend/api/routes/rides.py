@@ -16,8 +16,7 @@ from backend.api.schemas import RideDTO, RidesGenerateResponse
 router = APIRouter(prefix="/rides", tags=["rides"])
 
 
-@router.post("/generate", response_model=RidesGenerateResponse)
-def generate_rides(user: User = Depends(require_current_user)):
+def generate_rides_for_user(user: User) -> list[Ride]:
     db.delete_rides_by_user(user.id)
 
     rides = []
@@ -56,6 +55,12 @@ def generate_rides(user: User = Depends(require_current_user)):
         ride_back.id = db.create_ride(ride_back)
         rides.append(ride_back)
 
+    return rides
+
+
+@router.post("/generate", response_model=RidesGenerateResponse)
+def generate_rides(user: User = Depends(require_current_user)):
+    rides = generate_rides_for_user(user)
     return RidesGenerateResponse(
         rides=[RideDTO(**ride.to_dict()) for ride in rides],
         feedback=make_feedback("RIDES_GENERATE_SUCCESS", count=len(rides)),

@@ -15,6 +15,7 @@ services:
       - .env
     environment:
       - APP_ENV=${APP_ENV:-development}
+      - RESET_SEED=${RESET_SEED:-0}
       - PYTHONPATH=/app
       - AI_IMPORT_ENABLED=${AI_IMPORT_ENABLED:-true}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ia-services:11434}

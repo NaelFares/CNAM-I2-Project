@@ -3,9 +3,12 @@ Service de geocodage avec Nominatim (OpenStreetMap).
 Permet de rechercher des adresses et obtenir leurs coordonnees GPS.
 """
 
+import logging
 from typing import Dict, List, Optional
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class GeocodingService:
@@ -78,8 +81,10 @@ class GeocodingService:
                         }
                     )
                 return suggestions
+
+            logger.warning(f"Geocodage '{query}': statut HTTP {response.status_code} ({response.text[:200]})")
         except Exception as exc:
-            print(f"Erreur geocodage: {exc}")
+            logger.warning(f"Geocodage '{query}': echec ({exc!r})")
 
         return []
 

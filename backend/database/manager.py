@@ -92,6 +92,14 @@ class Database:
         conn.close()
         return [User.from_dict(row) for row in rows]
 
+    def delete_user(self, user_id: int):
+        """Supprime un utilisateur (les events/rides liés doivent être supprimés avant, pas de cascade en BD)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        conn.close()
+
     def update_user(self, user: User):
         """Met à jour un utilisateur"""
         conn = self.get_connection()
