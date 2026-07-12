@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Tuple
 import requests
 
 from backend.core.config import config
-from backend.core.geo import haversine_distance
 
 
 class RoutingService:
@@ -89,16 +88,43 @@ class RoutingService:
             single = cls.get_route_geometry(start, end)
             return [single] if single else None
 
-    @staticmethod
-    def min_distance_to_route(
-        lat: float,
-        lon: float,
-        route_points: List[Tuple[float, float]],
-    ) -> float:
-        """Distance minimum en km entre un point et n'importe quel point de l'itinéraire."""
-        if not route_points:
-            return float("inf")
-        return min(haversine_distance(lat, lon, rp_lat, rp_lon) for rp_lat, rp_lon in route_points)
+    @classmethod
+    def get_route_via_waypoint(
+        cls,
+        start: Tuple[float, float],
+        via: Tuple[float, float],
+        end: Tuple[float, float],
+    ) -> Optional[Dict]:
+        """Itinéraire avec un détour par un point intermédiaire (ex. récupération
+        d'un passager) : géométrie + distance + durée en un seul appel ORS."""
+        try:
+            response = requests.post(
+                f"{cls.BASE_URL}/v2/directions/driving-car/geojson",
+                headers={**cls._headers(), "Content-Type": "application/json"},
+                json={
+                    "coordinates": [
+                        [start[1], start[0]],
+                        [via[1], via[0]],
+                        [end[1], end[0]],
+                    ]
+                },
+                timeout=10,
+            )
+            if response.status_code != 200:
+                return None
+            data = response.json()
+            features = data.get("features", [])
+            if not features:
+                return None
+            coords = features[0]["geometry"]["coordinates"]
+            summary = features[0]["properties"]["summary"]
+            return {
+                "geometry": [(lat, lon) for lon, lat in coords],
+                "distance_m": float(summary.get("distance", 0.0)),
+                "duration_s": float(summary.get("duration", 0.0)),
+            }
+        except Exception:
+            return None
 
     @classmethod
     def get_route_details(

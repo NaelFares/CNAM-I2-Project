@@ -129,6 +129,7 @@ class MatchDTO(BaseModel):
     ride_type: str
     time_diff_min: int
     distance_km: float
+    extra_time_min: float = 0.0
     score: int
     driver_coords: tuple[float, float]
     passenger_coords: tuple[float, float]

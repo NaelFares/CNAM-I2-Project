@@ -59,11 +59,11 @@ export async function generateRides() {
 }
 
 export async function findMatches() {
-  return (await apiClient.post("/matches/find")).data;
+  return (await apiClient.post("/matches/find", null, { timeout: 45000 })).data;
 }
 
 export async function searchCarpoolMatches(payload) {
-  return (await apiClient.post("/matches/search", payload)).data;
+  return (await apiClient.post("/matches/search", payload, { timeout: 45000 })).data;
 }
 
 export async function getRoutePreview(params) {

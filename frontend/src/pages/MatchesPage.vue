@@ -58,7 +58,8 @@
             <div class="mt-2 space-y-1 text-sm text-slate-600">
               <p>Départ&nbsp;: {{ match.ride_time }}</p>
               <p>Écart de temps&nbsp;: {{ match.time_diff_min }} min</p>
-              <p>Distance passager ↔ trajet&nbsp;: {{ match.distance_km.toFixed(2) }} km</p>
+              <p>Détour pour récupérer le passager&nbsp;: +{{ match.extra_time_min.toFixed(1) }} min</p>
+              <p>Distance des départs&nbsp;: {{ match.distance_km.toFixed(2) }} km</p>
             </div>
 
             <!-- Légende couleurs -->
