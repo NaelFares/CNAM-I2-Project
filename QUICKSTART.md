@@ -1,109 +1,105 @@
-﻿# Quickstart Equipe
+# Quickstart équipe
 
-## Prerequis
+## Prérequis
 
 - Docker Desktop
-- PowerShell (script de demarrage)
+- PowerShell
 
-## 1) Configuration
+## 1. Configuration
 
-- Copier `.env.example` vers `.env` si besoin
-- Ajuster les variables (ports, DB, secrets)
+- Copier `.env.example` vers `.env` si besoin.
+- Renseigner `GROQ_API_KEY` pour le mode Groq.
+- Ajuster les ports, la base de données et les modèles si nécessaire.
 
-## 2) Demarrage recommande (logs explicites)
+Le fournisseur IA n'est pas configuré dans `.env` : il est choisi explicitement par le script de démarrage.
+Chaque script demande aussi si les 40 comptes de test doivent être régénérés avant de lancer la stack.
+
+## 2. Choisir le mode IA
+
+### Groq cloud — démarrage léger recommandé
 
 ```powershell
 ./scripts/start-local.ps1
 ```
 
-Ce script:
-- lance `docker compose up -d --build --remove-orphans`
-- affiche les URLs frontend/backend/ia-services
-- demarre Ollama en CPU par defaut
-- utilise le GPU uniquement avec l'option explicite `-ForceGpu`
-- affiche l'etat des conteneurs
-- puis suit les logs en direct (`docker compose logs -f`)
+Ce mode utilise `GROQ_MODEL` et ne télécharge ni l'image ni le modèle Ollama.
 
-Pour demarrer sans suivre les logs:
+### Ollama local — CPU
 
 ```powershell
-./scripts/start-local.ps1 -NoLogs
+./scripts/start-local-ollama.ps1
 ```
 
-Pour choisir le mode IA:
+Ce mode utilise `OLLAMA_MODEL`. Le premier lancement télécharge l'image Ollama et le modèle local.
+
+### Ollama local — GPU
 
 ```powershell
-./scripts/start-local.ps1 -ForceCpu
-./scripts/start-local.ps1 -ForceGpu
+./scripts/start-local-ollama-gpu.ps1
 ```
 
-### Variante sans rebuild d'images
+Le GPU doit être accessible depuis Docker. Le script CPU reste le choix compatible avec toutes les machines.
+
+Pour démarrer sans suivre les logs, ajouter `-NoLogs`. Pour Groq sans reconstruire les images :
 
 ```powershell
 ./scripts/start-local-no-build.ps1
 ```
 
-Utilise ce script quand les images sont deja construites et que tu veux juste relancer rapidement.
+## 3. Accès local
 
-## 3) Verification manuelle
-
-- Frontend: `http://localhost:${FRONTEND_PORT}` (defaut 3000)
-- API health: `http://localhost:${BACKEND_PORT}/health` (defaut 8000)
-- Ollama: `http://localhost:${OLLAMA_PORT}` (defaut 11434)
+- Frontend : `http://localhost:${FRONTEND_PORT}` — port 3000 par défaut
+- API : `http://localhost:${BACKEND_PORT}` — port 8000 par défaut
+- Health : `http://localhost:${BACKEND_PORT}/health`
+- Ollama, uniquement avec les scripts Ollama : `http://localhost:${OLLAMA_PORT}` — port 11434 par défaut
 
 ## Commandes utiles
 
-### Arreter
-
-```bash
-docker compose down
-```
-
-Ou via script:
+### Arrêter la stack active
 
 ```powershell
 ./scripts/stop-local.ps1
 ```
 
-### Logs
+### Vérifier le modèle Ollama chargé
 
-```bash
-docker compose logs -f
+```powershell
+docker exec covoiturage-ia-services ollama list
 ```
 
-### Verifier le modele IA charge
+### Benchmarker les modèles Ollama
 
-```bash
-docker compose exec ia-services ollama list
+```powershell
+docker exec covoiturage-backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --pull
 ```
 
-### Benchmarker les modeles IA CSV
+Modèles comparés par défaut : `qwen2.5:0.5b-instruct`, `qwen3:0.6b`, `gemma3:1b`.
 
-Depuis le conteneur backend, avec le service IA demarre:
+### Rebuild complet Groq
 
-```bash
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/benchmark_ai_models_ollama_local.py --pull
+```powershell
+docker compose -f docker/docker-compose.groq.yml down
+docker compose -f docker/docker-compose.groq.yml up --build -d --remove-orphans
 ```
 
-Modeles compares par defaut: `qwen2.5:0.5b-instruct`, `qwen3:0.6b`, `gemma3:1b`.
+### Rebuild complet Ollama
 
-### Rebuild complet
-
-```bash
-docker compose down -v
-docker compose up --build -d --remove-orphans
+```powershell
+docker compose -f docker/docker-compose.ollama.yml down
+docker compose -f docker/docker-compose.ollama.yml up --build -d --remove-orphans
 ```
 
 ## Tests
 
 ### Backend
 
-```bash
+```powershell
 python -m unittest discover -s tests -p "test_*.py"
+python -m unittest discover -s backend/services/planning_import_services/csv_ai/tests -p "test_*.py"
 ```
 
-### Frontend (dans un conteneur Node)
+### Frontend
 
-```bash
+```powershell
 docker run --rm -v "${PWD}/frontend:/app" -w /app node:22-alpine sh -lc "npm install && npm run test"
 ```

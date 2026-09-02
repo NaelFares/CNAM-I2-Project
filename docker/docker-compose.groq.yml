@@ -1,35 +1,36 @@
+name: cnam-i2-project
+
 services:
   backend:
     container_name: covoiturage-backend
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ..
+      dockerfile: docker/Dockerfile.backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       - database
-      - ia-services
     volumes:
-      - ./backend:/app/backend
+      - ../backend:/app/backend
     env_file:
-      - .env
+      - ../.env
     environment:
       - APP_ENV=${APP_ENV:-development}
       - RESET_SEED=${RESET_SEED:-0}
       - PYTHONPATH=/app
       - AI_IMPORT_ENABLED=${AI_IMPORT_ENABLED:-true}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ia-services:11434}
-      - AI_IMPORT_MODEL=${AI_IMPORT_MODEL:-qwen2.5:0.5b-instruct}
+      - AI_IMPORT_PROVIDER=groq
+      - AI_IMPORT_MODEL=${GROQ_MODEL:-llama-3.1-8b-instant}
       - AI_IMPORT_CONFIDENCE_THRESHOLD=${AI_IMPORT_CONFIDENCE_THRESHOLD:-0.80}
-      - IA_ACCELERATION_MODE=${IA_ACCELERATION_MODE:-cpu}
+      - IA_ACCELERATION_MODE=cloud
     command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     restart: unless-stopped
 
   frontend:
     container_name: covoiturage-frontend
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     ports:
@@ -50,29 +51,6 @@ services:
     volumes:
       - covoiturage_postgres_data:/var/lib/postgresql/data
 
-  ia-services:
-    image: ollama/ollama:latest
-    container_name: covoiturage-ia-services
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    volumes:
-      - covoiturage_ollama_data:/root/.ollama
-    env_file:
-      - .env
-    environment:
-      - IA_ACCELERATION_MODE=${IA_ACCELERATION_MODE:-cpu}
-    entrypoint: ["/bin/sh", "-lc"]
-    command:
-      - |
-        echo "IA acceleration requested: $${IA_ACCELERATION_MODE:-cpu}"
-        ollama serve &
-        sleep 2
-        ollama pull ${AI_IMPORT_MODEL:-qwen2.5:0.5b-instruct}
-        wait
-    restart: unless-stopped
-
 volumes:
   covoiturage_postgres_data:
     name: covoiturage_postgres_data
-  covoiturage_ollama_data:
-    name: covoiturage_ollama_data

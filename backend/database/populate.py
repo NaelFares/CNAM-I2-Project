@@ -109,9 +109,9 @@ def run_populate() -> None:
 def _should_reset_seed() -> bool:
     """Determine s'il faut regenerer le seed existant.
 
-    - Si RESET_SEED est positionnee (ex. par scripts/start-local.ps1, qui
-      demande dans le terminal hote avant de lancer Docker Compose, la
-      question ne pouvant pas atteindre le conteneur backend directement),
+    - Si RESET_SEED est positionnee (ex. par les scripts start-local.ps1 et
+      start-local-ollama.ps1, qui demandent dans le terminal hote avant de
+      lancer Docker Compose, la question ne pouvant pas atteindre le conteneur),
       on l'utilise telle quelle.
     - Sinon, on retombe sur un prompt interactif local (lancement direct de
       uvicorn hors Docker, avec un vrai TTY).

@@ -15,9 +15,9 @@ Ce projet utilise un fichier `.env` a la racine comme source de verite.
 - `BACKEND_PORT`
 - `VITE_API_URL`
 - `AI_IMPORT_ENABLED`
-- `OLLAMA_BASE_URL`
-- `AI_IMPORT_MODEL`
 - `AI_IMPORT_CONFIDENCE_THRESHOLD`
+- `GROQ_MODEL`
+- `OLLAMA_MODEL`
 
 ## Variables metier (recommandees)
 
@@ -34,7 +34,9 @@ Ce projet utilise un fichier `.env` a la racine comme source de verite.
 
 ## Notes
 
-- `docker-compose.yml` lit `.env` via `env_file` et substitutions `${...}`.
+- `docker/docker-compose.groq.yml` décrit la stack complète avec Groq et injecte `GROQ_MODEL`.
+- `docker/docker-compose.ollama.yml` décrit la stack complète avec Ollama et injecte `OLLAMA_MODEL`.
+- `AI_IMPORT_PROVIDER` et `AI_IMPORT_MODEL` sont des variables runtime injectees par Compose, pas des choix a renseigner dans `.env`.
 - `VITE_API_URL` est injecte au build du frontend.
 - `OLLAMA_BASE_URL` doit rester `http://ia-services:11434` pour la communication inter-conteneurs.
 - Pour un autre host, ajuster `VITE_API_URL` et CORS backend.

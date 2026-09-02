@@ -28,7 +28,7 @@ RESULTS_DIR = Path(__file__).resolve().parent / "benchmark_results"
 def ensure_repo_root_on_path() -> None:
     current = Path(__file__).resolve()
     for parent in current.parents:
-        if (parent / "backend").is_dir() and (parent / "docker-compose.yml").exists():
+        if (parent / "backend").is_dir() and (parent / "docker" / "docker-compose.ollama.yml").exists():
             sys.path.insert(0, str(parent))
             return
 

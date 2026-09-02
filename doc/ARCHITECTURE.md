@@ -5,7 +5,8 @@
 - `frontend`: application web utilisateur (Vue.js) servie par Nginx
 - `backend`: API HTTP et orchestration metier (FastAPI + Uvicorn)
 - `database`: persistance relationnelle (PostgreSQL)
-- `ia-services`: inference locale pour mapping CSV (Ollama)
+- `ia-services`: inference locale optionnelle pour mapping CSV (Ollama)
+- `Groq`: inference cloud utilisee par le demarrage Groq
 - `service cartographique externe`: geocodage et geocodage inverse (Nominatim / OpenStreetMap)
 
 ## Schema des flux (mermaid)
@@ -15,7 +16,8 @@ flowchart LR
   U[Utilisateur - Navigateur] -->|HTTP 3000| FE[Frontend Vue.js\ncovoiturage-frontend]
   FE -->|HTTP API + session| BE[Backend FastAPI\ncovoiturage-backend]
   BE -->|Lecture/Ecriture donnees| DB[(PostgreSQL\ncovoiturage-postgres)]
-  BE -->|Mapping CSV IA| IA[Ollama\ncovoiturage-ia-services]
+  BE -->|Mode Ollama| IA[Ollama local\ncovoiturage-ia-services]
+  BE -->|Mode Groq| GROQ[API Groq cloud]
   BE -->|Geocodage| GEO[Nominatim / OpenStreetMap]
 ```
 
@@ -54,6 +56,7 @@ flowchart TB
 ```text
 /
 |-- backend/                     # logique applicative et endpoints HTTP
+|   |-- requirements.txt         # dependances Python du backend
 |   |-- api/                     # routes, schemas DTO, gestion de session
 |   |-- services/                # regles metier (parsing, matching, geocodage)
 |   |-- models/                  # entites metier
@@ -71,12 +74,18 @@ flowchart TB
 |   `-- tests/                   # unit + e2e frontend
 |-- doc/                         # documentation technique
 |-- scripts/
-|   |-- start-local.ps1          # demarrage compose + recap URL
-|   |-- start-local-no-build.ps1 # demarrage compose sans rebuild des images
+|   |-- start-local.ps1               # demarrage standard avec Groq
+|   |-- start-local-ollama.ps1        # demarrage explicite avec Ollama CPU
+|   |-- start-local-ollama-gpu.ps1    # demarrage explicite avec Ollama GPU
+|   |-- start-local-no-build.ps1      # demarrage Groq sans rebuild
 |   `-- stop-local.ps1           # arret des services locaux
-|-- docker-compose.yml           # orchestration locale
-|-- Dockerfile.backend           # image backend
-|-- frontend/Dockerfile.frontend # image frontend
+|-- docker/
+|   |-- docker-compose.groq.yml   # stack complete avec Groq
+|   |-- docker-compose.ollama.yml # stack complete avec Ollama
+|   |-- docker-compose.gpu.yml    # acceleration GPU Ollama
+|   |-- Dockerfile.backend        # image backend
+|   |-- Dockerfile.frontend       # image frontend
+|   `-- nginx.conf                # serveur du frontend
 |-- backend/services/planning_import_services/
 |   |-- planning_import_parser.py # point d'entree import planning
 |   |-- csv_ai/                  # import CSV assiste IA (prompts, schemas, debug)
@@ -86,10 +95,10 @@ flowchart TB
 
 ## Services Docker
 
-- `backend`: build `Dockerfile.backend`, conteneur `covoiturage-backend`, port `${BACKEND_PORT}`
-- `frontend`: build `frontend/Dockerfile.frontend`, conteneur `covoiturage-frontend`, port `${FRONTEND_PORT}`
+- `backend`: build `docker/Dockerfile.backend`, conteneur `covoiturage-backend`, port `${BACKEND_PORT}`
+- `frontend`: build `docker/Dockerfile.frontend`, conteneur `covoiturage-frontend`, port `${FRONTEND_PORT}`
 - `database`: image `postgres:16-alpine`, conteneur `covoiturage-postgres`, port `5432`
-- `ia-services`: image `ollama/ollama`, conteneur `covoiturage-ia-services`, port `${OLLAMA_PORT}`
+- `ia-services` (mode Ollama uniquement): image `ollama/ollama`, conteneur `covoiturage-ia-services`, port `${OLLAMA_PORT}`
 
 ## Services externes
 
@@ -101,13 +110,14 @@ flowchart TB
 
 ## Logs explicites de demarrage
 
-Utiliser le script equipe:
+Utiliser le script correspondant au fournisseur:
 
 ```powershell
 ./scripts/start-local.ps1
+./scripts/start-local-ollama.ps1
 ```
 
-Variante sans rebuild:
+Variante Groq sans rebuild:
 
 ```powershell
 ./scripts/start-local-no-build.ps1
@@ -117,5 +127,6 @@ Le script affiche:
 - URL Frontend
 - URL Backend API
 - URL Health API
-- URL IA service (Ollama)
+- fournisseur et modele IA actifs
+- URL Ollama uniquement en mode Ollama
 - et l'etat des conteneurs (`docker compose ps`)

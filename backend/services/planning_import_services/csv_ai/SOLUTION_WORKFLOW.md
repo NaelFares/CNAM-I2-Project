@@ -105,17 +105,17 @@ Depuis `.env` :
 | Variable | Description |
 |---|---|
 | `AI_IMPORT_ENABLED` | Active ou désactive le workflow IA |
-| `AI_IMPORT_PROVIDER` | `groq` (recommandé) ou `ollama` (local) |
-| `AI_IMPORT_MODEL` | Modèle à utiliser (`llama-3.1-8b-instant` pour Groq, `qwen2.5:0.5b-instruct` pour Ollama) |
+| `GROQ_MODEL` | Modèle utilisé par `start-local.ps1` |
+| `OLLAMA_MODEL` | Modèle utilisé et téléchargé par `start-local-ollama.ps1` |
 | `AI_IMPORT_CONFIDENCE_THRESHOLD` | Seuil en dessous duquel une revue manuelle est demandée |
-| `GROQ_API_KEY` | Clé API Groq (gratuite sur console.groq.com) — requis si `AI_IMPORT_PROVIDER=groq` |
-| `OLLAMA_BASE_URL` | URL de l'instance Ollama — requis si `AI_IMPORT_PROVIDER=ollama` |
+| `GROQ_API_KEY` | Clé API Groq (gratuite sur console.groq.com), requise par le script Groq |
+| `OLLAMA_BASE_URL` | URL de l'instance Ollama, injectée par la composition Ollama |
 | `OLLAMA_REQUEST_TIMEOUT_S` | Timeout Ollama (300s recommandé : le premier chargement GPU peut être long) |
 
 ## 6. Supervision / debug
 
 ```bash
-docker compose exec backend python /app/backend/services/planning_import_services/csv_ai/debug/debug_csv_ai_mapping.py /app/backend/services/planning_import_services/csv_ai/debug/CNAM_Planning_18122025024326_158904.csv
+docker exec covoiturage-backend python /app/backend/services/planning_import_services/csv_ai/debug/debug_csv_ai_mapping.py /app/backend/services/planning_import_services/csv_ai/debug/CNAM_Planning_18122025024326_158904.csv
 ```
 
 Le script affiche : colonnes lues, prompt envoyé, mapping reçu, mapping résolu, preview des événements reconstruits.

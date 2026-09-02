@@ -1,0 +1,80 @@
+name: cnam-i2-project
+
+services:
+  backend:
+    container_name: covoiturage-backend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      - database
+      - ia-services
+    volumes:
+      - ../backend:/app/backend
+    env_file:
+      - ../.env
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - RESET_SEED=${RESET_SEED:-0}
+      - PYTHONPATH=/app
+      - AI_IMPORT_ENABLED=${AI_IMPORT_ENABLED:-true}
+      - AI_IMPORT_PROVIDER=ollama
+      - AI_IMPORT_MODEL=${OLLAMA_MODEL:-qwen2.5:0.5b-instruct}
+      - AI_IMPORT_CONFIDENCE_THRESHOLD=${AI_IMPORT_CONFIDENCE_THRESHOLD:-0.80}
+      - OLLAMA_BASE_URL=http://ia-services:11434
+      - IA_ACCELERATION_MODE=cpu
+    command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
+
+  frontend:
+    container_name: covoiturage-frontend
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  database:
+    image: postgres:16-alpine
+    container_name: covoiturage-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-covoit}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-covoit_password}
+      - POSTGRES_DB=${POSTGRES_DB:-covoiturage}
+    volumes:
+      - covoiturage_postgres_data:/var/lib/postgresql/data
+
+  ia-services:
+    image: ollama/ollama:latest
+    container_name: covoiturage-ia-services
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - covoiturage_ollama_data:/root/.ollama
+    environment:
+      - IA_ACCELERATION_MODE=cpu
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:0.5b-instruct}
+    entrypoint: ["/bin/sh", "-lc"]
+    command:
+      - |
+        echo "IA acceleration requested: $${IA_ACCELERATION_MODE:-cpu}"
+        ollama serve &
+        sleep 2
+        ollama pull "$${OLLAMA_MODEL}"
+        wait
+    restart: unless-stopped
+
+volumes:
+  covoiturage_postgres_data:
+    name: covoiturage_postgres_data
+  covoiturage_ollama_data:
+    name: covoiturage_ollama_data

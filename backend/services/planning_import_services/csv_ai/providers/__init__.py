@@ -21,8 +21,10 @@ def get_provider():
     if config.AI_IMPORT_PROVIDER == "groq":
         from .groq import GroqProvider
         return GroqProvider()
-    from .ollama import OllamaProvider
-    return OllamaProvider()
+    if config.AI_IMPORT_PROVIDER == "ollama":
+        from .ollama import OllamaProvider
+        return OllamaProvider()
+    raise ValueError(f"Fournisseur IA inconnu: {config.AI_IMPORT_PROVIDER}")
 
 
 def parse_json_response(content: str) -> dict[str, Any]:

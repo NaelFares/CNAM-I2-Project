@@ -70,7 +70,7 @@ def main() -> int:
         from backend.services.planning_import_services.csv_ai.providers import get_provider
         from backend.core.config import config
     except ModuleNotFoundError as exc:
-        cprint("ERROR", f"Dependance manquante : {exc}. Installe les deps backend (requirements.txt).", Color.RED)
+        cprint("ERROR", f"Dependance manquante : {exc}. Installe les deps backend (backend/requirements.txt).", Color.RED)
         return 10
 
     cli = argparse.ArgumentParser(description="Debug CSV IA mapping")

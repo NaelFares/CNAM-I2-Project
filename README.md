@@ -14,13 +14,19 @@ Faciliter les trajets quotidiens entre étudiants en proposant des correspondanc
 - Génération des trajets à partir des cours
 - Recherche de correspondances entre étudiants
 
-## Demarrage rapide
+## Demarrage rapide avec Groq
 
 ```powershell
 ./scripts/start-local.ps1
 ```
 
-Démarrage sans rebuild d'images:
+IA locale avec Ollama:
+
+```powershell
+./scripts/start-local-ollama.ps1
+```
+
+Démarrage Groq sans rebuild d'images:
 
 ```powershell
 ./scripts/start-local-no-build.ps1

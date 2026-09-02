@@ -9,6 +9,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def resolve_ai_import_config() -> tuple[str, str]:
+    """Retourne un couple fournisseur/modele valide depuis l'environnement."""
+    provider = os.getenv("AI_IMPORT_PROVIDER", "groq").strip().lower()
+    if provider == "groq":
+        default_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    elif provider == "ollama":
+        default_model = os.getenv("OLLAMA_MODEL", "qwen2.5:0.5b-instruct")
+    else:
+        raise ValueError("AI_IMPORT_PROVIDER doit valoir 'groq' ou 'ollama'.")
+
+    return provider, os.getenv("AI_IMPORT_MODEL", default_model)
+
+
+_RESOLVED_AI_IMPORT_PROVIDER, _RESOLVED_AI_IMPORT_MODEL = resolve_ai_import_config()
+
+
 class Config:
     """Classe de configuration centralisée"""
 
@@ -49,8 +65,8 @@ class Config:
 
     # Import IA (CSV)
     AI_IMPORT_ENABLED = os.getenv("AI_IMPORT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
-    AI_IMPORT_PROVIDER = os.getenv("AI_IMPORT_PROVIDER", "ollama")  # "ollama" | "groq"
-    AI_IMPORT_MODEL = os.getenv("AI_IMPORT_MODEL", "qwen2.5:0.5b-instruct")
+    AI_IMPORT_PROVIDER = _RESOLVED_AI_IMPORT_PROVIDER
+    AI_IMPORT_MODEL = _RESOLVED_AI_IMPORT_MODEL
     AI_IMPORT_CONFIDENCE_THRESHOLD = float(os.getenv("AI_IMPORT_CONFIDENCE_THRESHOLD", "0.80"))
     # Ollama
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://ia-services:11434")
