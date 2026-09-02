@@ -13,7 +13,7 @@ class Config:
     """Classe de configuration centralisée"""
 
     # Application
-    APP_NAME = os.getenv("APP_NAME", "CovoitEtudiant")
+    APP_NAME = os.getenv("APP_NAME", "Stud'Ride")
     APP_ENV = os.getenv("APP_ENV", "development")
     APP_PORT = int(os.getenv("APP_PORT", "8501"))
     STORAGE_SECRET = os.getenv("STORAGE_SECRET", "covoiturage-secret-key-change-in-production")
@@ -34,6 +34,15 @@ class Config:
     DEFAULT_TIME_TOLERANCE_MIN = int(os.getenv("DEFAULT_TIME_TOLERANCE_MIN", "15"))
     MAX_DISTANCE_KM = float(os.getenv("MAX_DISTANCE_KM", "10.0"))
     MIN_MATCH_SCORE = int(os.getenv("MIN_MATCH_SCORE", "60"))
+    # Temps de detour maximum accepte (minutes) pour aller recuperer le
+    # passager par rapport au trajet direct du conducteur (voir matching.py).
+    MAX_DETOUR_MIN = float(os.getenv("MAX_DETOUR_MIN", "12.0"))
+    # Nombre max de candidats (par trajet conducteur) pour lesquels on calcule
+    # le detour reel via ORS - borne le nombre d'appels au service de routing.
+    MAX_DETOUR_CANDIDATES = int(os.getenv("MAX_DETOUR_CANDIDATES", "8"))
+
+    # Routing (OpenRouteService)
+    ORS_API_KEY = os.getenv("ORS_API_KEY", "")
 
     # Upload
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "5"))

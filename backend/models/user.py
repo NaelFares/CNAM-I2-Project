@@ -14,10 +14,13 @@ class User:
     email: str = ""
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
     role: str = "both"  # "driver", "passenger", "both"
-    start_address: str = ""  # Adresse lisible (ex: "15 rue de la République, Paris")
+    start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
     time_tolerance_min: int = 15
+    school_address: str = ""
+    school_lat: float = 0.0
+    school_lon: float = 0.0
 
     def is_driver(self) -> bool:
         """Vérifie si l'utilisateur est conducteur"""
@@ -26,6 +29,9 @@ class User:
     def is_passenger(self) -> bool:
         """Vérifie si l'utilisateur est passager"""
         return self.role in ["passenger", "both"]
+
+    def has_school_location(self) -> bool:
+        return bool(self.school_lat and self.school_lon)
 
     def to_dict(self) -> dict:
         """Convertit l'utilisateur en dictionnaire"""
@@ -39,6 +45,9 @@ class User:
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
             "time_tolerance_min": self.time_tolerance_min,
+            "school_address": self.school_address,
+            "school_lat": self.school_lat,
+            "school_lon": self.school_lon,
         }
 
     @classmethod
@@ -54,4 +63,7 @@ class User:
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),
             time_tolerance_min=data.get("time_tolerance_min", 15),
+            school_address=data.get("school_address", ""),
+            school_lat=data.get("school_lat", 0.0),
+            school_lon=data.get("school_lon", 0.0),
         )

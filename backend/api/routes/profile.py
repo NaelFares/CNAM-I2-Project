@@ -40,6 +40,9 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
         start_lat=payload.start_lat,
         start_lon=payload.start_lon,
         time_tolerance_min=payload.time_tolerance_min,
+        school_address=payload.school_address.strip(),
+        school_lat=payload.school_lat,
+        school_lon=payload.school_lon,
     )
     db.update_user(next_user)
     return UserDTO(**next_user.to_dict())

@@ -24,6 +24,7 @@
   --shadow-card-strong: 0 14px 34px rgba(22, 42, 74, 0.14);
   --radius-card: 1.1rem;
   --radius-control: 0.85rem;
+  --color-wheel-hub: #dbe8ff;
 }
 
 *,
@@ -109,7 +110,8 @@ a {
 }
 
 .input {
-  @apply w-full rounded-[14px] border bg-white px-4 py-3 text-sm font-medium text-slate-900 transition;
+  /* text-base on mobile prevents iOS Safari's auto-zoom-on-focus (triggers below 16px) */
+  @apply w-full rounded-[14px] border bg-white px-4 py-3 text-base font-medium text-slate-900 transition md:text-sm;
   border-color: var(--color-stroke-strong);
 }
 
@@ -179,6 +181,17 @@ a {
   color: #234a7b;
   background: linear-gradient(90deg, #e8f2ff 0%, #f2f8ff 55%, #f8fbff 100%);
   box-shadow: 0 8px 20px rgba(30, 74, 137, 0.08);
+}
+
+.leaflet-tooltip.route-badge {
+  @apply rounded-full border-0 px-3 py-1.5 text-xs font-bold;
+  color: #fff;
+  background: var(--color-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.leaflet-tooltip.route-badge::before {
+  border-top-color: var(--color-primary);
 }
 
 .loading-overlay {

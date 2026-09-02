@@ -6,7 +6,6 @@ import LoginPage from "../pages/LoginPage.vue";
 import MatchesPage from "../pages/MatchesPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
 import RegisterPage from "../pages/RegisterPage.vue";
-import RidesPage from "../pages/RidesPage.vue";
 import SchedulePage from "../pages/SchedulePage.vue";
 import { useAuthStore } from "../stores/auth";
 
@@ -23,7 +22,7 @@ const router = createRouter({
         { path: "", component: DashboardPage },
         { path: "profile", component: ProfilePage },
         { path: "schedule", component: SchedulePage },
-        { path: "rides", component: RidesPage },
+        { path: "rides", redirect: "matches" },
         { path: "matches", component: MatchesPage },
       ],
     },

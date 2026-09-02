@@ -33,7 +33,7 @@
       </article>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid gap-4 md:grid-cols-3">
       <RouterLink to="/schedule" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-strong)]">
         <div class="flex items-start justify-between gap-3">
           <div>
@@ -49,6 +49,16 @@
           <div>
             <h2 class="text-lg font-bold text-slate-900">Completer mon profil</h2>
             <p class="mt-1 text-sm text-slate-600">Adresse, role et tolerance horaire.</p>
+          </div>
+          <ArrowRight class="h-5 w-5 text-blue-700 transition group-hover:translate-x-1" />
+        </div>
+      </RouterLink>
+
+      <RouterLink to="/matches" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-strong)]">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Trouver un covoiturage</h2>
+            <p class="mt-1 text-sm text-slate-600">Cherchez des correspondances compatibles.</p>
           </div>
           <ArrowRight class="h-5 w-5 text-blue-700 transition group-hover:translate-x-1" />
         </div>

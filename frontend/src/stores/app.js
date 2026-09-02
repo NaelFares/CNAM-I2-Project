@@ -9,6 +9,7 @@ import {
   getProfile,
   getScheduleEvents,
   previewSchedule,
+  searchCarpoolMatches,
   updateProfile,
 } from "../api/endpoints";
 import { useFeedbackStore } from "./feedback";
@@ -20,6 +21,8 @@ export const useAppStore = defineStore("app", {
     events: [],
     rides: [],
     matches: [],
+    searchResults: [],
+    searchRouteGeometry: [],
     summary: null,
     loading: false,
     loadingLabel: "",
@@ -116,8 +119,10 @@ export const useAppStore = defineStore("app", {
         const data = await generateRides();
         this.rides = data.rides;
         feedback.showSuccess(data.feedback.message);
+        return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
+        return false;
       } finally {
         this.stopLoading();
       }
@@ -128,6 +133,27 @@ export const useAppStore = defineStore("app", {
       try {
         const data = await findMatches();
         this.matches = data.matches;
+        feedback.showSuccess(data.feedback.message);
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async searchCarpoolTrip(payload) {
+      const feedback = useFeedbackStore();
+      this.startLoading("Recherche de covoiturage...", "Comparaison avec les trajets disponibles.");
+      try {
+        const data = await searchCarpoolMatches({
+          origin_lat: payload.originLat,
+          origin_lon: payload.originLon,
+          dest_lat: payload.destLat,
+          dest_lon: payload.destLon,
+          ride_time: payload.rideTime,
+          ride_type: payload.rideType,
+        });
+        this.searchResults = data.matches;
+        this.searchRouteGeometry = data.search_route_geometry;
         feedback.showSuccess(data.feedback.message);
       } catch (err) {
         feedback.showError(extractApiError(err).message);

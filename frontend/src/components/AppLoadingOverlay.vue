@@ -24,8 +24,8 @@
               />
               <circle cx="20" cy="30.5" r="6.2" fill="var(--color-primary-strong)" />
               <circle cx="52" cy="30.5" r="6.2" fill="var(--color-primary-strong)" />
-              <circle cx="20" cy="30.5" r="2.7" fill="#dbe8ff" />
-              <circle cx="52" cy="30.5" r="2.7" fill="#dbe8ff" />
+              <circle cx="20" cy="30.5" r="2.7" fill="var(--color-wheel-hub)" />
+              <circle cx="52" cy="30.5" r="2.7" fill="var(--color-wheel-hub)" />
               <rect x="27.5" y="18.4" width="17" height="3.8" rx="1.9" fill="var(--color-primary-soft)" />
             </svg>
           </div>

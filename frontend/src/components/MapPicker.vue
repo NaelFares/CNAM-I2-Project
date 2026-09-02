@@ -1,5 +1,5 @@
 <template>
-  <div ref="mapEl" class="h-[330px] w-full rounded-xl border border-slate-200 shadow-sm"></div>
+  <div ref="mapEl" class="h-[330px] w-full rounded-xl border border-slate-200 shadow-sm" style="isolation: isolate;"></div>
 </template>
 
 <script setup>

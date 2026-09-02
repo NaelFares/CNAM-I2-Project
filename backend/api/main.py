@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.core.config import config
+from backend.database.setup import run_startup
 
 from backend.api.routes.auth import router as auth_router
 from backend.api.routes.dashboard import router as dashboard_router
@@ -14,9 +15,15 @@ from backend.api.routes.geocode import router as geocode_router
 from backend.api.routes.matches import router as matches_router
 from backend.api.routes.profile import router as profile_router
 from backend.api.routes.rides import router as rides_router
+from backend.api.routes.routing import router as routing_router
 from backend.api.routes.schedule import router as schedule_router
 
 app = FastAPI(title=f"{config.APP_NAME} API", version="1.0.0")
+
+
+@app.on_event("startup")
+def startup_event():
+    run_startup()
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,4 +56,5 @@ app.include_router(geocode_router)
 app.include_router(schedule_router)
 app.include_router(rides_router)
 app.include_router(matches_router)
+app.include_router(routing_router)
 app.include_router(dashboard_router)

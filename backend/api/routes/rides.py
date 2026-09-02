@@ -16,13 +16,17 @@ from backend.api.schemas import RideDTO, RidesGenerateResponse
 router = APIRouter(prefix="/rides", tags=["rides"])
 
 
-@router.post("/generate", response_model=RidesGenerateResponse)
-def generate_rides(user: User = Depends(require_current_user)):
+def generate_rides_for_user(user: User) -> list[Ride]:
     db.delete_rides_by_user(user.id)
 
     rides = []
     events_obj = db.get_events_by_user(user.id)
-    campus_lat, campus_lon = config.get_campus_coords()
+
+    # Destination = adresse école de l'utilisateur, sinon campus global de la config
+    if user.has_school_location():
+        dest_lat, dest_lon = user.school_lat, user.school_lon
+    else:
+        dest_lat, dest_lon = config.get_campus_coords()
 
     for event in events_obj:
         ride_go = Ride(
@@ -32,8 +36,8 @@ def generate_rides(user: User = Depends(require_current_user)):
             ride_time=event.start_time,
             start_lat=user.start_lat,
             start_lon=user.start_lon,
-            end_lat=campus_lat,
-            end_lon=campus_lon,
+            end_lat=dest_lat,
+            end_lon=dest_lon,
         )
         ride_go.id = db.create_ride(ride_go)
         rides.append(ride_go)
@@ -43,14 +47,20 @@ def generate_rides(user: User = Depends(require_current_user)):
             event_id=event.id,
             ride_type="from_campus",
             ride_time=event.end_time,
-            start_lat=campus_lat,
-            start_lon=campus_lon,
+            start_lat=dest_lat,
+            start_lon=dest_lon,
             end_lat=user.start_lat,
             end_lon=user.start_lon,
         )
         ride_back.id = db.create_ride(ride_back)
         rides.append(ride_back)
 
+    return rides
+
+
+@router.post("/generate", response_model=RidesGenerateResponse)
+def generate_rides(user: User = Depends(require_current_user)):
+    rides = generate_rides_for_user(user)
     return RidesGenerateResponse(
         rides=[RideDTO(**ride.to_dict()) for ride in rides],
         feedback=make_feedback("RIDES_GENERATE_SUCCESS", count=len(rides)),
