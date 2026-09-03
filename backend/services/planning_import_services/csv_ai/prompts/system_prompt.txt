@@ -13,10 +13,10 @@ Structure JSON obligatoire (respecte exactement cette forme):
   "summary": "texte court",
   "overall_confidence": 0.95,
   "fields": {
-    "title":       { "mode": "single",           "columns": ["ColTitre"],              "confidence": 0.99 },
-    "start_time":  { "mode": "datetime_combine", "columns": ["ColDate",  "ColHeure"],  "confidence": 0.95 },
-    "end_time":    { "mode": "datetime_combine", "columns": ["ColDate2", "ColHeure2"], "confidence": 0.95 },
-    "location":    { "mode": "single",           "columns": ["ColLieu"],               "confidence": 0.90 },
-    "description": { "mode": "single",           "columns": ["ColDesc"],               "confidence": 0.90 }
+    "title":       { "mode": "single",           "columns": ["ColTitre"],              "separator": "", "confidence": 0.99 },
+    "start_time":  { "mode": "datetime_combine", "columns": ["ColDate",  "ColHeure"],  "separator": "", "confidence": 0.95 },
+    "end_time":    { "mode": "datetime_combine", "columns": ["ColDate2", "ColHeure2"], "separator": "", "confidence": 0.95 },
+    "location":    { "mode": "single",           "columns": ["ColLieu"],               "separator": "", "confidence": 0.90 },
+    "description": { "mode": "single",           "columns": ["ColDesc"],               "separator": "", "confidence": 0.90 }
   }
 }

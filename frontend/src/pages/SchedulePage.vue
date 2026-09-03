@@ -27,6 +27,23 @@
             </button>
           </div>
         </div>
+        <label
+          v-if="isCsvSelected"
+          class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4"
+        >
+          <input
+            v-model="privacyMode"
+            type="checkbox"
+            class="mt-1 h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
+          />
+          <span>
+            <span class="block text-sm font-semibold text-slate-800">Privacy mode</span>
+            <span class="mt-1 block text-xs leading-5 text-slate-500">
+              Seuls les en-tetes du CSV sont envoyes au service d'IA. Aucune ligne du planning n'est partagee,
+              mais la precision du mapping peut fortement diminuer.
+            </span>
+          </span>
+        </label>
         <div class="flex justify-end">
           <button class="btn-primary" :disabled="!selectedFile || app.loading" @click="launchPreview">
             <Upload class="h-4 w-4" />
@@ -136,7 +153,10 @@ import { useAppStore } from "../stores/app";
 const app = useAppStore();
 const selectedFile = ref(null);
 const fileInput = ref(null);
+const privacyMode = ref(false);
 const weekStart = ref(getWeekStart(dayjs()));
+
+const isCsvSelected = computed(() => selectedFile.value?.name.toLowerCase().endsWith(".csv") ?? false);
 
 const weekDays = computed(() => {
   const days = [];
@@ -216,11 +236,12 @@ function openFilePicker() {
 function onFileChange(event) {
   const input = event.target;
   selectedFile.value = input.files?.[0] ?? null;
+  if (!isCsvSelected.value) privacyMode.value = false;
 }
 
 async function launchPreview() {
   if (!selectedFile.value) return;
-  await app.previewSchedule(selectedFile.value);
+  await app.previewSchedule(selectedFile.value, privacyMode.value);
 }
 
 async function confirm() {

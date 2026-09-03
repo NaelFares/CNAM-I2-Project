@@ -15,8 +15,8 @@ class PlanningImportParser:
         return parse_ics_file(file_content)
 
     @staticmethod
-    def parse_csv(file_content: bytes) -> CSVParseResult:
-        return csv_ai_planning_parser.parse(file_content)
+    def parse_csv(file_content: bytes, privacy_mode: bool = False) -> CSVParseResult:
+        return csv_ai_planning_parser.parse(file_content, privacy_mode=privacy_mode)
 
 
 planning_import_parser = PlanningImportParser()

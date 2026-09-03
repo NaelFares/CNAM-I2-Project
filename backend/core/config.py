@@ -13,7 +13,7 @@ def resolve_ai_import_config() -> tuple[str, str]:
     """Retourne un couple fournisseur/modele valide depuis l'environnement."""
     provider = os.getenv("AI_IMPORT_PROVIDER", "groq").strip().lower()
     if provider == "groq":
-        default_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        default_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     elif provider == "ollama":
         default_model = os.getenv("OLLAMA_MODEL", "qwen2.5:0.5b-instruct")
     else:

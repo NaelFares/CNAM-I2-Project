@@ -20,7 +20,7 @@ services:
       - PYTHONPATH=/app
       - AI_IMPORT_ENABLED=${AI_IMPORT_ENABLED:-true}
       - AI_IMPORT_PROVIDER=groq
-      - AI_IMPORT_MODEL=${GROQ_MODEL:-llama-3.1-8b-instant}
+      - AI_IMPORT_MODEL=${GROQ_MODEL:-openai/gpt-oss-20b}
       - AI_IMPORT_CONFIDENCE_THRESHOLD=${AI_IMPORT_CONFIDENCE_THRESHOLD:-0.80}
       - IA_ACCELERATION_MODE=cloud
     command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

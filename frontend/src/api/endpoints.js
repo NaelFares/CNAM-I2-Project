@@ -32,9 +32,10 @@ export async function reverseAddress(lat, lon) {
   return (await apiClient.get("/geocode/reverse", { params: { lat, lon } })).data;
 }
 
-export async function previewSchedule(file) {
+export async function previewSchedule(file, privacyMode = false) {
   const form = new FormData();
   form.append("file", file);
+  form.append("privacy_mode", String(privacyMode));
   return (
     await apiClient.post("/schedule/preview", form, {
       timeout: 180000,

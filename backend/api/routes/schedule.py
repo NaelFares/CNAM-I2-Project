@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from backend.database.manager import db
 from backend.models.event import Event
@@ -20,13 +20,17 @@ router = APIRouter(prefix="/schedule", tags=["schedule"])
 logger = logging.getLogger(__name__)
 
 
-def _parse_upload(upload_file: UploadFile, content: bytes) -> tuple[list[Event], float | None, bool, str | None]:
+def _parse_upload(
+    upload_file: UploadFile,
+    content: bytes,
+    privacy_mode: bool = False,
+) -> tuple[list[Event], float | None, bool, str | None]:
     file_name = (upload_file.filename or "").lower()
     if file_name.endswith(".ics"):
         events = planning_import_parser.parse_ics(content)
         return events, None, False, None
     if file_name.endswith(".csv"):
-        csv_result: CSVParseResult = planning_import_parser.parse_csv(content)
+        csv_result: CSVParseResult = planning_import_parser.parse_csv(content, privacy_mode=privacy_mode)
         return (
             csv_result.events,
             csv_result.confidence_score,
@@ -39,6 +43,7 @@ def _parse_upload(upload_file: UploadFile, content: bytes) -> tuple[list[Event],
 @router.post("/preview", response_model=SchedulePreviewResponse)
 async def preview_schedule(
     file: UploadFile = File(...),
+    privacy_mode: bool = Form(False),
     user: User = Depends(require_current_user),
 ):
     content = await file.read()
@@ -46,7 +51,11 @@ async def preview_schedule(
         raise_api_error("SCHEDULE_EMPTY_FILE")
 
     try:
-        events, confidence_score, requires_user_review, mapping_explanation = _parse_upload(file, content)
+        events, confidence_score, requires_user_review, mapping_explanation = _parse_upload(
+            file,
+            content,
+            privacy_mode=privacy_mode,
+        )
     except ValueError as exc:
         logger.exception("Schedule preview parsing failed: %s", exc)
         raise_api_error("SCHEDULE_PREVIEW_FAILED", reason=str(exc))

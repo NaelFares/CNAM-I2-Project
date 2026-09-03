@@ -78,11 +78,14 @@ export const useAppStore = defineStore("app", {
         this.events = [];
       }
     },
-    async previewSchedule(file) {
+    async previewSchedule(file, privacyMode = false) {
       const feedback = useFeedbackStore();
-      this.startLoading("Analyse du planning...", "Le modele identifie les colonnes et horaires.");
+      const detail = privacyMode
+        ? "Privacy mode : le modele analyse uniquement les en-tetes."
+        : "Le modele identifie les colonnes et horaires a partir d'un echantillon.";
+      this.startLoading("Analyse du planning...", detail);
       try {
-        const data = await previewSchedule(file);
+        const data = await previewSchedule(file, privacyMode);
         this.previewEvents = data.events;
         if (data.requires_user_review) {
           const score = typeof data.confidence_score === "number" ? ` (${Math.round(data.confidence_score * 100)}%)` : "";

@@ -3,7 +3,8 @@ Parseur d'import CSV assisté par IA.
 
 Flux :
   1. Lecture du CSV (détection automatique encodage + séparateur)
-  2. Construction d'un échantillon minimal (en-têtes + 1 ligne)
+  2. Construction d'un échantillon minimal (en-têtes + 1 ligne), ou des en-têtes
+     seuls lorsque le Privacy mode est activé
   3. Appel au fournisseur IA (Ollama ou Groq) pour obtenir le mapping de colonnes
   4. Reconstruction des événements sur tout le fichier
   5. Score de confiance final
@@ -44,15 +45,18 @@ class CsvAiPlanningParser:
     _SCHEMAS_DIR = _RESOURCES_DIR / "schemas"
 
     @staticmethod
-    def parse(file_content: bytes) -> CSVParseResult:
+    def parse(file_content: bytes, privacy_mode: bool = False) -> CSVParseResult:
         if not config.AI_IMPORT_ENABLED:
             raise ValueError("Le workflow IA d'import CSV est desactive.")
 
         try:
             df, encoding = CsvAiPlanningParser._read_csv(file_content)
             available_columns = [str(col) for col in df.columns.tolist()]
-            sample_payload = CsvAiPlanningParser._build_sample_payload(df)
-            logger.info("CSV IA import: lines=%s columns=%s encoding=%s", len(df.index), available_columns, encoding)
+            sample_payload = CsvAiPlanningParser._build_sample_payload(df, privacy_mode=privacy_mode)
+            logger.info(
+                "CSV IA import: lines=%s columns=%s encoding=%s privacy_mode=%s",
+                len(df.index), available_columns, encoding, privacy_mode,
+            )
 
             last_error: Exception | None = None
             for attempt in range(1, 3):
@@ -116,8 +120,10 @@ class CsvAiPlanningParser:
         raise ValueError("Impossible de lire le CSV : aucun encodage compatible")
 
     @staticmethod
-    def _build_sample_payload(df: pd.DataFrame) -> dict[str, Any]:
-        rows = [{str(k): str(v) for k, v in row.to_dict().items()} for _, row in df.head(1).iterrows()]
+    def _build_sample_payload(df: pd.DataFrame, privacy_mode: bool = False) -> dict[str, Any]:
+        rows = []
+        if not privacy_mode:
+            rows = [{str(k): str(v) for k, v in row.to_dict().items()} for _, row in df.head(1).iterrows()]
         return {"headers": [str(col) for col in df.columns.tolist()], "sample_rows": rows}
 
     # ------------------------------------------------------------------
@@ -131,8 +137,8 @@ class CsvAiPlanningParser:
         refinement_reason: str | None = None,
         attempt: int = 1,
     ) -> dict[str, Any]:
-        if not sample_payload.get("sample_rows"):
-            raise ValueError("CSV vide : aucun echantillon a envoyer au modele")
+        if not sample_payload.get("headers"):
+            raise ValueError("CSV vide : aucun en-tete a envoyer au modele")
 
         system_prompt = CsvAiPlanningParser._load_text(CsvAiPlanningParser._PROMPTS_DIR / "system_prompt.txt")
         user_template = CsvAiPlanningParser._load_text(CsvAiPlanningParser._PROMPTS_DIR / "mapping_prompt_template.txt")

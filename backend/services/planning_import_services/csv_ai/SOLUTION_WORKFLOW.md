@@ -13,7 +13,7 @@ Objectif : convertir des colonnes CSV inconnues vers le format événement inter
 
 Flux global :
 1. Lecture CSV (encodage + séparateur auto).
-2. Construction d'un échantillon JSON minimal (`headers` + `sample_rows`).
+2. Construction d'un échantillon JSON minimal (`headers` + une `sample_rows`), ou des en-têtes seuls en Privacy mode.
 3. Appel au fournisseur IA (Ollama local ou Groq cloud) pour proposer un mapping.
 4. Validation / reconstruction des événements sur tout le fichier.
 5. Deuxième tentative IA si la première échoue.
@@ -27,7 +27,7 @@ Fournisseurs IA : `providers/ollama.py` et `providers/groq.py`.
 - `parser.py` : orchestration complète (lecture CSV → appel IA → événements).
 - `providers/__init__.py` : factory `get_provider()`, utilitaire `parse_json_response`.
 - `providers/ollama.py` : fournisseur local via Ollama.
-- `providers/groq.py` : fournisseur cloud via API Groq (gratuit, recommandé).
+- `providers/groq.py` : fournisseur cloud via API Groq, avec `openai/gpt-oss-20b` et Structured Outputs stricts.
 - `prompts/system_prompt.txt` : rôle et contraintes du modèle.
 - `prompts/mapping_prompt_template.txt` : template du prompt utilisateur.
 - `schemas/mapping_response.schema.json` : contrat JSON de sortie du modèle.
@@ -63,11 +63,11 @@ Fournisseurs IA : `providers/ollama.py` et `providers/groq.py`.
   "summary": "Mapping CSV vers planning",
   "overall_confidence": 0.95,
   "fields": {
-    "title":       { "mode": "single",           "columns": ["Objet"],              "confidence": 0.99 },
-    "start_time":  { "mode": "datetime_combine", "columns": ["Debut", "Debut.1"],   "confidence": 0.95 },
-    "end_time":    { "mode": "datetime_combine", "columns": ["Fin",   "Fin.1"],     "confidence": 0.95 },
-    "location":    { "mode": "single",           "columns": ["Emplacement"],        "confidence": 0.90 },
-    "description": { "mode": "single",           "columns": ["Description"],        "confidence": 0.90 }
+    "title":       { "mode": "single",           "columns": ["Objet"],              "separator": "", "confidence": 0.99 },
+    "start_time":  { "mode": "datetime_combine", "columns": ["Debut", "Debut.1"],   "separator": "", "confidence": 0.95 },
+    "end_time":    { "mode": "datetime_combine", "columns": ["Fin",   "Fin.1"],     "separator": "", "confidence": 0.95 },
+    "location":    { "mode": "single",           "columns": ["Emplacement"],        "separator": "", "confidence": 0.90 },
+    "description": { "mode": "single",           "columns": ["Description"],        "separator": "", "confidence": 0.90 }
   }
 }
 ```
@@ -98,7 +98,11 @@ Le parser corrige certains cas :
 - Echec de reconstruction : tentative IA #2 avec le message d'erreur de la tentative #1.
 - Toujours en échec : erreur explicite `SCHEDULE_PREVIEW_FAILED`.
 
-## 5. Paramètres importants
+## 5. Privacy mode
+
+L'option est désactivée par défaut dans l'interface. Lorsqu'elle est activée, le payload envoyé au fournisseur IA contient les noms de colonnes dans `headers` et une liste `sample_rows` vide. Aucune valeur issue des lignes du CSV n'est alors transmise. Le mapping repose uniquement sur la signification des en-têtes et peut donc être nettement moins précis.
+
+## 6. Paramètres importants
 
 Depuis `.env` :
 
@@ -112,7 +116,7 @@ Depuis `.env` :
 | `OLLAMA_BASE_URL` | URL de l'instance Ollama, injectée par la composition Ollama |
 | `OLLAMA_REQUEST_TIMEOUT_S` | Timeout Ollama (300s recommandé : le premier chargement GPU peut être long) |
 
-## 6. Supervision / debug
+## 7. Supervision / debug
 
 ```bash
 docker exec covoiturage-backend python /app/backend/services/planning_import_services/csv_ai/debug/debug_csv_ai_mapping.py /app/backend/services/planning_import_services/csv_ai/debug/CNAM_Planning_18122025024326_158904.csv
@@ -120,8 +124,9 @@ docker exec covoiturage-backend python /app/backend/services/planning_import_ser
 
 Le script affiche : colonnes lues, prompt envoyé, mapping reçu, mapping résolu, preview des événements reconstruits.
 
-## 7. Limites connues
+## 8. Limites connues
 
 - Les caractères corrompus dans le CSV (`ï¿½`) ne sont pas récupérables.
 - En mode Ollama, les petits modèles (0.5B) sont moins stables sur JSON strict → préférer Groq.
-- La qualité du mapping dépend de la qualité de la première ligne d'exemple.
+- En mode standard, la qualité du mapping dépend de la qualité de la première ligne d'exemple.
+- En Privacy mode, des en-têtes ambigus peuvent empêcher un mapping fiable.

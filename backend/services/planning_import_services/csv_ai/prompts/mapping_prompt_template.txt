@@ -1,4 +1,6 @@
-Analyse l'echantillon JSON suivant (colonnes + lignes) et retourne le mapping JSON.
+Analyse les informations CSV suivantes et retourne le mapping JSON.
+Lorsque `sample_rows` est vide, le Privacy mode est actif : deduis le mapping uniquement
+a partir des en-tetes et reduis la confiance si leur signification est ambigue.
 
 Champs cibles obligatoires:
 - title
@@ -17,6 +19,6 @@ Rappels:
 - `concat`: 1 colonne ou plus
 - `empty`: aucune colonne
 - `columns` contient uniquement des noms de colonnes exacts
-- `separator` utile uniquement pour concat
+- `separator`: separateur pour concat, chaine vide pour les autres modes
 - `summary` court et utile
 - `overall_confidence` entre 0 et 1

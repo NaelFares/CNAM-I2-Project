@@ -1,11 +1,13 @@
 {
   "type": "object",
+  "additionalProperties": false,
   "required": ["summary", "overall_confidence", "fields"],
   "properties": {
     "summary": { "type": "string" },
     "overall_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
     "fields": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["title", "start_time", "end_time", "location", "description"],
       "properties": {
         "title": { "$ref": "#/$defs/fieldMapping" },
@@ -19,7 +21,8 @@
   "$defs": {
     "fieldMapping": {
       "type": "object",
-      "required": ["mode", "columns", "confidence"],
+      "additionalProperties": false,
+      "required": ["mode", "columns", "separator", "confidence"],
       "properties": {
         "mode": {
           "type": "string",
