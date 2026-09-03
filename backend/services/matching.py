@@ -80,7 +80,9 @@ class Match:
         max_dep = config.MAX_DISTANCE_KM
         departure_bonus = 10 * (1 - min(dep_dist, max_dep) / max_dep)
 
-        self.score = int(time_score + route_score + departure_bonus)
+        # Le bonus de proximite sert a departager les meilleurs candidats,
+        # mais le score expose comme un pourcentage ne doit jamais depasser 100.
+        self.score = min(100, int(time_score + route_score + departure_bonus))
 
     def to_dict(self) -> Dict:
         return {
