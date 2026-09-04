@@ -379,6 +379,167 @@ a {
   }
 }
 
+/* Apercu telephone active depuis le menu, meme sur un grand ecran. */
+.mobile-preview-shell {
+  width: min(390px, 100%);
+  margin-inline: auto;
+  overflow-x: hidden;
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35), 0 24px 70px rgba(15, 23, 42, 0.18);
+}
+
+.mobile-preview-shell > main {
+  padding: 1.75rem 1rem !important;
+}
+
+.mobile-preview-shell header > div {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.header-icon-button {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  justify-content: center;
+  padding: 0 !important;
+}
+
+.mobile-navigation {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.12);
+}
+
+.schedule-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+}
+
+.schedule-period {
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.schedule-navigation {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 0.5rem;
+}
+
+.schedule-navigation-button,
+.schedule-today-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.schedule-navigation-button:hover,
+.schedule-today-button:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.schedule-navigation-button:focus-visible,
+.schedule-today-button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline-offset: 2px;
+}
+
+.schedule-navigation-label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .schedule-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .schedule-period {
+    text-align: left;
+  }
+
+  .schedule-navigation {
+    display: flex;
+  }
+
+  .schedule-navigation-button,
+  .schedule-today-button {
+    padding: 0 0.875rem;
+  }
+
+  .schedule-navigation-label {
+    display: inline;
+  }
+}
+
+.mobile-preview-shell .schedule-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mobile-preview-shell .schedule-period {
+  text-align: center;
+}
+
+.mobile-preview-shell .schedule-navigation {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+}
+
+.mobile-preview-shell .schedule-navigation-button {
+  padding: 0;
+}
+
+.mobile-preview-shell .schedule-navigation-label {
+  display: none;
+}
+
+.mobile-preview-shell .sm\:flex-row {
+  flex-direction: column !important;
+}
+
+.mobile-preview-shell .sm\:items-center {
+  align-items: stretch !important;
+}
+
+.mobile-preview-shell .sm\:justify-between {
+  justify-content: flex-start !important;
+}
+
+.mobile-preview-shell .md\:grid-cols-2,
+.mobile-preview-shell .md\:grid-cols-3,
+.mobile-preview-shell .lg\:grid-cols-2,
+.mobile-preview-shell .xl\:grid-cols-7 {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.mobile-preview-shell .md\:col-span-2 {
+  grid-column: auto !important;
+}
+
+.mobile-preview-shell .md\:p-7 {
+  padding: 1.5rem !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

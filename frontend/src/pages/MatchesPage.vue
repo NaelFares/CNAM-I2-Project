@@ -64,7 +64,6 @@
 
             <!-- Légende couleurs -->
             <div class="mt-3 flex flex-wrap gap-3 text-xs font-medium text-slate-600">
-              <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-green-500"></span>Conducteur</span>
               <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-orange-500"></span>Passager</span>
               <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-red-500"></span>Destination</span>
             </div>
@@ -72,7 +71,6 @@
 
           <RouteMap
             :route-geometry="match.route_geometry"
-            :driver-coords="match.driver_coords"
             :passenger-coords="match.passenger_coords"
             :dest-coords="match.campus_coords"
           />

@@ -15,7 +15,6 @@
 
       <!-- Légende -->
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-600">
-        <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-green-500"></span>Conducteur</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-orange-500"></span>Passager</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-red-500"></span>Destination</span>
         <span class="flex items-center gap-1.5"><span class="inline-block h-0.5 w-4 bg-primary"></span>Itinéraire proposé</span>
@@ -27,7 +26,6 @@
       <RouteMap
         :route-geometry="match.route_geometry"
         :my-route-geometry="myRouteGeometry"
-        :driver-coords="match.driver_coords"
         :passenger-coords="match.passenger_coords"
         :dest-coords="match.campus_coords"
       />
@@ -46,7 +44,6 @@
             height="60vh"
             :route-geometry="match.route_geometry"
             :my-route-geometry="myRouteGeometry"
-            :driver-coords="match.driver_coords"
             :passenger-coords="match.passenger_coords"
             :dest-coords="match.campus_coords"
           />
