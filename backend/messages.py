@@ -31,6 +31,8 @@ MESSAGE_CATALOG = {
     "MATCHES_REQUIRED_RIDES": "Vous devez d'abord generer vos trajets.",
     "MATCHES_FOUND": "{count} correspondances trouvees !",
     "MATCHES_FIND_FAILED": "Impossible de rechercher des correspondances. Reessayez.",
+    "MATCHES_ROUTING_QUOTA_EXCEEDED": "Le quota quotidien du service d'itineraire est epuise. Consultez votre tableau de bord ORS avant de reessayer.",
+    "MATCHES_ROUTING_RATE_LIMITED": "Trop de calculs d'itineraire ont ete demandes en une minute. Reessayez dans quelques instants.",
     "VALIDATION_TIME_TOLERANCE_INVALID": "La tolerance horaire doit etre un nombre entre 5 et 60.",
 }
 

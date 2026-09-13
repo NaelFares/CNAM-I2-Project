@@ -51,3 +51,30 @@ CREATE TABLE IF NOT EXISTS rides (
 -- Migration data : normalisation ride_type (no-op si deja applique)
 UPDATE rides SET ride_type = 'to_campus'   WHERE ride_type = 'aller';
 UPDATE rides SET ride_type = 'from_campus' WHERE ride_type = 'retour';
+
+-- ROUTING CACHE
+-- Resultats techniques reutilisables des calculs d'itineraires externes.
+CREATE TABLE IF NOT EXISTS routing_cache (
+    id              BIGSERIAL PRIMARY KEY,
+    cache_key       TEXT UNIQUE NOT NULL,
+    provider        TEXT NOT NULL DEFAULT 'ors',
+    profile         TEXT NOT NULL DEFAULT 'driving-car',
+    start_lat       DOUBLE PRECISION NOT NULL,
+    start_lon       DOUBLE PRECISION NOT NULL,
+    via_lat         DOUBLE PRECISION,
+    via_lon         DOUBLE PRECISION,
+    end_lat         DOUBLE PRECISION NOT NULL,
+    end_lon         DOUBLE PRECISION NOT NULL,
+    geometry        JSONB NOT NULL DEFAULT '[]'::jsonb,
+    distance_m      DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    duration_s      DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    hit_count       INTEGER NOT NULL DEFAULT 0
+);
+
+-- Migration depuis la premiere version du cache : une route reste valide tant
+-- que sa cle (coordonnees, profil, fournisseur et version) ne change pas.
+DROP INDEX IF EXISTS idx_routing_cache_expires_at;
+ALTER TABLE routing_cache DROP COLUMN IF EXISTS expires_at;
+CREATE INDEX IF NOT EXISTS idx_routing_cache_last_used_at ON routing_cache(last_used_at);

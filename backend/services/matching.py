@@ -145,14 +145,16 @@ class MatchingService:
 
         Le calcul du détour réel appelle le service de routing (ORS) — coûteux
         et limité en débit sur une clé gratuite. On fait donc d'abord une passe
-        bon marché (aucun appel réseau) qui filtre par type/rôle et distance
-        haversine des départs, puis on ne calcule le détour ORS que pour les
-        MAX_DETOUR_CANDIDATES candidats les plus proches (par trajet
-        conducteur) — borne le nombre d'appels ORS indépendamment de la taille
-        de la base.
+        sans réseau qui filtre par rôle, direction, tolérance horaire et distance.
+        Pour chaque trajet de l'utilisateur courant, seuls les
+        MAX_DETOUR_CANDIDATES candidats les plus proches sont ensuite vérifiés
+        avec ORS. Cette limite fonctionne de la même manière que l'utilisateur
+        soit conducteur ou passager.
         """
         # --- Passe 1 : filtre bon marché, aucun appel réseau ---
-        candidates_by_driver_ride: Dict[object, List[Tuple[float, User, User, Ride, Ride]]] = {}
+        candidates_by_my_ride: Dict[object, List[Tuple[float, User, User, Ride, Ride]]] = {}
+        users_by_id = {user.id: user for user in db.get_all_users()}
+        users_by_id[current_user.id] = current_user
 
         for my_ride in my_rides:
             for other_ride in all_rides:
@@ -160,8 +162,10 @@ class MatchingService:
                     continue
                 if my_ride.ride_type != other_ride.ride_type:
                     continue
+                if not my_ride.ride_time or not other_ride.ride_time:
+                    continue
 
-                other_user = db.get_user_by_id(other_ride.user_id)
+                other_user = users_by_id.get(other_ride.user_id)
                 if not other_user:
                     continue
 
@@ -174,6 +178,17 @@ class MatchingService:
                 else:
                     continue
 
+                time_diff_min = abs(
+                    (driver_ride.ride_time - passenger_ride.ride_time).total_seconds() / 60
+                )
+                max_tolerance = max(
+                    1,
+                    driver.time_tolerance_min,
+                    passenger.time_tolerance_min,
+                )
+                if time_diff_min > max_tolerance:
+                    continue
+
                 dep_dist = haversine_distance(
                     driver_ride.start_lat, driver_ride.start_lon,
                     passenger_ride.start_lat, passenger_ride.start_lon,
@@ -181,8 +196,14 @@ class MatchingService:
                 if dep_dist > config.MAX_DISTANCE_KM:
                     continue
 
-                driver_key = driver_ride.id or (driver_ride.user_id, str(driver_ride.ride_time))
-                candidates_by_driver_ride.setdefault(driver_key, []).append(
+                my_ride_key = my_ride.id or (
+                    my_ride.user_id,
+                    my_ride.ride_type,
+                    str(my_ride.ride_time),
+                    round(my_ride.start_lat, 5),
+                    round(my_ride.start_lon, 5),
+                )
+                candidates_by_my_ride.setdefault(my_ride_key, []).append(
                     (dep_dist, driver, passenger, driver_ride, passenger_ride)
                 )
 
@@ -191,7 +212,7 @@ class MatchingService:
         direct_route_cache: Dict = {}
         detour_route_cache: Dict = {}
 
-        for candidates in candidates_by_driver_ride.values():
+        for candidates in candidates_by_my_ride.values():
             candidates.sort(key=lambda c: c[0])
             for dep_dist, driver, passenger, driver_ride, passenger_ride in candidates[: config.MAX_DETOUR_CANDIDATES]:
                 direct = MatchingService._get_direct_route_cached(direct_route_cache, driver_ride)

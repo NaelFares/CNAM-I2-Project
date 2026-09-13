@@ -22,19 +22,24 @@ flowchart TD
     C -- non --> Z
     C -- oui --> D{"Rôles conducteur/passager compatibles ?"}
     D -- non --> Z
-    D -- oui --> E["Distance haversine des départs (gratuit)"]
-    E --> F{"<= MAX_DISTANCE_KM ?"}
-    F -- non --> Z
-    F -- oui --> G["Regrouper par trajet conducteur"]
-    G --> H["Trier chaque groupe par distance croissante"]
-    H --> I["Garder les MAX_DETOUR_CANDIDATES plus proches du groupe"]
-    I --> J["ORS: itinéraire direct domicile→école (mis en cache par trajet)"]
-    J --> K["ORS: itinéraire détour domicile conducteur→domicile passager→école"]
-    K --> L["temps_ajouté = durée(détour) - durée(direct)"]
-    L --> M["Score = horaire (0-50) + détour (0-50) + bonus proximité (0-10)"]
-    M --> N{"Score >= MIN_MATCH_SCORE ?"}
-    N -- non --> Z
-    N -- oui --> O["Match proposé — trié par score puis temps de détour croissant"]
+    D -- oui --> E{"Écart horaire dans la tolérance ?"}
+    E -- non --> Z
+    E -- oui --> F["Distance haversine des départs (gratuit)"]
+    F --> G{"<= MAX_DISTANCE_KM ?"}
+    G -- non --> Z
+    G -- oui --> H["Regrouper par trajet de l'utilisateur courant"]
+    H --> I["Trier chaque groupe par distance croissante"]
+    I --> J["Garder les 3 candidats les plus proches"]
+    J --> K["Chercher les itinéraires dans routing_cache"]
+    K --> L{"Présents dans le cache ?"}
+    L -- non --> M["Calcul ORS puis enregistrement permanent"]
+    L -- oui --> N["Réutiliser les durées et géométries"]
+    M --> O["temps_ajouté = durée(détour) - durée(direct)"]
+    N --> O
+    O --> P["Score plafonné à 100 %"]
+    P --> Q{"Score >= MIN_MATCH_SCORE ?"}
+    Q -- non --> Z
+    Q -- oui --> R["Match proposé — trié par score puis détour croissant"]
 ```
 
 ## 1. Filtrage (aucun appel réseau)
@@ -47,26 +52,18 @@ Pour chaque paire `(mon_trajet, autre_trajet)` :
 3. Déterminer les rôles : il faut un conducteur (`role` = `driver`/`both`) et
    un passager (`role` = `passenger`/`both`) compatibles entre les deux
    utilisateurs — sinon la paire est ignorée.
-4. Calculer la distance à vol d'oiseau (haversine) entre les deux points de
+4. Écarter la paire si l'écart entre les horaires dépasse la tolérance des
+   utilisateurs. Ce contrôle a lieu avant tout appel à ORS.
+5. Calculer la distance à vol d'oiseau (haversine) entre les deux points de
    départ. Si elle dépasse `MAX_DISTANCE_KM` (10 km par défaut), la paire est
    écartée d'entrée — c'est un filtre bon marché avant de solliciter le
    service de routing.
 
-Les candidats survivants sont regroupés **par trajet conducteur** (une clé
-= un `Ride` précis), triés par distance de départ croissante, et seuls les
-**`MAX_DETOUR_CANDIDATES` premiers de chaque groupe** (8 par défaut) passent
-à l'étape suivante.
-
-Cette limite borne le nombre de *passagers évalués pour un même
-conducteur*, pas le nombre total de groupes (donc pas le nombre total
-d'appels ORS d'une recherche). Elle est très efficace quand l'utilisateur
-courant est **conducteur** (un seul groupe, potentiellement beaucoup de
-passagers candidats, coupé à 8). Elle protège beaucoup moins bien quand
-l'utilisateur courant est **passager** : chaque conducteur compatible forme
-son propre groupe (généralement 1-2 candidats dedans, sous la limite de
-toute façon), donc le nombre d'appels grandit avec le nombre de conducteurs
-compatibles dans la base, pas seulement avec `MAX_DETOUR_CANDIDATES`. Voir
-le calcul dans la FAQ ci-dessous.
+Les candidats survivants sont regroupés **par trajet de l'utilisateur
+courant**, triés par distance de départ croissante, et seuls les
+**`MAX_DETOUR_CANDIDATES` premiers de chaque groupe** (3 par défaut) passent
+à l'étape suivante. La borne fonctionne donc de la même manière lorsque
+l'utilisateur est conducteur ou passager.
 
 ## 2. Score (avec appels au service de routing)
 
@@ -101,7 +98,18 @@ plus le bonus est élevé (plafonné à `MAX_DISTANCE_KM`).
 Le score final = somme des trois. Seuls les matchs avec un score ≥
 `MIN_MATCH_SCORE` (60 par défaut) sont retenus. Tri final : score décroissant,
 puis temps de détour croissant (le candidat qui ajoute le moins de temps est
-proposé en premier).
+proposé en premier). Le pourcentage exposé est toujours plafonné à 100 %.
+
+## Cache des itinéraires
+
+Les itinéraires directs et avec point de passage sont enregistrés dans la
+table `routing_cache`. La clé dépend des coordonnées arrondies, du fournisseur,
+du profil de conduite et de la version du cache. Une route connue ne consomme
+donc aucun nouvel appel ORS.
+
+Le cache n'expire pas automatiquement. Une modification des coordonnées, du
+profil, du fournisseur ou de `CACHE_VERSION` produit une nouvelle clé et
+entraîne un nouveau calcul. Seuls les résultats ORS réussis sont enregistrés.
 
 ## Pourquoi le temps de détour réel plutôt qu'une distance au tracé ?
 
@@ -125,37 +133,19 @@ surchargeables via `.env` (voir `doc/CONFIGURATION.md`) :
 |---|---|---|
 | `MAX_DISTANCE_KM` | 10.0 | Filtre bon marché + bonus proximité départs |
 | `MAX_DETOUR_MIN` | 12.0 | Seuil de temps de détour accepté |
-| `MAX_DETOUR_CANDIDATES` | 8 | Nb max de candidats évalués via ORS par trajet conducteur |
+| `MAX_DETOUR_CANDIDATES` | 3 | Nb max de candidats évalués via ORS par trajet de l'utilisateur |
 | `MIN_MATCH_SCORE` | 60 | Score minimum pour qu'un match soit proposé |
+| `ORS_MAX_REQUESTS_PER_MINUTE` | 35 | Limite locale de sécurité avant la limite ORS |
 
 ## FAQ — capacité max d'appels à l'API de routing
 
-Nombre d'appels ORS pour **une seule** recherche (`find_matches`) :
+Pour chaque trajet de l'utilisateur courant, trois candidats au maximum sont
+évalués. Sans aucune donnée en cache, cela représente au pire :
 
-```
-appels ≈ Σ (sur chaque groupe conducteur retenu) [ 1 direct (mis en cache) + min(taille_du_groupe, MAX_DETOUR_CANDIDATES) détours ]
-```
+- utilisateur conducteur : 1 route directe + 3 détours, soit 4 appels ;
+- utilisateur passager : jusqu'à 3 routes directes + 3 détours, soit 6 appels.
 
-Deux cas très différents :
-
-- **Utilisateur courant conducteur** : un seul groupe (son propre trajet),
-  donc `MAX_DETOUR_CANDIDATES` (8) borne vraiment le nombre d'appels — au
-  pire **1 + 8 = 9 appels** par trajet du conducteur (x2 si `role = both` et
-  qu'il a aussi des trajets passager à vérifier).
-- **Utilisateur courant passager** : chaque conducteur compatible dans la
-  base forme son propre groupe (généralement 1-2 candidats, donc en dessous
-  du plafond `MAX_DETOUR_CANDIDATES` de toute façon — la limite ne réduit
-  quasiment rien ici). Le nombre d'appels grandit avec le nombre de
-  conducteurs compatibles trouvés par le filtre bon marché (direction +
-  rôle + `MAX_DISTANCE_KM`), donc avec la taille de la base et sa densité
-  géographique.
-
-Avec les 40 profils de test (répartis sur Toulouse/Blagnac/Colomiers, soit
-~15 km de diamètre, tous sous le rayon `MAX_DISTANCE_KM` de 10 km entre eux
-dans beaucoup de cas), le scénario passager peut encore générer plusieurs
-dizaines d'appels — la protection actuelle n'est donc **pas** un plafond
-global garanti, seulement un plafond par conducteur. Une vraie borne
-globale (ex. couper aussi le nombre total de groupes traités, pas seulement
-la taille de chacun) serait nécessaire pour un plafond strict quelle que
-soit la taille de la base — pas encore fait, à considérer si la base de
-test grandit encore ou si des rate-limits ORS réapparaissent.
+Ces nombres diminuent dès que des itinéraires sont présents dans
+`routing_cache`. Le client bloque aussi localement au-delà de 35 nouvelles
+requêtes par minute. Un quota quotidien épuisé produit immédiatement une
+erreur explicite au lieu de laisser l'interface attendre 45 secondes.

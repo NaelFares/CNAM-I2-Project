@@ -2,7 +2,9 @@
 
 ## Vue d'ensemble
 
-Cette base de données PostgreSQL gère les utilisateurs, leurs événements (cours) et les trajets de covoiturage associés.
+Cette base de données PostgreSQL gère les utilisateurs, leurs événements
+(cours), les trajets de covoiturage associés et le cache technique des
+itinéraires calculés par le fournisseur de routing.
 
 ## Diagramme ER (Mermaid)
 
@@ -43,6 +45,25 @@ erDiagram
         DOUBLE PRECISION start_lon
         DOUBLE PRECISION end_lat
         DOUBLE PRECISION end_lon
+    }
+
+    routing_cache {
+        BIGSERIAL id PK
+        TEXT cache_key UK
+        TEXT provider
+        TEXT profile
+        DOUBLE_PRECISION start_lat
+        DOUBLE_PRECISION start_lon
+        DOUBLE_PRECISION via_lat
+        DOUBLE_PRECISION via_lon
+        DOUBLE_PRECISION end_lat
+        DOUBLE_PRECISION end_lon
+        JSONB geometry
+        DOUBLE_PRECISION distance_m
+        DOUBLE_PRECISION duration_s
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ last_used_at
+        INTEGER hit_count
     }
 ```
 
@@ -90,6 +111,32 @@ Représente les trajets de covoiturage générés depuis les événements.
 | `end_lat` | DOUBLE PRECISION | NOT NULL | Latitude du point d'arrivée |
 | `end_lon` | DOUBLE PRECISION | NOT NULL | Longitude du point d'arrivée |
 
+### Table `routing_cache`
+
+Stocke les réponses ORS réussies afin qu'un même itinéraire ne consomme pas
+de nouveau quota. Cette table technique n'a pas de clé étrangère vers
+`rides` : sa clé est calculée à partir des coordonnées, du fournisseur, du
+profil de conduite et de la version du cache.
+
+| Colonne | Type | Contraintes | Description |
+|---------|------|-------------|-------------|
+| `id` | BIGSERIAL | PRIMARY KEY | Identifiant technique |
+| `cache_key` | TEXT | UNIQUE, NOT NULL | Empreinte stable des paramètres de routing |
+| `provider` | TEXT | NOT NULL | Fournisseur, actuellement `ors` |
+| `profile` | TEXT | NOT NULL | Profil, actuellement `driving-car` |
+| `start_lat`, `start_lon` | DOUBLE PRECISION | NOT NULL | Point de départ |
+| `via_lat`, `via_lon` | DOUBLE PRECISION | NULL | Point de récupération éventuel |
+| `end_lat`, `end_lon` | DOUBLE PRECISION | NOT NULL | Destination |
+| `geometry` | JSONB | NOT NULL | Tracé cartographique sous forme de points |
+| `distance_m` | DOUBLE PRECISION | NOT NULL | Distance calculée en mètres |
+| `duration_s` | DOUBLE PRECISION | NOT NULL | Durée calculée en secondes |
+| `created_at` | TIMESTAMPTZ | NOT NULL | Date du calcul |
+| `last_used_at` | TIMESTAMPTZ | NOT NULL | Dernière réutilisation |
+| `hit_count` | INTEGER | NOT NULL | Nombre de réutilisations |
+
+Les entrées n'expirent pas automatiquement. Un changement des paramètres de
+routing génère une nouvelle `cache_key` et donc un nouveau calcul.
+
 ## Relations détaillées
 
 ### users → events (1 : 0..*)
@@ -118,3 +165,7 @@ Représente les trajets de covoiturage générés depuis les événements.
 PostgreSQL crée automatiquement des index pour :
 - Les clés primaires (`id` sur chaque table)
 - Les contraintes UNIQUE (`email` sur `users`)
+- La contrainte UNIQUE (`cache_key` sur `routing_cache`)
+
+Un index explicite existe également sur `routing_cache.last_used_at` pour le
+suivi technique du cache.

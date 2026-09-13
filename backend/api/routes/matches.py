@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
 from backend.services.matching import matching_service
-from backend.services.routing import routing_service
+from backend.services.routing import (
+    RoutingQuotaExceededError,
+    RoutingRateLimitError,
+    routing_service,
+)
 
 from backend.api.deps import require_current_user
-from backend.api.feedback import make_feedback
+from backend.api.feedback import make_feedback, raise_api_error
 from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, MatchSearchResponse
 
 router = APIRouter(prefix="/matches", tags=["matches"])
@@ -21,7 +25,22 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 def find_matches(user: User = Depends(require_current_user)):
     my_rides = db.get_rides_by_user(user.id)
     all_rides = db.get_all_rides()
-    matches = matching_service.find_matches(current_user=user, my_rides=my_rides, all_rides=all_rides)
+    try:
+        matches = matching_service.find_matches(
+            current_user=user,
+            my_rides=my_rides,
+            all_rides=all_rides,
+        )
+    except RoutingQuotaExceededError:
+        raise_api_error(
+            "MATCHES_ROUTING_QUOTA_EXCEEDED",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except RoutingRateLimitError:
+        raise_api_error(
+            "MATCHES_ROUTING_RATE_LIMITED",
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     return MatchesResponse(
         matches=[MatchDTO(**match) for match in matches],
@@ -42,10 +61,26 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_curren
         end_lon=body.dest_lon,
     )
     all_rides = db.get_all_rides()
-    matches = matching_service.find_matches(current_user=user, my_rides=[transient_ride], all_rides=all_rides)
-    geometry = routing_service.get_route_geometry(
-        (body.origin_lat, body.origin_lon), (body.dest_lat, body.dest_lon)
-    ) or []
+    try:
+        matches = matching_service.find_matches(
+            current_user=user,
+            my_rides=[transient_ride],
+            all_rides=all_rides,
+        )
+        geometry = routing_service.get_route_geometry(
+            (body.origin_lat, body.origin_lon),
+            (body.dest_lat, body.dest_lon),
+        ) or []
+    except RoutingQuotaExceededError:
+        raise_api_error(
+            "MATCHES_ROUTING_QUOTA_EXCEEDED",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except RoutingRateLimitError:
+        raise_api_error(
+            "MATCHES_ROUTING_RATE_LIMITED",
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     return MatchSearchResponse(
         matches=[MatchDTO(**match) for match in matches],

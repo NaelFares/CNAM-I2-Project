@@ -4,7 +4,7 @@ from typing import List, Optional
 
 import psycopg2
 from psycopg2 import OperationalError
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import Json, RealDictCursor
 
 from backend.core.config import config
 from backend.models.user import User
@@ -227,6 +227,80 @@ class Database:
         conn.commit()
         conn.close()
 
+    # --- ROUTING CACHE ---
+    def get_routing_cache(self, cache_key: str) -> Optional[dict]:
+        """Retourne un calcul d'itineraire et comptabilise son utilisation."""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(
+            """
+            SELECT geometry, distance_m, duration_s
+            FROM routing_cache
+            WHERE cache_key = %s
+            """,
+            (cache_key,),
+        )
+        row = cursor.fetchone()
+        if row:
+            cursor.execute(
+                """
+                UPDATE routing_cache
+                SET last_used_at = NOW(), hit_count = hit_count + 1
+                WHERE cache_key = %s
+                """,
+                (cache_key,),
+            )
+            conn.commit()
+        conn.close()
+        return dict(row) if row else None
+
+    def upsert_routing_cache(
+        self,
+        cache_key: str,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        result: dict,
+        via: Optional[tuple[float, float]] = None,
+        provider: str = "ors",
+        profile: str = "driving-car",
+    ) -> None:
+        """Enregistre ou actualise un calcul d'itineraire reutilisable."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO routing_cache (
+                cache_key, provider, profile,
+                start_lat, start_lon, via_lat, via_lon, end_lat, end_lon,
+                geometry, distance_m, duration_s
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (cache_key) DO UPDATE SET
+                provider = EXCLUDED.provider,
+                profile = EXCLUDED.profile,
+                geometry = EXCLUDED.geometry,
+                distance_m = EXCLUDED.distance_m,
+                duration_s = EXCLUDED.duration_s,
+                created_at = NOW(),
+                last_used_at = NOW()
+            """,
+            (
+                cache_key,
+                provider,
+                profile,
+                start[0],
+                start[1],
+                via[0] if via else None,
+                via[1] if via else None,
+                end[0],
+                end[1],
+                Json(result.get("geometry", [])),
+                float(result.get("distance_m", 0.0)),
+                float(result.get("duration_s", 0.0)),
+            ),
+        )
+        conn.commit()
+        conn.close()
 
 # Instance globale
 
