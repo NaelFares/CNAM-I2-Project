@@ -33,6 +33,15 @@
         </div>
 
         <div>
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
+          <select v-model="form.smoking_preference" class="input">
+            <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <div>
           <label class="mb-1.5 block text-sm font-semibold text-slate-700">Musique</label>
           <select v-model="form.music_preference" class="input">
             <option v-for="option in MUSIC_OPTIONS" :key="option.value" :value="option.value">
@@ -64,15 +73,6 @@
               {{ option.label }}
             </button>
           </div>
-        </div>
-
-        <div>
-          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
-          <select v-model="form.smoking_preference" class="input">
-            <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
         </div>
 
         <div class="md:col-span-2">
