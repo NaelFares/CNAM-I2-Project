@@ -36,6 +36,7 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
         name=payload.name.strip(),
         email=str(payload.email).strip().lower(),
         role=payload.role,
+        gender=payload.gender,
         start_address=payload.start_address.strip(),
         start_lat=payload.start_lat,
         start_lon=payload.start_lon,

@@ -37,9 +37,10 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, hashed_password, role, start_address, start_lat, start_lon, time_tolerance_min,
+            INSERT INTO users (name, email, hashed_password, role, gender,
+                               start_address, start_lat, start_lon, time_tolerance_min,
                                school_address, school_lat, school_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -47,6 +48,7 @@ class Database:
                 user.email,
                 user.hashed_password,
                 user.role,
+                user.gender,
                 user.start_address,
                 user.start_lat,
                 user.start_lon,
@@ -107,7 +109,8 @@ class Database:
         cursor.execute(
             """
             UPDATE users
-            SET name = %s, email = %s, role = %s, start_address = %s, start_lat = %s, start_lon = %s,
+            SET name = %s, email = %s, role = %s, gender = %s,
+                start_address = %s, start_lat = %s, start_lon = %s,
                 time_tolerance_min = %s, school_address = %s, school_lat = %s, school_lon = %s
             WHERE id = %s
             """,
@@ -115,6 +118,7 @@ class Database:
                 user.name,
                 user.email,
                 user.role,
+                user.gender,
                 user.start_address,
                 user.start_lat,
                 user.start_lon,

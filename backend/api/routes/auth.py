@@ -74,6 +74,7 @@ def register(payload: RegisterRequest, response: Response):
         name=payload.name.strip(),
         email=str(payload.email).strip().lower(),
         role=payload.role,
+        gender=payload.gender,
         hashed_password=_hash_password(payload.password),
         start_address=payload.start_address.strip(),
         start_lat=payload.start_lat,

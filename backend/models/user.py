@@ -14,6 +14,7 @@ class User:
     email: str = ""
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
     role: str = "both"  # "driver", "passenger", "both"
+    gender: str = "autre"  # "homme", "femme", "autre"
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -30,6 +31,11 @@ class User:
         """Vérifie si l'utilisateur est passager"""
         return self.role in ["passenger", "both"]
 
+    def is_woman(self) -> bool:
+        """Seules les femmes peuvent activer le filtre "ladies only" et y
+        apparaître (cf. backend/services/matching.py)."""
+        return self.gender == "femme"
+
     def has_school_location(self) -> bool:
         return bool(self.school_lat and self.school_lon)
 
@@ -41,6 +47,7 @@ class User:
             "email": self.email,
             "hashed_password": self.hashed_password,
             "role": self.role,
+            "gender": self.gender,
             "start_address": self.start_address,
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
@@ -59,6 +66,7 @@ class User:
             email=data.get("email", ""),
             hashed_password=data.get("hashed_password", ""),
             role=data.get("role", "both"),
+            gender=data.get("gender") or "autre",
             start_address=data.get("start_address", ""),
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),

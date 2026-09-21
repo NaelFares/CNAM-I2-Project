@@ -17,6 +17,7 @@ erDiagram
         TEXT name
         TEXT email UK
         TEXT role
+        TEXT gender
         TEXT start_address
         DOUBLE PRECISION start_lat
         DOUBLE PRECISION start_lon
@@ -57,6 +58,7 @@ Représente les étudiants utilisateurs de l'application de covoiturage.
 | `name` | TEXT | NOT NULL | Nom complet de l'utilisateur |
 | `email` | TEXT | UNIQUE, NOT NULL | Adresse email unique |
 | `role` | TEXT | NOT NULL | Rôle : "driver", "passenger" ou "both" |
+| `gender` | TEXT | NOT NULL, DEFAULT 'autre' | Sexe : "homme", "femme" ou "autre". Obligatoire à l'inscription ; le défaut ne sert qu'aux comptes créés avant la migration |
 | `start_address` | TEXT | DEFAULT '' | Adresse lisible du point de départ |
 | `start_lat` | DOUBLE PRECISION | NOT NULL | Latitude du point de départ |
 | `start_lon` | DOUBLE PRECISION | NOT NULL | Longitude du point de départ |

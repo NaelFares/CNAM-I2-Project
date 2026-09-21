@@ -8,6 +8,9 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 
+Gender = Literal["homme", "femme", "autre"]
+
+
 class ApiMessage(BaseModel):
     code: str
     message: str
@@ -22,6 +25,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     role: Literal["both", "driver", "passenger"] = "both"
+    gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -42,6 +46,7 @@ class UserDTO(BaseModel):
     name: str
     email: EmailStr
     role: Literal["both", "driver", "passenger"]
+    gender: Gender = "autre"
     start_address: str
     start_lat: float
     start_lon: float
@@ -60,6 +65,7 @@ class ProfileUpdateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     role: Literal["both", "driver", "passenger"]
+    gender: Gender
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0

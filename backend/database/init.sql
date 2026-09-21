@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     email               TEXT UNIQUE NOT NULL,
     hashed_password     TEXT NOT NULL DEFAULT '',
     role                TEXT NOT NULL DEFAULT 'both',
+    gender              TEXT NOT NULL DEFAULT 'autre',
     start_address       TEXT DEFAULT '',
     start_lat           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     start_lon           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
@@ -23,6 +24,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS hashed_password TEXT NOT NULL DEFAULT
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_address  TEXT DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lat      DOUBLE PRECISION DEFAULT 0.0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lon      DOUBLE PRECISION DEFAULT 0.0;
+-- Sexe : les comptes anterieurs prennent le repli neutre 'autre'.
+-- Le filtre "ladies only" n'est pas stocke ici : c'est une option ponctuelle
+-- posee a chaque recherche (cf. MatchSearchRequest.ladies_only).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT NOT NULL DEFAULT 'autre';
 
 -- EVENTS
 CREATE TABLE IF NOT EXISTS events (

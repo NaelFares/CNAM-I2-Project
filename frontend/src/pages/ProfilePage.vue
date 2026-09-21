@@ -33,6 +33,14 @@
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tolérance horaire (minutes)</label>
             <Input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
           </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Sexe</label>
+            <select v-model="form.gender" required class="input">
+              <option v-for="option in GENDER_OPTIONS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
         </div>
       </Card>
 
@@ -158,6 +166,7 @@ import RouteMap from "../components/RouteMap.vue";
 import { Badge, Button, Card, Input } from "../components/ui";
 import { getRoutePreview } from "../api/endpoints";
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
+import { GENDER_OPTIONS } from "../lib/gender";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";
 
@@ -173,6 +182,7 @@ const form = reactive({
   name: "",
   email: "",
   role: "both",
+  gender: "autre",
   start_address: "",
   start_lat: 46.603354,
   start_lon: 1.888334,
@@ -239,6 +249,7 @@ onMounted(async () => {
   form.name = source.name;
   form.email = source.email;
   form.role = source.role;
+  form.gender = source.gender || "autre";
   form.start_address = source.start_address;
   form.start_lat = source.start_lat || form.start_lat;
   form.start_lon = source.start_lon || form.start_lon;
@@ -254,6 +265,7 @@ async function onSubmit() {
     name: form.name,
     email: form.email,
     role: form.role,
+    gender: form.gender,
     start_address: form.start_address,
     start_lat: form.start_lat,
     start_lon: form.start_lon,

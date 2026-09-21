@@ -167,6 +167,9 @@ def _create_seed_users() -> int:
     for i in range(1, SEED_COUNT + 1):
         name = unique_names[i - 1]
         role = ["driver", "passenger", "both"][i % 3]
+        # Repartition deterministe des sexes, pour qu'une recherche "ladies
+        # only" ait de quoi renvoyer des resultats en demo.
+        gender = ["homme", "femme", "autre"][i % 3]
         school_name, school_addr, school_lat, school_lon = schools_geocoded[i % len(schools_geocoded)]
         street, city, street_lat, street_lon = streets_geocoded[i % len(streets_geocoded)]
 
@@ -175,6 +178,7 @@ def _create_seed_users() -> int:
             email=f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}",
             hashed_password=hashed,
             role=role,
+            gender=gender,
             start_address=f"{rng.randint(1, 120)} {street}, {city}",
             start_lat=street_lat,
             start_lon=street_lon,
@@ -198,8 +202,9 @@ def _write_accounts_file() -> None:
         "Comptes de test Stud'Ride (generes par backend/database/populate.py)",
         f"Mot de passe commun a tous les comptes : {SEED_PASSWORD}",
         "",
-        f"{'email':<28} {'nom':<20} {'role':<10} {'adresse de depart':<48} {'adresse ecole':<48} ecole",
-        "-" * 200,
+        f"{'email':<28} {'nom':<20} {'role':<10} {'sexe':<8} "
+        f"{'adresse de depart':<48} {'adresse ecole':<48} ecole",
+        "-" * 210,
     ]
     for i in range(1, SEED_COUNT + 1):
         email = f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}"
@@ -208,8 +213,8 @@ def _write_accounts_file() -> None:
             continue
         school_name = TOULOUSE_SCHOOLS[i % len(TOULOUSE_SCHOOLS)][0]
         lines.append(
-            f"{user.email:<28} {user.name:<20} {user.role:<10} {user.start_address:<48} "
-            f"{user.school_address:<48} {school_name}"
+            f"{user.email:<28} {user.name:<20} {user.role:<10} {user.gender:<8} "
+            f"{user.start_address:<48} {user.school_address:<48} {school_name}"
         )
 
     ACCOUNTS_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")

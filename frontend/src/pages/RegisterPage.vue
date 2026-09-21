@@ -23,6 +23,16 @@
         </div>
 
         <div class="md:col-span-2">
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Sexe</label>
+          <select v-model="form.gender" required class="input">
+            <option value="" disabled>Sélectionnez…</option>
+            <option v-for="option in GENDER_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
           <label class="mb-1.5 block text-sm font-semibold text-slate-700">Mot de passe</label>
           <input v-model="form.password" type="password" required minlength="8" class="input" />
         </div>
@@ -58,6 +68,7 @@ import { computed, reactive } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { LoaderCircle, UserRoundPlus } from "lucide-vue-next";
 
+import { GENDER_OPTIONS } from "../lib/gender";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
@@ -66,6 +77,7 @@ const router = useRouter();
 const form = reactive({
   name: "",
   email: auth.pendingEmail || "",
+  gender: "",
   password: "",
   passwordConfirmation: "",
 });
