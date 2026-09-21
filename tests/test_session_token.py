@@ -3,11 +3,24 @@ import sys
 import types
 import unittest
 
+# `backend.api.session` ne lit que STORAGE_SECRET : on neutralise la config le
+# temps de l'import, pour ne pas dependre de python-dotenv ni d'un .env.
+# Le module garde ensuite sa propre reference vers ce faux objet, donc on peut
+# restaurer sys.modules aussitot — sans cette restauration, le faux module
+# restait en place pour tous les tests importes apres celui-ci, qui echouaient
+# alors sur "cannot import name ... (unknown location)".
+_previous_config = sys.modules.get("backend.core.config")
+
 fake_config_module = types.ModuleType("backend.core.config")
 fake_config_module.config = types.SimpleNamespace(STORAGE_SECRET="test-secret")
 sys.modules["backend.core.config"] = fake_config_module
 
 session_module = importlib.import_module("backend.api.session")
+
+if _previous_config is None:
+    del sys.modules["backend.core.config"]
+else:
+    sys.modules["backend.core.config"] = _previous_config
 
 
 class SessionTokenTests(unittest.TestCase):
