@@ -2,6 +2,10 @@
 Moteur de recommandation de covoiturage basé sur l'itinéraire.
 
 Critères primaires (filtre d'éligibilité) :
+  0. Option "ladies only" de la recherche, si elle est activée : seules les
+     autres utilisatrices sont retenues. C'est un filtre unilatéral posé par
+     l'utilisatrice qui cherche — il restreint ses résultats à elle, sans
+     changer sa propre visibilité dans les recherches des autres.
   1. Horaires d'arrivée dans la tolérance des deux utilisateurs (score 0-50)
   2. Temps de détour réel pour aller récupérer le passager (aller direct vs
      aller-via-passager, calculé par le moteur de routing), en dessous de
@@ -86,8 +90,10 @@ class Match:
         return {
             "driver_name": self.driver.name,
             "driver_id": self.driver.id,
+            "driver_gender": self.driver.gender,
             "passenger_name": self.passenger.name,
             "passenger_id": self.passenger.id,
+            "passenger_gender": self.passenger.gender,
             "ride_time": self.driver_ride.format_time(),
             "ride_type": self.driver_ride.get_direction_label(),
             "time_diff_min": self.time_diff_min,
@@ -133,9 +139,20 @@ class MatchingService:
         return cache[key]
 
     @staticmethod
-    def find_matches(current_user: User, my_rides: List[Ride], all_rides: List[Ride]) -> List[Dict]:
+    def find_matches(
+        current_user: User,
+        my_rides: List[Ride],
+        all_rides: List[Ride],
+        ladies_only: bool = False,
+    ) -> List[Dict]:
         """
         Trouve les trajets compatibles pour l'utilisateur courant.
+
+        `ladies_only` restreint les résultats aux autres utilisatrices. C'est
+        une option ponctuelle de la recherche (pas un réglage de profil), et
+        un filtre unilatéral : il ne retire pas `current_user` des résultats
+        renvoyés aux autres. Son autorisation est vérifiée côté route.
+
         Critère principal : le temps de détour réel pour aller récupérer le
         passager (aller-via-passager vs aller direct) doit rester sous
         MAX_DETOUR_MIN — indépendant de la destination du passager, tant que
@@ -161,6 +178,11 @@ class MatchingService:
 
                 other_user = db.get_user_by_id(other_ride.user_id)
                 if not other_user:
+                    continue
+
+                # "Ladies only" : filtre applique avant tout calcul, pour ne
+                # gaspiller aucun appel de routing sur une paire ecartee.
+                if ladies_only and not other_user.is_woman():
                     continue
 
                 if current_user.is_driver() and other_user.is_passenger():

@@ -20,7 +20,9 @@ flowchart TD
     B -- oui --> Z["Ignorer"]
     B -- non --> C{"Même sens (to_campus / from_campus) ?"}
     C -- non --> Z
-    C -- oui --> D{"Rôles conducteur/passager compatibles ?"}
+    C -- oui --> P{"Recherche 'ladies only' et autre utilisateur non-femme ?"}
+    P -- oui --> Z
+    P -- non --> D{"Rôles conducteur/passager compatibles ?"}
     D -- non --> Z
     D -- oui --> E["Distance haversine des départs (gratuit)"]
     E --> F{"<= MAX_DISTANCE_KM ?"}
@@ -44,10 +46,15 @@ Pour chaque paire `(mon_trajet, autre_trajet)` :
 1. Ignorer si c'est le même utilisateur.
 2. Ignorer si les deux trajets ne vont pas dans le même sens
    (`to_campus`/`from_campus`).
-3. Déterminer les rôles : il faut un conducteur (`role` = `driver`/`both`) et
+3. Si la recherche a été lancée avec l'option **« ladies only »**, ignorer tout
+   utilisateur dont `gender` n'est pas `femme` (le sexe `autre` est donc exclu
+   lui aussi). Ce filtre est placé avant le calcul de distance, pour ne
+   dépenser aucun appel de routing sur une paire écartée. Voir la section
+   dédiée plus bas.
+4. Déterminer les rôles : il faut un conducteur (`role` = `driver`/`both`) et
    un passager (`role` = `passenger`/`both`) compatibles entre les deux
    utilisateurs — sinon la paire est ignorée.
-4. Calculer la distance à vol d'oiseau (haversine) entre les deux points de
+5. Calculer la distance à vol d'oiseau (haversine) entre les deux points de
    départ. Si elle dépasse `MAX_DISTANCE_KM` (10 km par défaut), la paire est
    écartée d'entrée — c'est un filtre bon marché avant de solliciter le
    service de routing.
@@ -115,6 +122,25 @@ différentes autrement que par chance géographique, puisqu'il ne regardait
 qu'un seul tracé figé. Le calcul du détour réel (avec le point de passage par
 le passager) capture correctement ce genre de cas, au prix de plus d'appels
 au service de routing — d'où la limite `MAX_DETOUR_CANDIDATES` ci-dessus.
+
+## Option « ladies only »
+
+Option **ponctuelle d'une recherche**, pas un réglage de profil : elle est
+transmise à chaque appel (`ladies_only` dans le corps de `POST /matches/search`,
+paramètre de requête du même nom sur `POST /matches/find`) et rien n'est
+persisté à son sujet. Seul `users.gender` est stocké.
+
+Deux propriétés à garder en tête :
+
+- **Réservée aux utilisatrices.** Le serveur refuse l'option à tout compte dont
+  `gender` n'est pas `femme` (403, `MATCHES_LADIES_ONLY_FORBIDDEN`). C'est un
+  espace entre femmes, pas un filtre de préférence ouvert à tous. Le front se
+  contente de masquer la case : la vérification qui fait foi est côté serveur.
+- **Filtre unilatéral.** Il restreint les résultats de *celle qui cherche* ;
+  il ne la retire pas des résultats renvoyés aux autres. Rendre le choix
+  mutuel supposerait de le persister (par exemple une colonne sur `rides`),
+  puisque le moteur doit alors connaître le choix des deux côtés d'une paire
+  qu'aucun des deux n'a encore ouverte.
 
 ## Configuration
 

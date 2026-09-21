@@ -59,8 +59,13 @@ export async function generateRides() {
   return (await apiClient.post("/rides/generate")).data;
 }
 
-export async function findMatches() {
-  return (await apiClient.post("/matches/find", null, { timeout: 45000 })).data;
+export async function findMatches(ladiesOnly = false) {
+  return (
+    await apiClient.post("/matches/find", null, {
+      params: { ladies_only: ladiesOnly },
+      timeout: 45000,
+    })
+  ).data;
 }
 
 export async function searchCarpoolMatches(payload) {

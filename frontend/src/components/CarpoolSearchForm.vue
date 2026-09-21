@@ -63,6 +63,20 @@
       </div>
     </div>
 
+    <label v-if="ladiesOnlyAvailable" class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <input v-model="ladiesOnly" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
+      <span>
+        <span class="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+          <Venus class="h-4 w-4 text-pink-600" />
+          Covoiturer entre femmes
+        </span>
+        <span class="mt-0.5 block text-xs text-slate-500">
+          Cette recherche ne proposera que des utilisatrices. Votre profil reste visible dans les
+          recherches des autres.
+        </span>
+      </span>
+    </label>
+
     <Button :disabled="app.loading || !canSearch" @click="onSubmit">
       <UsersRound class="h-4 w-4" />
       Rechercher un covoiturage
@@ -72,9 +86,10 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
-import { ArrowLeft, ArrowRight, MapPin, School, UsersRound } from "lucide-vue-next";
+import { ArrowLeft, ArrowRight, MapPin, School, UsersRound, Venus } from "lucide-vue-next";
 
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
+import { canUseLadiesOnly } from "../lib/gender";
 import { useAppStore } from "../stores/app";
 import { Button, Card, Input } from "./ui";
 
@@ -87,6 +102,9 @@ const originAuto = useAddressAutocomplete(origin);
 const destinationAuto = useAddressAutocomplete(destination);
 
 const rideType = ref("to_campus");
+const ladiesOnly = ref(false);
+
+const ladiesOnlyAvailable = computed(() => canUseLadiesOnly(app.profile));
 
 function nextQuarterHour() {
   const date = new Date();
@@ -121,6 +139,9 @@ function onSubmit() {
     destLon: destination.lon,
     rideTime: rideTimeLocal.value,
     rideType: rideType.value,
+    // La case n'est affichee qu'aux utilisatrices, mais on ne se fie pas au
+    // rendu : le flag est neutralise si le profil ne le permet pas.
+    ladiesOnly: ladiesOnlyAvailable.value && ladiesOnly.value,
   });
 }
 </script>

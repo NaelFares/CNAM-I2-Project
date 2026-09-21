@@ -92,6 +92,12 @@ Représente les trajets de covoiturage générés depuis les événements.
 | `end_lat` | DOUBLE PRECISION | NOT NULL | Latitude du point d'arrivée |
 | `end_lon` | DOUBLE PRECISION | NOT NULL | Longitude du point d'arrivée |
 
+> **Note** — l'option « entre femmes » (*ladies only*) n'est pas stockée en
+> base : c'est un paramètre ponctuel de chaque recherche
+> (`MatchSearchRequest.ladies_only`, et le paramètre de requête `ladies_only`
+> sur `POST /matches/find`), pas un réglage de profil. Seule `users.gender`
+> est persistée. Voir `doc/MATCHING_ALGORITHM.md`.
+
 ## Relations détaillées
 
 ### users → events (1 : 0..*)

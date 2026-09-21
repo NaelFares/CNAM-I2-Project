@@ -31,6 +31,7 @@ MESSAGE_CATALOG = {
     "MATCHES_REQUIRED_RIDES": "Vous devez d'abord generer vos trajets.",
     "MATCHES_FOUND": "{count} correspondances trouvees !",
     "MATCHES_FIND_FAILED": "Impossible de rechercher des correspondances. Reessayez.",
+    "MATCHES_LADIES_ONLY_FORBIDDEN": "L'option \"entre femmes\" est reservee aux utilisatrices.",
     "VALIDATION_TIME_TOLERANCE_INVALID": "La tolerance horaire doit etre un nombre entre 5 et 60.",
 }
 

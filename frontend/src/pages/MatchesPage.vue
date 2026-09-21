@@ -36,7 +36,21 @@
         Conseil: plus le profil et le planning sont précis, plus le score de compatibilité est fiable.
       </div>
 
-      <Card>
+      <Card class="space-y-4">
+        <label v-if="ladiesOnlyAvailable" class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <input v-model="ladiesOnly" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
+          <span>
+            <span class="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+              <Venus class="h-4 w-4 text-pink-600" />
+              Covoiturer entre femmes
+            </span>
+            <span class="mt-0.5 block text-xs text-slate-500">
+              Cette recherche ne proposera que des utilisatrices. Votre profil reste visible dans les
+              recherches des autres.
+            </span>
+          </span>
+        </label>
+
         <Button :disabled="app.loading" @click="runFullPlanningSearch">
           <UsersRound class="h-4 w-4" />
           Trouver un covoiturage
@@ -54,7 +68,10 @@
               <h3 class="text-lg font-bold text-slate-900">{{ match.score }}% de compatibilité</h3>
               <Badge variant="primary">{{ match.ride_type }}</Badge>
             </div>
-            <p class="text-sm font-semibold text-slate-700">{{ match.driver_name }} → {{ match.passenger_name }}</p>
+            <p class="text-sm font-semibold text-slate-700">
+              {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
+              → {{ match.passenger_name }} ({{ genderLabel(match.passenger_gender) }})
+            </p>
             <div class="mt-2 space-y-1 text-sm text-slate-600">
               <p>Départ&nbsp;: {{ match.ride_time }}</p>
               <p>Écart de temps&nbsp;: {{ match.time_diff_min }} min</p>
@@ -83,20 +100,30 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { UsersRound } from "lucide-vue-next";
+import { computed, onMounted, ref } from "vue";
+import { UsersRound, Venus } from "lucide-vue-next";
 
 import CarpoolResultCard from "../components/CarpoolResultCard.vue";
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
 import RouteMap from "../components/RouteMap.vue";
 import { Badge, Button, Card } from "../components/ui";
+import { canUseLadiesOnly, genderLabel } from "../lib/gender";
 import { useAppStore } from "../stores/app";
 
 const app = useAppStore();
 const activeTab = ref("quick");
+const ladiesOnly = ref(false);
+
+const ladiesOnlyAvailable = computed(() => canUseLadiesOnly(app.profile));
+
+onMounted(async () => {
+  if (!app.profile) await app.loadProfile();
+});
 
 async function runFullPlanningSearch() {
   const ok = await app.generateRides();
-  if (ok) await app.findMatches();
+  // La case n'est affichee qu'aux utilisatrices, mais on ne se fie pas au
+  // rendu : le flag est neutralise si le profil ne le permet pas.
+  if (ok) await app.findMatches(ladiesOnlyAvailable.value && ladiesOnly.value);
 }
 </script>

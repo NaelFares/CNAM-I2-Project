@@ -10,3 +10,10 @@ export const GENDER_OPTIONS = [
 export function genderLabel(value) {
   return GENDER_OPTIONS.find((option) => option.value === value)?.label ?? "Non renseigné";
 }
+
+// L'option "entre femmes" d'une recherche est reservee aux utilisatrices ; le
+// backend la refuse aux autres (MATCHES_LADIES_ONLY_FORBIDDEN), le front se
+// contente de masquer la case.
+export function canUseLadiesOnly(profile) {
+  return profile?.gender === "femme";
+}

@@ -130,11 +130,11 @@ export const useAppStore = defineStore("app", {
         this.stopLoading();
       }
     },
-    async findMatches() {
+    async findMatches(ladiesOnly = false) {
       const feedback = useFeedbackStore();
       this.startLoading("Recherche des correspondances...", "Comparaison des trajets disponibles.");
       try {
-        const data = await findMatches();
+        const data = await findMatches(ladiesOnly);
         this.matches = data.matches;
         feedback.showSuccess(data.feedback.message);
       } catch (err) {
@@ -154,6 +154,7 @@ export const useAppStore = defineStore("app", {
           dest_lon: payload.destLon,
           ride_time: payload.rideTime,
           ride_type: payload.rideType,
+          ladies_only: Boolean(payload.ladiesOnly),
         });
         this.searchResults = data.matches;
         this.searchRouteGeometry = data.search_route_geometry;

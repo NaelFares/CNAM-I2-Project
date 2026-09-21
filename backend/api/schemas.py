@@ -129,8 +129,10 @@ class RidesGenerateResponse(BaseModel):
 class MatchDTO(BaseModel):
     driver_name: str
     driver_id: int
+    driver_gender: Gender = "autre"
     passenger_name: str
     passenger_id: int
+    passenger_gender: Gender = "autre"
     ride_time: str
     ride_type: str
     time_diff_min: int
@@ -156,6 +158,9 @@ class MatchSearchRequest(BaseModel):
     dest_lon: float
     ride_time: datetime
     ride_type: Literal["to_campus", "from_campus"]
+    # Option ponctuelle de la recherche : restreint les resultats aux femmes.
+    # Reservee aux utilisatrices (cf. routes/matches.py).
+    ladies_only: bool = False
 
 
 class MatchSearchResponse(BaseModel):

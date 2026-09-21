@@ -5,7 +5,10 @@
         <h3 class="text-lg font-bold text-slate-900">{{ match.score }}% de compatibilité</h3>
         <Badge variant="primary">{{ match.ride_type }}</Badge>
       </div>
-      <p class="text-sm font-semibold text-slate-700">{{ match.driver_name }} → {{ match.passenger_name }}</p>
+      <p class="text-sm font-semibold text-slate-700">
+        {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
+        → {{ match.passenger_name }} ({{ genderLabel(match.passenger_gender) }})
+      </p>
       <div class="mt-2 space-y-1 text-sm text-slate-600">
         <p>Départ&nbsp;: {{ match.ride_time }}</p>
         <p>Écart de temps&nbsp;: {{ match.time_diff_min }} min</p>
@@ -62,6 +65,7 @@ import { X } from "lucide-vue-next";
 
 import RouteMap from "./RouteMap.vue";
 import { Badge } from "./ui";
+import { genderLabel } from "../lib/gender";
 
 defineProps({
   match: { type: Object, required: true },
