@@ -19,13 +19,23 @@
         Départ et arrivée sont pré-remplis depuis votre profil — modifiez-les pour un trajet ponctuel.
       </div>
 
-      <CarpoolSearchForm @search="app.searchCarpoolTrip" />
+      <CarpoolSearchForm v-if="!quickSearchPerformed" @search="runQuickSearch" />
 
-      <RankedMatchesExplorer
-        v-if="app.searchResults.length"
-        :matches="app.searchResults"
-        :reference-geometry="app.searchRouteGeometry"
-      />
+      <template v-else>
+        <div class="flex justify-end">
+          <Button variant="secondary" @click="resetQuickSearch">Nouvelle recherche</Button>
+        </div>
+
+        <RankedMatchesExplorer
+          v-if="app.searchResults.length"
+          :matches="app.searchResults"
+          :reference-geometry="app.searchRouteGeometry"
+        />
+
+        <Card v-else>
+          <p class="text-sm font-semibold text-slate-700">Aucun covoiturage compatible n’a été trouvé pour ce trajet.</p>
+        </Card>
+      </template>
     </div>
 
     <div v-show="activeTab === 'planning'" class="space-y-4">
@@ -33,14 +43,24 @@
         Conseil: plus le profil et le planning sont précis, plus le score de compatibilité est fiable.
       </div>
 
-      <Card>
+      <Card v-if="!planningSearchPerformed">
         <Button :disabled="app.loading" @click="runFullPlanningSearch">
           <UsersRound class="h-4 w-4" />
           Trouver un covoiturage
         </Button>
       </Card>
 
-      <RankedMatchesExplorer v-if="app.matches.length" :matches="app.matches" />
+      <template v-else>
+        <div class="flex justify-end">
+          <Button variant="secondary" @click="resetPlanningSearch">Nouvelle recherche</Button>
+        </div>
+
+        <RankedMatchesExplorer v-if="app.matches.length" :matches="app.matches" />
+
+        <Card v-else>
+          <p class="text-sm font-semibold text-slate-700">Aucun covoiturage compatible n’a été trouvé dans votre planning.</p>
+        </Card>
+      </template>
     </div>
   </section>
 </template>
@@ -56,9 +76,30 @@ import { useAppStore } from "../stores/app";
 
 const app = useAppStore();
 const activeTab = ref("quick");
+const quickSearchPerformed = ref(false);
+const planningSearchPerformed = ref(false);
+
+async function runQuickSearch(payload) {
+  const ok = await app.searchCarpoolTrip(payload);
+  if (ok) quickSearchPerformed.value = true;
+}
+
+function resetQuickSearch() {
+  quickSearchPerformed.value = false;
+  app.searchResults = [];
+  app.searchRouteGeometry = [];
+}
 
 async function runFullPlanningSearch() {
   const ok = await app.generateRides();
-  if (ok) await app.findMatches();
+  if (!ok) return;
+
+  const matchesFound = await app.findMatches();
+  if (matchesFound) planningSearchPerformed.value = true;
+}
+
+function resetPlanningSearch() {
+  planningSearchPerformed.value = false;
+  app.matches = [];
 }
 </script>

@@ -137,8 +137,10 @@ export const useAppStore = defineStore("app", {
         const data = await findMatches();
         this.matches = data.matches;
         feedback.showSuccess(data.feedback.message);
+        return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
+        return false;
       } finally {
         this.stopLoading();
       }
@@ -158,8 +160,10 @@ export const useAppStore = defineStore("app", {
         this.searchResults = data.matches;
         this.searchRouteGeometry = data.search_route_geometry;
         feedback.showSuccess(data.feedback.message);
+        return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
+        return false;
       } finally {
         this.stopLoading();
       }
