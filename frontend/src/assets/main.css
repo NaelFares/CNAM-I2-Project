@@ -647,7 +647,13 @@ a {
   color: #8a5b08;
 }
 
-.matches-explorer__gold-group > header > span { font-size: 1.45rem; }
+.matches-explorer__award-icon {
+  width: 1.45rem;
+  height: 1.45rem;
+  flex: 0 0 1.45rem;
+  color: #b77908;
+  stroke-width: 2.2;
+}
 .matches-explorer__gold-group > header div { display: flex; flex-direction: column; }
 .matches-explorer__gold-group > header strong { font-family: "Space Grotesk", sans-serif; }
 .matches-explorer__gold-group > header small { font-size: 0.7rem; }
@@ -761,7 +767,7 @@ a {
 }
 
 .ranked-match-card__avatar--passenger { background: #ffedd5; color: #9a4312; }
-.ranked-match-card__arrow { color: #8da0b8; font-size: 0.85rem; }
+.ranked-match-card__arrow { width: 16px; height: 16px; color: #8da0b8; }
 
 .ranked-match-card__details {
   display: flex;

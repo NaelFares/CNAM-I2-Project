@@ -19,7 +19,7 @@
       <div ref="resultsList" class="matches-explorer__scroll">
         <section v-if="goldMatches.length" class="matches-explorer__gold-group">
           <header>
-            <span aria-hidden="true">🏆</span>
+            <Trophy class="matches-explorer__award-icon" aria-hidden="true" />
             <div>
               <strong>Meilleurs choix</strong>
               <small>{{ goldMatches.length }} trajet{{ goldMatches.length > 1 ? "s" : "" }} à {{ goldMatches[0].match.score }} %</small>
@@ -68,6 +68,7 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
+import { Trophy } from "lucide-vue-next";
 
 import RankedMatchCard from "./RankedMatchCard.vue";
 import RouteMap from "./RouteMap.vue";

@@ -21,7 +21,7 @@
           <strong>{{ match.driver_name }}</strong>
         </span>
       </div>
-      <span class="ranked-match-card__arrow" aria-hidden="true">→</span>
+      <ArrowRight class="ranked-match-card__arrow" aria-hidden="true" />
       <div class="ranked-match-card__person">
         <span class="ranked-match-card__avatar ranked-match-card__avatar--passenger">{{ initials(match.passenger_name) }}</span>
         <span>
@@ -41,7 +41,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { Clock3, MapPin, Route } from "lucide-vue-next";
+import { ArrowRight, Clock3, MapPin, Route } from "lucide-vue-next";
 
 const props = defineProps({
   match: { type: Object, required: true },

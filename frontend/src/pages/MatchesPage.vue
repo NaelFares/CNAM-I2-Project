@@ -16,7 +16,7 @@
 
     <div v-show="activeTab === 'quick'" class="space-y-4">
       <div class="advice-banner">
-        Départ et arrivée sont pré-remplis depuis votre profil — modifiez-les pour un trajet ponctuel.
+        Départ et arrivée sont pré-remplis depuis votre profil. Modifiez-les pour un trajet ponctuel.
       </div>
 
       <CarpoolSearchForm v-if="!quickSearchPerformed" @search="runQuickSearch" />

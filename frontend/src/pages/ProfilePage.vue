@@ -134,7 +134,7 @@
           :route-label="previewRoute.geometry.length ? `${formattedDuration} · ${previewRoute.distanceKm.toFixed(1)} km` : ''"
         />
         <p class="mt-2 text-xs text-slate-500">
-          Recalculé automatiquement à chaque changement d'adresse — non enregistré.
+          Recalculé automatiquement à chaque changement d'adresse. Cette valeur n'est pas enregistrée.
         </p>
       </Card>
 
