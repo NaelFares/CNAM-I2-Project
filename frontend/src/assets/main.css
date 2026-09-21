@@ -388,8 +388,16 @@ a {
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35), 0 24px 70px rgba(15, 23, 42, 0.18);
 }
 
+.mobile-preview-shell > .app-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: min(390px, 100%);
+  transform: translateX(-50%);
+}
+
 .mobile-preview-shell > main {
-  padding: 1.75rem 1rem !important;
+  padding: calc(1.75rem + 61px) 1rem 1.75rem !important;
 }
 
 .mobile-preview-shell header > div {
@@ -408,6 +416,22 @@ a {
 .mobile-navigation {
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 30px rgba(15, 23, 42, 0.12);
+  max-height: calc(100dvh - 61px);
+  overflow-y: auto;
+}
+
+@media (max-width: 1023px) {
+  .app-shell:not(.mobile-preview-shell) > .app-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .app-shell:not(.mobile-preview-shell) > .app-main {
+    padding-top: calc(1.75rem + 61px);
+  }
 }
 
 .schedule-toolbar {

@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen" :class="{ 'mobile-preview-shell': display.mobilePreview }">
-    <header ref="headerRef" class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+  <div class="app-shell min-h-screen" :class="{ 'mobile-preview-shell': display.mobilePreview }">
+    <header ref="headerRef" class="app-header sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
       <div
         class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-3 py-2 lg:px-6 lg:py-3"
       >
@@ -93,7 +93,7 @@
       </nav>
     </header>
 
-    <main class="mx-auto w-full max-w-6xl px-4 py-7 md:px-6 md:py-9">
+    <main class="app-main mx-auto w-full max-w-6xl px-4 py-7 md:px-6 md:py-9">
       <RouterView />
     </main>
   </div>
