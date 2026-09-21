@@ -12,105 +12,154 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { COLORS } from "../lib/colors";
 
 const props = defineProps({
-  routeGeometry: { type: Array, default: () => [] },   // [[lat, lon], ...]
-  myRouteGeometry: { type: Array, default: () => [] }, // [[lat, lon], ...] — drawn dashed, distinct color
-  driverCoords: { type: Array, default: null },        // [lat, lon]
-  passengerCoords: { type: Array, default: null },     // [lat, lon]
-  destCoords: { type: Array, default: null },          // [lat, lon]
+  routeGeometry: { type: Array, default: () => [] },
+  myRouteGeometry: { type: Array, default: () => [] },
+  routes: { type: Array, default: () => [] },
+  selectedRouteIndex: { type: Number, default: 0 },
+  driverCoords: { type: Array, default: null },
+  passengerCoords: { type: Array, default: null },
+  destCoords: { type: Array, default: null },
   height: { type: String, default: "280px" },
-  routeLabel: { type: String, default: "" },           // ex. "18 min · 12.4 km", badge ancré sur le tracé
+  routeLabel: { type: String, default: "" },
 });
 
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
+const emit = defineEmits(["select-route"]);
+
+L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
 const mapEl = ref(null);
 let map = null;
+const routePalette = ["#2563eb", "#7c3aed", "#0891b2", "#b45309", "#0f766e", "#be123c"];
+
+function routePoints(route) {
+  if (Array.isArray(route)) return route;
+  return route?.route_geometry || route?.geometry || [];
+}
+
+function pointIcon(color, label) {
+  return L.divIcon({
+    html: `<div class="shared-map-point" style="--marker-color:${color}"><span>${label}</span></div>`,
+    className: "",
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
+function rankIcon(rank, selected) {
+  const tone = ({ 1: "gold", 2: "silver", 3: "bronze" })[rank] || "standard";
+  return L.divIcon({
+    html: `<button type="button" class="shared-map-rank shared-map-rank--${tone}${selected ? " is-selected" : ""}" aria-label="Sélectionner le trajet classé ${rank}">${rank}</button>`,
+    className: "",
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+  });
+}
+
+function addSingleRoute(bounds) {
+  if (!props.routeGeometry?.length) return;
+  L.polyline(props.routeGeometry, { color: COLORS.routeLine, weight: 4, opacity: 0.85 }).addTo(map);
+  bounds.push(...props.routeGeometry);
+  if (props.routeLabel) {
+    const midpoint = props.routeGeometry[Math.floor(props.routeGeometry.length / 2)];
+    L.marker(midpoint, { icon: L.divIcon({ className: "", html: "", iconSize: [0, 0] }), interactive: false })
+      .bindTooltip(props.routeLabel, { permanent: true, direction: "top", className: "route-badge", offset: [0, -2] })
+      .addTo(map);
+  }
+}
+
+function addSharedRoutes(bounds) {
+  props.routes.forEach((route, index) => {
+    const points = routePoints(route);
+    if (!points.length) return;
+    const selected = index === props.selectedRouteIndex;
+    const line = L.polyline(points, {
+      color: selected ? "#1463df" : routePalette[index % routePalette.length],
+      weight: selected ? 7 : 5,
+      opacity: selected ? 1 : 0.27,
+      lineCap: "round",
+      lineJoin: "round",
+      interactive: true,
+    }).addTo(map);
+
+    line.on("click", () => emit("select-route", index));
+    line.on("mouseover", () => !selected && line.setStyle({ opacity: 0.72, weight: 6 }));
+    line.on("mouseout", () => !selected && line.setStyle({ opacity: 0.27, weight: 5 }));
+
+    const midpoint = points[Math.floor(points.length / 2)];
+    const rank = Number(route.rank || index + 1);
+    L.marker(midpoint, { icon: rankIcon(rank, selected), zIndexOffset: selected ? 1000 : 100 })
+      .on("click", () => emit("select-route", index))
+      .addTo(map);
+
+    if (selected) {
+      line.bringToFront();
+      line.bindTooltip(`${Number(route.score || 0)} % compatible · +${Number(route.extra_time_min || 0).toFixed(1)} min`, {
+        permanent: true,
+        direction: "top",
+        className: "route-badge route-badge--selected",
+        offset: [0, -8],
+      });
+    }
+    bounds.push(...points);
+  });
+}
 
 function buildMap() {
   if (!mapEl.value) return;
-
-  map = L.map(mapEl.value).setView([46.603354, 1.888334], 5);
+  map = L.map(mapEl.value, { zoomControl: true }).setView([46.603354, 1.888334], 5);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
 
   const bounds = [];
-
-  if (props.routeGeometry?.length) {
-    L.polyline(props.routeGeometry, { color: COLORS.routeLine, weight: 4, opacity: 0.8 }).addTo(map);
-    bounds.push(...props.routeGeometry);
-
-    if (props.routeLabel) {
-      const midpoint = props.routeGeometry[Math.floor(props.routeGeometry.length / 2)];
-      L.marker(midpoint, { icon: L.divIcon({ className: "", html: "", iconSize: [0, 0] }), interactive: false })
-        .bindTooltip(props.routeLabel, { permanent: true, direction: "top", className: "route-badge", offset: [0, -2] })
-        .addTo(map);
-    }
-  }
-
   if (props.myRouteGeometry?.length) {
-    L.polyline(props.myRouteGeometry, { color: COLORS.myRoute, weight: 4, opacity: 0.85, dashArray: "8 6" }).addTo(map);
+    L.polyline(props.myRouteGeometry, {
+      color: COLORS.myRoute,
+      weight: 4,
+      opacity: props.routes.length ? 0.32 : 0.85,
+      dashArray: "8 7",
+    }).addTo(map);
     bounds.push(...props.myRouteGeometry);
   }
 
-  const driverIcon = L.divIcon({
-    html: `<div style="background:${COLORS.driver};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-    className: "",
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
+  if (props.routes.length) addSharedRoutes(bounds);
+  else addSingleRoute(bounds);
 
-  const passengerIcon = L.divIcon({
-    html: `<div style="background:${COLORS.passenger};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-    className: "",
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
+  const selectedRoute = props.routes[props.selectedRouteIndex] || null;
+  const driverCoords = selectedRoute?.driver_coords || props.driverCoords;
+  const passengerCoords = selectedRoute?.passenger_coords || props.passengerCoords;
+  const destCoords = selectedRoute?.campus_coords || props.destCoords;
 
-  const destIcon = L.divIcon({
-    html: `<div style="background:${COLORS.destination};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-    className: "",
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-
-  if (props.driverCoords) {
-    L.marker(props.driverCoords, { icon: driverIcon }).bindTooltip("Conducteur").addTo(map);
-    bounds.push(props.driverCoords);
+  if (driverCoords && !props.routes.length) {
+    L.marker(driverCoords, { icon: pointIcon(COLORS.driver, "D") }).bindTooltip("Conducteur").addTo(map);
+    bounds.push(driverCoords);
+  }
+  if (passengerCoords) {
+    L.marker(passengerCoords, { icon: pointIcon(COLORS.passenger, "P") }).bindTooltip("Passager").addTo(map);
+    bounds.push(passengerCoords);
+  }
+  if (destCoords) {
+    L.marker(destCoords, { icon: pointIcon(COLORS.destination, "A") }).bindTooltip("Destination").addTo(map);
+    bounds.push(destCoords);
   }
 
-  if (props.passengerCoords) {
-    L.marker(props.passengerCoords, { icon: passengerIcon }).bindTooltip("Passager").addTo(map);
-    bounds.push(props.passengerCoords);
-  }
-
-  if (props.destCoords) {
-    L.marker(props.destCoords, { icon: destIcon }).bindTooltip("Destination").addTo(map);
-    bounds.push(props.destCoords);
-  }
-
-  if (bounds.length) {
-    map.fitBounds(bounds, { padding: [20, 20] });
-  }
+  if (bounds.length) map.fitBounds(bounds, { padding: [38, 38] });
+  window.setTimeout(() => map?.invalidateSize(), 0);
 }
 
-onMounted(() => buildMap());
+function rebuildMap() {
+  map?.remove();
+  map = null;
+  buildMap();
+}
 
+onMounted(buildMap);
 watch(
-  () => [props.routeGeometry, props.myRouteGeometry, props.driverCoords, props.passengerCoords, props.destCoords, props.routeLabel],
-  () => {
-    map?.remove();
-    map = null;
-    buildMap();
-  },
-  { deep: true }
+  () => [props.routeGeometry, props.myRouteGeometry, props.routes, props.selectedRouteIndex, props.driverCoords, props.passengerCoords, props.destCoords, props.routeLabel],
+  rebuildMap,
+  { deep: true },
 );
-
 onBeforeUnmount(() => {
   map?.remove();
   map = null;
