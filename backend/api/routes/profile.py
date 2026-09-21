@@ -47,6 +47,7 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
         # deja enregistree, pour que le DTO renvoye reste exact.
         photo_filename=user.photo_filename,
         music_preference=payload.music_preference,
+        music_genres=payload.music_genres,
         smoking_preference=payload.smoking_preference,
         car_seats=payload.car_seats,
         start_address=payload.start_address.strip(),
@@ -57,6 +58,12 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
         school_lat=payload.school_lat,
         school_lon=payload.school_lon,
     )
+    # Les styles sont ecartes si l'utilisateur ne veut pas de musique : les
+    # conserver ferait reapparaitre d'anciens choix le jour ou il repasse sur
+    # "avec", et afficherait un genre a cote de "sans musique".
+    if not next_user.wants_music():
+        next_user.music_genres = []
+
     db.update_user(next_user)
     return user_to_dto(next_user)
 

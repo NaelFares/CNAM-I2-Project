@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     gender              TEXT NOT NULL DEFAULT 'autre',
     photo_filename      TEXT NOT NULL DEFAULT '',
     music_preference    TEXT NOT NULL DEFAULT 'peu_importe',
+    music_genres        TEXT[] NOT NULL DEFAULT '{}',
     smoking_preference  TEXT NOT NULL DEFAULT 'peu_importe',
     car_seats           INTEGER NOT NULL DEFAULT 0,
     start_address       TEXT DEFAULT '',
@@ -40,6 +41,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT NOT NULL DEFAULT 'autre';
 -- donc aucune migration de donnees.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_filename TEXT NOT NULL DEFAULT '';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS music_preference TEXT NOT NULL DEFAULT 'peu_importe';
+-- Styles musicaux, uniquement pertinents quand music_preference vaut 'avec'
+-- ou 'peu_importe'. Tableau : on en accepte plusieurs, la plupart des gens
+-- n'ecoutant pas un seul genre. Vide = aucun style precise.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS music_genres TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS smoking_preference TEXT NOT NULL DEFAULT 'peu_importe';
 -- Places passager disponibles dans la voiture (conducteurs). 0 = non renseigne.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS car_seats INTEGER NOT NULL DEFAULT 0;

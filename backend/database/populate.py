@@ -36,6 +36,10 @@ SEED_COUNT = 40
 SEED_EMAIL_DOMAIN = "studride-test.fr"
 ACCOUNTS_FILE = Path(__file__).parent / "seed_accounts.txt"
 
+# Sous-ensemble du catalogue (cf. backend/api/constants.py) suffisant pour
+# varier les profils de demo sans les rendre illisibles.
+SEED_MUSIC_GENRES = ["pop", "rap", "rnb", "shatta", "latino", "reggae", "afrobeat", "rock", "electro", "jazz"]
+
 FIRST_NAMES = ["Camille", "Lucas", "Léa", "Hugo", "Manon", "Nathan", "Chloé", "Enzo", "Sarah", "Louis"]
 LAST_NAMES = ["Martin", "Bernard", "Dubois", "Petit", "Durand", "Leroy", "Moreau", "Simon", "Laurent", "Roux"]
 
@@ -173,6 +177,13 @@ def _create_seed_users() -> int:
         # Preferences reparties pour que les cards de matching affichent des
         # combinaisons variees ; aucun compte de test n'a de photo.
         music_preference = ["peu_importe", "avec", "sans"][i % 3]
+        # Styles piochés sans remise, seulement pour ceux qui acceptent la
+        # musique — cf. User.wants_music.
+        music_genres = (
+            rng.sample(SEED_MUSIC_GENRES, rng.randint(1, 3))
+            if music_preference in ("avec", "peu_importe")
+            else []
+        )
         smoking_preference = ["peu_importe", "non_fumeur", "non_fumeur", "fumeur"][i % 4]
         # Les passagers purs n'ont pas de voiture : 0 place.
         car_seats = 0 if role == "passenger" else rng.randint(1, 4)
@@ -186,6 +197,7 @@ def _create_seed_users() -> int:
             role=role,
             gender=gender,
             music_preference=music_preference,
+            music_genres=music_genres,
             smoking_preference=smoking_preference,
             car_seats=car_seats,
             start_address=f"{rng.randint(1, 120)} {street}, {city}",

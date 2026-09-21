@@ -84,6 +84,37 @@
               </option>
             </select>
           </div>
+
+          <!-- Styles : uniquement si la musique est acceptée -->
+          <div v-if="showMusicGenres" class="md:col-span-3">
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">
+              Styles de musique
+              <span class="ml-1 font-normal text-slate-400">
+                ({{ form.music_genres.length }}/{{ MAX_MUSIC_GENRES }})
+              </span>
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in MUSIC_GENRE_OPTIONS"
+                :key="option.value"
+                type="button"
+                :disabled="isGenreDisabled(option.value)"
+                :class="[
+                  'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
+                  form.music_genres.includes(option.value)
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                  isGenreDisabled(option.value) ? 'cursor-not-allowed opacity-40' : '',
+                ]"
+                @click="toggleGenre(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <p class="mt-1.5 text-xs text-slate-500">
+              Facultatif — {{ MAX_MUSIC_GENRES }} styles maximum.
+            </p>
+          </div>
           <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
             <select v-model="form.smoking_preference" class="input">
@@ -225,7 +256,14 @@ import { Avatar, Badge, Button, Card, Input } from "../components/ui";
 import { getRoutePreview } from "../api/endpoints";
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
 import { GENDER_OPTIONS } from "../lib/gender";
-import { MAX_CAR_SEATS, MUSIC_OPTIONS, SMOKING_OPTIONS } from "../lib/preferences";
+import {
+  MAX_CAR_SEATS,
+  MAX_MUSIC_GENRES,
+  MUSIC_GENRE_OPTIONS,
+  MUSIC_OPTIONS,
+  SMOKING_OPTIONS,
+  wantsMusic,
+} from "../lib/preferences";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";
 
@@ -237,6 +275,21 @@ const photoInput = ref(null);
 // store fait foi apres chaque televersement.
 const photoUrl = computed(() => app.profile?.photo_url || "");
 const isDriver = computed(() => form.role === "driver" || form.role === "both");
+const showMusicGenres = computed(() => wantsMusic(form.music_preference));
+
+function isGenreDisabled(value) {
+  // Plafond atteint : on peut encore decocher, plus ajouter.
+  return !form.music_genres.includes(value) && form.music_genres.length >= MAX_MUSIC_GENRES;
+}
+
+function toggleGenre(value) {
+  const index = form.music_genres.indexOf(value);
+  if (index >= 0) {
+    form.music_genres.splice(index, 1);
+  } else if (form.music_genres.length < MAX_MUSIC_GENRES) {
+    form.music_genres.push(value);
+  }
+}
 
 const startPlaceLabel = ref("");
 const schoolPlaceLabel = ref("");
@@ -249,6 +302,7 @@ const form = reactive({
   role: "both",
   gender: "autre",
   music_preference: "peu_importe",
+  music_genres: [],
   smoking_preference: "peu_importe",
   car_seats: 0,
   start_address: "",
@@ -319,6 +373,7 @@ onMounted(async () => {
   form.role = source.role;
   form.gender = source.gender || "autre";
   form.music_preference = source.music_preference || "peu_importe";
+  form.music_genres = [...(source.music_genres || [])];
   form.smoking_preference = source.smoking_preference || "peu_importe";
   form.car_seats = source.car_seats || 0;
   form.start_address = source.start_address;
@@ -351,6 +406,9 @@ async function onSubmit() {
     role: form.role,
     gender: form.gender,
     music_preference: form.music_preference,
+    // Le backend vide aussi cette liste, mais l'envoyer deja vide evite que
+    // la reponse contredise ce que l'utilisateur vient de voir a l'ecran.
+    music_genres: showMusicGenres.value ? form.music_genres : [],
     smoking_preference: form.smoking_preference,
     // Un profil non-conducteur ne declare pas de places.
     car_seats: isDriver.value ? form.car_seats : 0,

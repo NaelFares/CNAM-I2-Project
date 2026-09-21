@@ -38,10 +38,11 @@ class Database:
         cursor.execute(
             """
             INSERT INTO users (name, email, hashed_password, role, gender,
-                               photo_filename, music_preference, smoking_preference, car_seats,
+                               photo_filename, music_preference, music_genres,
+                               smoking_preference, car_seats,
                                start_address, start_lat, start_lon, time_tolerance_min,
                                school_address, school_lat, school_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -52,6 +53,7 @@ class Database:
                 user.gender,
                 user.photo_filename,
                 user.music_preference,
+                list(user.music_genres),
                 user.smoking_preference,
                 user.car_seats,
                 user.start_address,
@@ -121,7 +123,7 @@ class Database:
             """
             UPDATE users
             SET name = %s, email = %s, role = %s, gender = %s,
-                music_preference = %s, smoking_preference = %s, car_seats = %s,
+                music_preference = %s, music_genres = %s, smoking_preference = %s, car_seats = %s,
                 start_address = %s, start_lat = %s, start_lon = %s,
                 time_tolerance_min = %s, school_address = %s, school_lat = %s, school_lon = %s
             WHERE id = %s
@@ -132,6 +134,7 @@ class Database:
                 user.role,
                 user.gender,
                 user.music_preference,
+                list(user.music_genres),
                 user.smoking_preference,
                 user.car_seats,
                 user.start_address,

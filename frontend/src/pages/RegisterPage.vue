@@ -41,6 +41,31 @@
           </select>
         </div>
 
+        <div v-if="showMusicGenres" class="md:col-span-2">
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">
+            Styles de musique
+            <span class="ml-1 font-normal text-slate-400">(facultatif, {{ MAX_MUSIC_GENRES }} max.)</span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="option in MUSIC_GENRE_OPTIONS"
+              :key="option.value"
+              type="button"
+              :disabled="isGenreDisabled(option.value)"
+              :class="[
+                'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
+                form.music_genres.includes(option.value)
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                isGenreDisabled(option.value) ? 'cursor-not-allowed opacity-40' : '',
+              ]"
+              @click="toggleGenre(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
         <div>
           <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
           <select v-model="form.smoking_preference" class="input">
@@ -93,7 +118,13 @@ import { RouterLink, useRouter } from "vue-router";
 import { LoaderCircle, UserRoundPlus } from "lucide-vue-next";
 
 import { GENDER_OPTIONS } from "../lib/gender";
-import { MUSIC_OPTIONS, SMOKING_OPTIONS } from "../lib/preferences";
+import {
+  MAX_MUSIC_GENRES,
+  MUSIC_GENRE_OPTIONS,
+  MUSIC_OPTIONS,
+  SMOKING_OPTIONS,
+  wantsMusic,
+} from "../lib/preferences";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
@@ -104,6 +135,7 @@ const form = reactive({
   email: auth.pendingEmail || "",
   gender: "",
   music_preference: "peu_importe",
+  music_genres: [],
   smoking_preference: "peu_importe",
   password: "",
   passwordConfirmation: "",
@@ -113,10 +145,28 @@ const passwordMismatch = computed(
   () => form.passwordConfirmation.length > 0 && form.password !== form.passwordConfirmation
 );
 
+const showMusicGenres = computed(() => wantsMusic(form.music_preference));
+
+function isGenreDisabled(value) {
+  // Plafond atteint : on peut encore décocher, plus ajouter.
+  return !form.music_genres.includes(value) && form.music_genres.length >= MAX_MUSIC_GENRES;
+}
+
+function toggleGenre(value) {
+  const index = form.music_genres.indexOf(value);
+  if (index >= 0) {
+    form.music_genres.splice(index, 1);
+  } else if (form.music_genres.length < MAX_MUSIC_GENRES) {
+    form.music_genres.push(value);
+  }
+}
+
 async function onSubmit() {
   if (form.password !== form.passwordConfirmation) return;
   // détachement de passwordConfirmation car il ne doit pas être stocké
   const { passwordConfirmation, ...payload } = form;
+  // Cf. profil : pas de styles déclarés sans musique.
+  if (!showMusicGenres.value) payload.music_genres = [];
   const ok = await auth.registerUser(payload);
   if (ok) {
     router.push("/");

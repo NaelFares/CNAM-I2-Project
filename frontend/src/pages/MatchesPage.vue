@@ -84,6 +84,7 @@
               <Badge
                 v-for="badge in tripPreferenceBadges({
                   music_preference: match.driver_music_preference,
+                  music_genres: match.driver_music_genres,
                   smoking_preference: match.driver_smoking_preference,
                 })"
                 :key="badge"

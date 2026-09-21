@@ -77,6 +77,7 @@ def register(payload: RegisterRequest, response: Response):
         role=payload.role,
         gender=payload.gender,
         music_preference=payload.music_preference,
+        music_genres=payload.music_genres,
         smoking_preference=payload.smoking_preference,
         car_seats=payload.car_seats,
         hashed_password=_hash_password(payload.password),
@@ -88,6 +89,10 @@ def register(payload: RegisterRequest, response: Response):
         school_lat=payload.school_lat,
         school_lon=payload.school_lon,
     )
+    # Cf. update_profile : pas de styles declares sans musique.
+    if not user.wants_music():
+        user.music_genres = []
+
     user.id = db.create_user(user)
     _set_session_cookie(response, user.id, user.email)
 

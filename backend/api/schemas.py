@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from backend.api.constants import clean_music_genres
 
 
 Gender = Literal["homme", "femme", "autre"]
@@ -33,6 +35,7 @@ class RegisterRequest(BaseModel):
     role: Literal["both", "driver", "passenger"] = "both"
     gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
     music_preference: MusicPreference = "peu_importe"
+    music_genres: list[str] = []
     smoking_preference: SmokingPreference = "peu_importe"
     car_seats: int = Field(default=0, ge=0, le=MAX_CAR_SEATS)
     start_address: str = ""
@@ -42,6 +45,8 @@ class RegisterRequest(BaseModel):
     school_address: str = ""
     school_lat: float = 0.0
     school_lon: float = 0.0
+
+    _normalize_genres = field_validator("music_genres")(clean_music_genres)
 
 
 class LoginResponse(BaseModel):
@@ -60,6 +65,7 @@ class UserDTO(BaseModel):
     # aucune photo n'a ete televersee.
     photo_url: str = ""
     music_preference: MusicPreference = "peu_importe"
+    music_genres: list[str] = []
     smoking_preference: SmokingPreference = "peu_importe"
     car_seats: int = 0
     start_address: str
@@ -82,6 +88,7 @@ class ProfileUpdateRequest(BaseModel):
     role: Literal["both", "driver", "passenger"]
     gender: Gender
     music_preference: MusicPreference = "peu_importe"
+    music_genres: list[str] = []
     smoking_preference: SmokingPreference = "peu_importe"
     car_seats: int = Field(default=0, ge=0, le=MAX_CAR_SEATS)
     start_address: str = ""
@@ -91,6 +98,8 @@ class ProfileUpdateRequest(BaseModel):
     school_address: str = ""
     school_lat: float = 0.0
     school_lon: float = 0.0
+
+    _normalize_genres = field_validator("music_genres")(clean_music_genres)
 
 
 class GeocodeResult(BaseModel):
@@ -152,6 +161,7 @@ class MatchDTO(BaseModel):
     # Ambiance du trajet : ce sont les preferences du conducteur qui
     # s'appliquent, puisque c'est sa voiture.
     driver_music_preference: MusicPreference = "peu_importe"
+    driver_music_genres: list[str] = []
     driver_smoking_preference: SmokingPreference = "peu_importe"
     driver_car_seats: int = 0
     passenger_name: str

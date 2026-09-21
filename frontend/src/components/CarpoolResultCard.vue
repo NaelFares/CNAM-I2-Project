@@ -92,6 +92,7 @@ const props = defineProps({
 const tripBadges = computed(() =>
   tripPreferenceBadges({
     music_preference: props.match.driver_music_preference,
+    music_genres: props.match.driver_music_genres,
     smoking_preference: props.match.driver_smoking_preference,
   })
 );
