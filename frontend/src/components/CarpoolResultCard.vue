@@ -5,10 +5,25 @@
         <h3 class="text-lg font-bold text-slate-900">{{ match.score }}% de compatibilité</h3>
         <Badge variant="primary">{{ match.ride_type }}</Badge>
       </div>
-      <p class="text-sm font-semibold text-slate-700">
-        {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
-        → {{ match.passenger_name }} ({{ genderLabel(match.passenger_gender) }})
-      </p>
+      <div class="flex items-center gap-2">
+        <Avatar :name="match.driver_name" :photo-url="match.driver_photo_url" size="sm" />
+        <span class="text-sm font-semibold text-slate-700">
+          {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
+        </span>
+        <ArrowRight class="h-4 w-4 shrink-0 text-slate-400" />
+        <Avatar :name="match.passenger_name" :photo-url="match.passenger_photo_url" size="sm" />
+        <span class="text-sm font-semibold text-slate-700">
+          {{ match.passenger_name }} ({{ genderLabel(match.passenger_gender) }})
+        </span>
+      </div>
+
+      <div v-if="tripBadges.length || match.driver_car_seats" class="mt-2 flex flex-wrap gap-1.5">
+        <Badge v-for="badge in tripBadges" :key="badge" variant="info">{{ badge }}</Badge>
+        <Badge v-if="match.driver_car_seats" variant="info">
+          {{ match.driver_car_seats }} place{{ match.driver_car_seats > 1 ? "s" : "" }}
+        </Badge>
+      </div>
+
       <div class="mt-2 space-y-1 text-sm text-slate-600">
         <p>Départ&nbsp;: {{ match.ride_time }}</p>
         <p>Écart de temps&nbsp;: {{ match.time_diff_min }} min</p>
@@ -60,17 +75,26 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { X } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { ArrowRight, X } from "lucide-vue-next";
 
 import RouteMap from "./RouteMap.vue";
-import { Badge } from "./ui";
+import { Avatar, Badge } from "./ui";
 import { genderLabel } from "../lib/gender";
+import { tripPreferenceBadges } from "../lib/preferences";
 
-defineProps({
+const props = defineProps({
   match: { type: Object, required: true },
   myRouteGeometry: { type: Array, default: () => [] },
 });
+
+// Les preferences affichees sont celles du conducteur : c'est sa voiture.
+const tripBadges = computed(() =>
+  tripPreferenceBadges({
+    music_preference: props.match.driver_music_preference,
+    smoking_preference: props.match.driver_smoking_preference,
+  })
+);
 
 const expanded = ref(false);
 </script>

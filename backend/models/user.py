@@ -15,6 +15,10 @@ class User:
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
     role: str = "both"  # "driver", "passenger", "both"
     gender: str = "autre"  # "homme", "femme", "autre"
+    photo_filename: str = ""  # Nom de fichier seul, jamais un chemin (cf. init.sql)
+    music_preference: str = "peu_importe"  # "peu_importe", "avec", "sans"
+    smoking_preference: str = "peu_importe"  # "peu_importe", "fumeur", "non_fumeur"
+    car_seats: int = 0  # Places passager disponibles ; 0 = non renseigne
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -48,6 +52,10 @@ class User:
             "hashed_password": self.hashed_password,
             "role": self.role,
             "gender": self.gender,
+            "photo_filename": self.photo_filename,
+            "music_preference": self.music_preference,
+            "smoking_preference": self.smoking_preference,
+            "car_seats": self.car_seats,
             "start_address": self.start_address,
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
@@ -67,6 +75,10 @@ class User:
             hashed_password=data.get("hashed_password", ""),
             role=data.get("role", "both"),
             gender=data.get("gender") or "autre",
+            photo_filename=data.get("photo_filename") or "",
+            music_preference=data.get("music_preference") or "peu_importe",
+            smoking_preference=data.get("smoking_preference") or "peu_importe",
+            car_seats=data.get("car_seats") or 0,
             start_address=data.get("start_address", ""),
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),

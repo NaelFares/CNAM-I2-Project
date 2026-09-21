@@ -170,6 +170,12 @@ def _create_seed_users() -> int:
         # Repartition deterministe des sexes, pour qu'une recherche "ladies
         # only" ait de quoi renvoyer des resultats en demo.
         gender = ["homme", "femme", "autre"][i % 3]
+        # Preferences reparties pour que les cards de matching affichent des
+        # combinaisons variees ; aucun compte de test n'a de photo.
+        music_preference = ["peu_importe", "avec", "sans"][i % 3]
+        smoking_preference = ["peu_importe", "non_fumeur", "non_fumeur", "fumeur"][i % 4]
+        # Les passagers purs n'ont pas de voiture : 0 place.
+        car_seats = 0 if role == "passenger" else rng.randint(1, 4)
         school_name, school_addr, school_lat, school_lon = schools_geocoded[i % len(schools_geocoded)]
         street, city, street_lat, street_lon = streets_geocoded[i % len(streets_geocoded)]
 
@@ -179,6 +185,9 @@ def _create_seed_users() -> int:
             hashed_password=hashed,
             role=role,
             gender=gender,
+            music_preference=music_preference,
+            smoking_preference=smoking_preference,
+            car_seats=car_seats,
             start_address=f"{rng.randint(1, 120)} {street}, {city}",
             start_lat=street_lat,
             start_lon=street_lon,

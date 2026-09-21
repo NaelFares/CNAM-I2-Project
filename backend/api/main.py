@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.core.config import config
 from backend.database.setup import run_startup
@@ -31,6 +34,18 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+
+# Photos de profil servies en statique depuis le volume de stockage. Le
+# repertoire est cree au demarrage : StaticFiles refuse de monter un chemin
+# inexistant, ce qui empecherait l'API de demarrer sur une installation neuve.
+_photo_dir = Path(config.PHOTO_STORAGE_DIR)
+_photo_dir.mkdir(parents=True, exist_ok=True)
+app.mount(
+    config.PHOTO_URL_PREFIX,
+    StaticFiles(directory=_photo_dir),
+    name="profile-photos",
 )
 
 

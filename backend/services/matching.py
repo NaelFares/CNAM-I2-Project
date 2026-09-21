@@ -28,6 +28,7 @@ from backend.core.geo import haversine_distance
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
+from backend.services.photo_storage import build_photo_url
 from backend.services.routing import routing_service
 
 
@@ -91,9 +92,14 @@ class Match:
             "driver_name": self.driver.name,
             "driver_id": self.driver.id,
             "driver_gender": self.driver.gender,
+            "driver_photo_url": build_photo_url(self.driver.photo_filename),
+            "driver_music_preference": self.driver.music_preference,
+            "driver_smoking_preference": self.driver.smoking_preference,
+            "driver_car_seats": self.driver.car_seats,
             "passenger_name": self.passenger.name,
             "passenger_id": self.passenger.id,
             "passenger_gender": self.passenger.gender,
+            "passenger_photo_url": build_photo_url(self.passenger.photo_filename),
             "ride_time": self.driver_ride.format_time(),
             "ride_type": self.driver_ride.get_direction_label(),
             "time_diff_min": self.time_diff_min,

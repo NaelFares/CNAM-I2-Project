@@ -63,6 +63,13 @@ class Config:
     # Upload
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "5"))
 
+    # Photos de profil : repertoire de stockage (monte en volume Docker, sinon
+    # les photos disparaissent a chaque reconstruction d'image) et prefixe
+    # d'URL publique sous lequel l'API les sert en statique.
+    PHOTO_STORAGE_DIR = os.getenv("PHOTO_STORAGE_DIR", "/app/data/profile_photos")
+    PHOTO_URL_PREFIX = "/media/profile-photos"
+    MAX_PHOTO_SIZE_MB = int(os.getenv("MAX_PHOTO_SIZE_MB", "2"))
+
     # Import IA (CSV)
     AI_IMPORT_ENABLED = os.getenv("AI_IMPORT_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
     AI_IMPORT_PROVIDER = _RESOLVED_AI_IMPORT_PROVIDER

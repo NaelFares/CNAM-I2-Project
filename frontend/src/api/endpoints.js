@@ -24,6 +24,18 @@ export async function updateProfile(payload) {
   return (await apiClient.put("/profile", payload)).data;
 }
 
+export async function uploadProfilePhoto(file) {
+  const form = new FormData();
+  form.append("file", file);
+  // Content-Type volontairement non fixe : axios doit poser lui-meme la
+  // frontiere multipart.
+  return (await apiClient.post("/profile/photo", form, { timeout: 30000 })).data;
+}
+
+export async function deleteProfilePhoto() {
+  return (await apiClient.delete("/profile/photo")).data;
+}
+
 export async function searchAddress(query) {
   return (await apiClient.get("/geocode/search", { params: { q: query, limit: 5 } })).data;
 }

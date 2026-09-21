@@ -68,10 +68,31 @@
               <h3 class="text-lg font-bold text-slate-900">{{ match.score }}% de compatibilité</h3>
               <Badge variant="primary">{{ match.ride_type }}</Badge>
             </div>
-            <p class="text-sm font-semibold text-slate-700">
-              {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
-              → {{ match.passenger_name }} ({{ genderLabel(match.passenger_gender) }})
-            </p>
+            <div class="flex items-center gap-2">
+              <Avatar :name="match.driver_name" :photo-url="match.driver_photo_url" size="sm" />
+              <span class="text-sm font-semibold text-slate-700">
+                {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
+              </span>
+              <ArrowRight class="h-4 w-4 shrink-0 text-slate-400" />
+              <Avatar :name="match.passenger_name" :photo-url="match.passenger_photo_url" size="sm" />
+              <span class="text-sm font-semibold text-slate-700">
+                {{ match.passenger_name }} ({{ genderLabel(match.passenger_gender) }})
+              </span>
+            </div>
+
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <Badge
+                v-for="badge in tripPreferenceBadges({
+                  music_preference: match.driver_music_preference,
+                  smoking_preference: match.driver_smoking_preference,
+                })"
+                :key="badge"
+                variant="info"
+              >{{ badge }}</Badge>
+              <Badge v-if="match.driver_car_seats" variant="info">
+                {{ match.driver_car_seats }} place{{ match.driver_car_seats > 1 ? "s" : "" }}
+              </Badge>
+            </div>
             <div class="mt-2 space-y-1 text-sm text-slate-600">
               <p>Départ&nbsp;: {{ match.ride_time }}</p>
               <p>Écart de temps&nbsp;: {{ match.time_diff_min }} min</p>
@@ -101,13 +122,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UsersRound, Venus } from "lucide-vue-next";
+import { ArrowRight, UsersRound, Venus } from "lucide-vue-next";
 
 import CarpoolResultCard from "../components/CarpoolResultCard.vue";
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
 import RouteMap from "../components/RouteMap.vue";
-import { Badge, Button, Card } from "../components/ui";
+import { Avatar, Badge, Button, Card } from "../components/ui";
 import { canUseLadiesOnly, genderLabel } from "../lib/gender";
+import { tripPreferenceBadges } from "../lib/preferences";
 import { useAppStore } from "../stores/app";
 
 const app = useAppStore();

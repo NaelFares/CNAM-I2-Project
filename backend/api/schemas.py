@@ -9,6 +9,12 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 Gender = Literal["homme", "femme", "autre"]
+MusicPreference = Literal["peu_importe", "avec", "sans"]
+SmokingPreference = Literal["peu_importe", "fumeur", "non_fumeur"]
+
+# Borne haute volontairement large : on valide une saisie plausible, pas un
+# modele de vehicule precis.
+MAX_CAR_SEATS = 8
 
 
 class ApiMessage(BaseModel):
@@ -26,6 +32,9 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8)
     role: Literal["both", "driver", "passenger"] = "both"
     gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
+    music_preference: MusicPreference = "peu_importe"
+    smoking_preference: SmokingPreference = "peu_importe"
+    car_seats: int = Field(default=0, ge=0, le=MAX_CAR_SEATS)
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -47,6 +56,12 @@ class UserDTO(BaseModel):
     email: EmailStr
     role: Literal["both", "driver", "passenger"]
     gender: Gender = "autre"
+    # URL publique reconstruite par l'API depuis photo_filename ; vide si
+    # aucune photo n'a ete televersee.
+    photo_url: str = ""
+    music_preference: MusicPreference = "peu_importe"
+    smoking_preference: SmokingPreference = "peu_importe"
+    car_seats: int = 0
     start_address: str
     start_lat: float
     start_lon: float
@@ -66,6 +81,9 @@ class ProfileUpdateRequest(BaseModel):
     email: EmailStr
     role: Literal["both", "driver", "passenger"]
     gender: Gender
+    music_preference: MusicPreference = "peu_importe"
+    smoking_preference: SmokingPreference = "peu_importe"
+    car_seats: int = Field(default=0, ge=0, le=MAX_CAR_SEATS)
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -130,9 +148,16 @@ class MatchDTO(BaseModel):
     driver_name: str
     driver_id: int
     driver_gender: Gender = "autre"
+    driver_photo_url: str = ""
+    # Ambiance du trajet : ce sont les preferences du conducteur qui
+    # s'appliquent, puisque c'est sa voiture.
+    driver_music_preference: MusicPreference = "peu_importe"
+    driver_smoking_preference: SmokingPreference = "peu_importe"
+    driver_car_seats: int = 0
     passenger_name: str
     passenger_id: int
     passenger_gender: Gender = "autre"
+    passenger_photo_url: str = ""
     ride_time: str
     ride_type: str
     time_diff_min: int

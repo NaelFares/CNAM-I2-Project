@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
     hashed_password     TEXT NOT NULL DEFAULT '',
     role                TEXT NOT NULL DEFAULT 'both',
     gender              TEXT NOT NULL DEFAULT 'autre',
+    photo_filename      TEXT NOT NULL DEFAULT '',
+    music_preference    TEXT NOT NULL DEFAULT 'peu_importe',
+    smoking_preference  TEXT NOT NULL DEFAULT 'peu_importe',
+    car_seats           INTEGER NOT NULL DEFAULT 0,
     start_address       TEXT DEFAULT '',
     start_lat           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     start_lon           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
@@ -28,6 +32,17 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lon      DOUBLE PRECISION DEFA
 -- Le filtre "ladies only" n'est pas stocke ici : c'est une option ponctuelle
 -- posee a chaque recherche (cf. MatchSearchRequest.ladies_only).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT NOT NULL DEFAULT 'autre';
+
+-- Preferences de trajet et photo de profil.
+-- photo_filename ne stocke que le nom du fichier, jamais un chemin : les
+-- fichiers vivent dans un volume Docker (cf. config.PHOTO_STORAGE_DIR) et
+-- l'URL publique est reconstruite par l'API. Deplacer le stockage ne demande
+-- donc aucune migration de donnees.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_filename TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS music_preference TEXT NOT NULL DEFAULT 'peu_importe';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS smoking_preference TEXT NOT NULL DEFAULT 'peu_importe';
+-- Places passager disponibles dans la voiture (conducteurs). 0 = non renseigne.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS car_seats INTEGER NOT NULL DEFAULT 0;
 
 -- EVENTS
 CREATE TABLE IF NOT EXISTS events (

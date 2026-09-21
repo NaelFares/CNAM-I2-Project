@@ -32,6 +32,30 @@
           </select>
         </div>
 
+        <div>
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Musique</label>
+          <select v-model="form.music_preference" class="input">
+            <option v-for="option in MUSIC_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
+          <select v-model="form.smoking_preference" class="input">
+            <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <p class="text-xs text-slate-500">
+            Photo de profil et nombre de places se renseignent ensuite depuis votre profil.
+          </p>
+        </div>
+
         <div class="md:col-span-2">
           <label class="mb-1.5 block text-sm font-semibold text-slate-700">Mot de passe</label>
           <input v-model="form.password" type="password" required minlength="8" class="input" />
@@ -69,6 +93,7 @@ import { RouterLink, useRouter } from "vue-router";
 import { LoaderCircle, UserRoundPlus } from "lucide-vue-next";
 
 import { GENDER_OPTIONS } from "../lib/gender";
+import { MUSIC_OPTIONS, SMOKING_OPTIONS } from "../lib/preferences";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
@@ -78,6 +103,8 @@ const form = reactive({
   name: "",
   email: auth.pendingEmail || "",
   gender: "",
+  music_preference: "peu_importe",
+  smoking_preference: "peu_importe",
   password: "",
   passwordConfirmation: "",
 });

@@ -4,6 +4,7 @@ import { extractApiError } from "../api/api";
 import {
   confirmSchedule,
   dashboardSummary,
+  deleteProfilePhoto,
   findMatches,
   generateRides,
   getProfile,
@@ -11,6 +12,7 @@ import {
   previewSchedule,
   searchCarpoolMatches,
   updateProfile,
+  uploadProfilePhoto,
 } from "../api/endpoints";
 import { useFeedbackStore } from "./feedback";
 
@@ -55,6 +57,34 @@ export const useAppStore = defineStore("app", {
       try {
         this.profile = await updateProfile(payload);
         feedback.showSuccess("Profil sauvegarde avec succes.");
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async savePhoto(file) {
+      const feedback = useFeedbackStore();
+      this.startLoading("Envoi de la photo...", "Televersement de votre photo de profil.");
+      try {
+        this.profile = await uploadProfilePhoto(file);
+        feedback.showSuccess("Photo de profil mise a jour.");
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async removePhoto() {
+      const feedback = useFeedbackStore();
+      this.startLoading("Suppression de la photo...", "Retrait de votre photo de profil.");
+      try {
+        this.profile = await deleteProfilePhoto();
+        feedback.showSuccess("Photo de profil supprimee.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
