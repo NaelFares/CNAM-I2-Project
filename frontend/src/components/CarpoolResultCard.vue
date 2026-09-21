@@ -28,6 +28,14 @@
         <p>Distance des départs&nbsp;: {{ match.distance_km.toFixed(2) }} km</p>
       </div>
 
+      <!-- Réservation : possible seulement si l'autre partie conduit -->
+      <div v-if="canReserve" class="mt-3">
+        <Button :disabled="tracking.loading" @click="onReserve">
+          <CalendarCheck class="h-4 w-4" />
+          Réserver cette place
+        </Button>
+      </div>
+
       <!-- Légende -->
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-600">
         <span class="flex items-center gap-1.5"><span class="inline-block h-3 w-3 rounded-full bg-green-500"></span>Conducteur</span>
@@ -73,17 +81,34 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { ArrowRight, X } from "lucide-vue-next";
+import { ArrowRight, CalendarCheck, X } from "lucide-vue-next";
 
 import RouteMap from "./RouteMap.vue";
-import { Avatar, Badge } from "./ui";
+import { Avatar, Badge, Button } from "./ui";
 import { genderLabel } from "../lib/gender";
 import { tripPreferenceBadges } from "../lib/preferences";
+import { useAuthStore } from "../stores/auth";
+import { useTrackingStore } from "../stores/tracking";
 
 const props = defineProps({
   match: { type: Object, required: true },
   myRouteGeometry: { type: Array, default: () => [] },
 });
+
+const auth = useAuthStore();
+const tracking = useTrackingStore();
+
+// On ne reserve que la place d'un conducteur : si l'utilisateur courant est
+// lui-meme le conducteur du match, c'est a l'autre de reserver.
+// `driver_ride_id` peut manquer sur une recherche rapide, dont le trajet est
+// transitoire et n'existe pas en base -- il n'y a alors rien a reserver.
+const canReserve = computed(
+  () => Boolean(props.match.driver_ride_id) && auth.user?.id !== props.match.driver_id
+);
+
+async function onReserve() {
+  await tracking.reserve(props.match.driver_ride_id);
+}
 
 // Les preferences affichees sont celles du conducteur : c'est sa voiture.
 const tripBadges = computed(() =>

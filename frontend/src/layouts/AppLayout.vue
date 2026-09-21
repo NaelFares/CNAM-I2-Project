@@ -51,7 +51,7 @@
 
 <script setup>
 import { useRouter, RouterLink, RouterView } from "vue-router";
-import { CalendarDays, LayoutDashboard, LogOut, UserRound, UsersRound } from "lucide-vue-next";
+import { CalendarDays, LayoutDashboard, LogOut, Route, UserRound, UsersRound } from "lucide-vue-next";
 
 import { Button } from "../components/ui";
 import { useAuthStore } from "../stores/auth";
@@ -64,6 +64,7 @@ const links = [
   { to: "/profile", label: "Profil", icon: UserRound },
   { to: "/schedule", label: "Planning", icon: CalendarDays },
   { to: "/matches", label: "Covoiturage", icon: UsersRound },
+  { to: "/tracking", label: "Mes courses", icon: Route },
 ];
 
 async function handleLogout() {

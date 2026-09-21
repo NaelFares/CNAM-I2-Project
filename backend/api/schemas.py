@@ -149,6 +149,9 @@ class RidesGenerateResponse(BaseModel):
 class MatchDTO(BaseModel):
     driver_name: str
     driver_id: int
+    # Trajet du conducteur, cible d'une reservation. None pour une recherche
+    # rapide, dont le trajet est transitoire et n'existe pas en base.
+    driver_ride_id: int | None = None
     driver_gender: Gender = "autre"
     driver_photo_url: str = ""
     # Ambiance du trajet : ce sont les preferences du conducteur qui
@@ -194,6 +197,49 @@ class MatchSearchResponse(BaseModel):
     matches: list[MatchDTO]
     search_route_geometry: list[list[float]] = []
     feedback: ApiMessage
+
+
+TrackingStep = Literal["picked_up", "on_board", "completed", "arrived"]
+TrackingStatus = Literal[
+    "pending", "picking_up", "on_board", "arriving", "completed", "cancelled"
+]
+
+
+class RideTrackingDTO(BaseModel):
+    """Une reservation et son suivi, vue par l'un des deux participants."""
+
+    id: int
+    ride_id: int
+    ride_time: datetime
+    ride_type: Literal["to_campus", "from_campus"]
+    # Role du demandeur, qui determine les boutons a afficher.
+    my_role: Literal["driver", "passenger"]
+    # L'autre partie : c'est elle que l'utilisateur doit reconnaitre.
+    counterpart_id: int
+    counterpart_name: str
+    counterpart_photo_url: str = ""
+    status: TrackingStatus
+    # Etape que le demandeur peut confirmer maintenant ; None s'il doit
+    # attendre l'autre partie ou s'il a termine.
+    next_step: TrackingStep | None = None
+    driver_picked_up_at: datetime | None = None
+    passenger_onboard_at: datetime | None = None
+    driver_completed_at: datetime | None = None
+    passenger_arrived_at: datetime | None = None
+    cancelled_at: datetime | None = None
+
+
+class RideTrackingListResponse(BaseModel):
+    trackings: list[RideTrackingDTO]
+
+
+class RideTrackingResponse(BaseModel):
+    tracking: RideTrackingDTO
+    feedback: ApiMessage
+
+
+class RideSelectionCreateRequest(BaseModel):
+    ride_id: int
 
 
 class DashboardSummaryResponse(BaseModel):

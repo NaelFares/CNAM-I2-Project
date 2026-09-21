@@ -241,6 +241,17 @@ class Database:
         conn.close()
         return [Ride.from_dict(row) for row in rows]
 
+    def get_ride_by_id(self, ride_id: int) -> Optional[Ride]:
+        """Récupère un trajet par ID"""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM rides WHERE id = %s", (ride_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return Ride.from_dict(row)
+        return None
+
     def get_all_rides(self) -> List[Ride]:
         """Récupère tous les trajets"""
         conn = self.get_connection()

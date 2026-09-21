@@ -80,6 +80,22 @@ export async function findMatches(ladiesOnly = false) {
   ).data;
 }
 
+export async function fetchTrackings() {
+  return (await apiClient.get("/tracking")).data;
+}
+
+export async function createRideSelection(rideId) {
+  return (await apiClient.post("/tracking/selections", { ride_id: rideId })).data;
+}
+
+export async function confirmTrackingStep(selectionId, step) {
+  return (await apiClient.post(`/tracking/selections/${selectionId}/steps/${step}`)).data;
+}
+
+export async function cancelRideSelection(selectionId) {
+  return (await apiClient.post(`/tracking/selections/${selectionId}/cancel`)).data;
+}
+
 export async function searchCarpoolMatches(payload) {
   return (await apiClient.post("/matches/search", payload, { timeout: 45000 })).data;
 }

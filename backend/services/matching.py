@@ -91,6 +91,7 @@ class Match:
         return {
             "driver_name": self.driver.name,
             "driver_id": self.driver.id,
+            "driver_ride_id": self.driver_ride.id,
             "driver_gender": self.driver.gender,
             "driver_photo_url": build_photo_url(self.driver.photo_filename),
             "driver_music_preference": self.driver.music_preference,

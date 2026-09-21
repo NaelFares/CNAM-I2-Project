@@ -77,3 +77,35 @@ CREATE TABLE IF NOT EXISTS rides (
 -- Migration data : normalisation ride_type (no-op si deja applique)
 UPDATE rides SET ride_type = 'to_campus'   WHERE ride_type = 'aller';
 UPDATE rides SET ride_type = 'from_campus' WHERE ride_type = 'retour';
+
+-- RIDE_SELECTIONS
+-- Table de reservation : un passager selectionne un trajet propose par un
+-- conducteur. Sa definition reproduit volontairement le schema concu en
+-- parallele pour la partie reservation, afin que les deux branches
+-- convergent sans conflit -- CREATE TABLE IF NOT EXISTS rend l'instruction
+-- inoffensive si l'autre version arrive en premier.
+CREATE TABLE IF NOT EXISTS ride_selections (
+    id            BIGSERIAL PRIMARY KEY,
+    ride_id       INTEGER NOT NULL REFERENCES rides(id),
+    passenger_id  INTEGER NOT NULL REFERENCES users(id),
+    selected_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Un passager ne selectionne un trajet donne qu'une fois : sans cette
+-- contrainte, un double-clic creerait deux reservations concurrentes dont
+-- les suivis divergeraient.
+CREATE UNIQUE INDEX IF NOT EXISTS ride_selections_ride_passenger_key
+    ON ride_selections (ride_id, passenger_id);
+
+-- Suivi du covoiturage : quatre confirmations independantes, horodatees.
+-- NULL = etape pas encore confirmee. On stocke un instant plutot qu'un
+-- booleen pour savoir QUAND chaque partie a confirme, et un statut unique
+-- representerait mal deux confirmations qui arrivent dans un ordre libre.
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_picked_up_at   TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_onboard_at  TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_completed_at   TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_arrived_at  TIMESTAMPTZ;
+-- Annulation : une reservation abandonnee ne doit pas rester eternellement
+-- "en attente de prise en charge" dans les ecrans de suivi.
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS cancelled_at          TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS cancelled_by          INTEGER REFERENCES users(id);
