@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS users (
     music_preference    TEXT NOT NULL DEFAULT 'peu_importe',
     music_genres        TEXT[] NOT NULL DEFAULT '{}',
     smoking_preference  TEXT NOT NULL DEFAULT 'peu_importe',
-    car_seats           INTEGER NOT NULL DEFAULT 0,
     start_address       TEXT DEFAULT '',
     start_lat           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     start_lon           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
@@ -46,8 +45,10 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS music_preference TEXT NOT NULL DEFAUL
 -- n'ecoutant pas un seul genre. Vide = aucun style precise.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS music_genres TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS smoking_preference TEXT NOT NULL DEFAULT 'peu_importe';
--- Places passager disponibles dans la voiture (conducteurs). 0 = non renseigne.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS car_seats INTEGER NOT NULL DEFAULT 0;
+-- car_seats a existe brievement puis a ete retire : on nettoie les bases de
+-- developpement qui l'ont recue, IF EXISTS rendant l'instruction inoffensive
+-- ailleurs.
+ALTER TABLE users DROP COLUMN IF EXISTS car_seats;
 
 -- EVENTS
 CREATE TABLE IF NOT EXISTS events (

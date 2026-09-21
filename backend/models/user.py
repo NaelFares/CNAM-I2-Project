@@ -22,7 +22,6 @@ class User:
     # peut pas etre partagee entre instances.
     music_genres: List[str] = field(default_factory=list)
     smoking_preference: str = "peu_importe"  # "peu_importe", "fumeur", "non_fumeur"
-    car_seats: int = 0  # Places passager disponibles ; 0 = non renseigne
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -69,7 +68,6 @@ class User:
             "music_preference": self.music_preference,
             "music_genres": list(self.music_genres),
             "smoking_preference": self.smoking_preference,
-            "car_seats": self.car_seats,
             "start_address": self.start_address,
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
@@ -93,7 +91,6 @@ class User:
             music_preference=data.get("music_preference") or "peu_importe",
             music_genres=list(data.get("music_genres") or []),
             smoking_preference=data.get("smoking_preference") or "peu_importe",
-            car_seats=data.get("car_seats") or 0,
             start_address=data.get("start_address", ""),
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),

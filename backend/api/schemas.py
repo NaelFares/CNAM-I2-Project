@@ -14,10 +14,6 @@ Gender = Literal["homme", "femme", "autre"]
 MusicPreference = Literal["peu_importe", "avec", "sans"]
 SmokingPreference = Literal["peu_importe", "fumeur", "non_fumeur"]
 
-# Borne haute volontairement large : on valide une saisie plausible, pas un
-# modele de vehicule precis.
-MAX_CAR_SEATS = 8
-
 
 class ApiMessage(BaseModel):
     code: str
@@ -37,7 +33,6 @@ class RegisterRequest(BaseModel):
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
     smoking_preference: SmokingPreference = "peu_importe"
-    car_seats: int = Field(default=0, ge=0, le=MAX_CAR_SEATS)
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -67,7 +62,6 @@ class UserDTO(BaseModel):
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
     smoking_preference: SmokingPreference = "peu_importe"
-    car_seats: int = 0
     start_address: str
     start_lat: float
     start_lon: float
@@ -90,7 +84,6 @@ class ProfileUpdateRequest(BaseModel):
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
     smoking_preference: SmokingPreference = "peu_importe"
-    car_seats: int = Field(default=0, ge=0, le=MAX_CAR_SEATS)
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -163,7 +156,6 @@ class MatchDTO(BaseModel):
     driver_music_preference: MusicPreference = "peu_importe"
     driver_music_genres: list[str] = []
     driver_smoking_preference: SmokingPreference = "peu_importe"
-    driver_car_seats: int = 0
     passenger_name: str
     passenger_id: int
     passenger_gender: Gender = "autre"

@@ -17,11 +17,8 @@
         </span>
       </div>
 
-      <div v-if="tripBadges.length || match.driver_car_seats" class="mt-2 flex flex-wrap gap-1.5">
+      <div v-if="tripBadges.length" class="mt-2 flex flex-wrap gap-1.5">
         <Badge v-for="badge in tripBadges" :key="badge" variant="info">{{ badge }}</Badge>
-        <Badge v-if="match.driver_car_seats" variant="info">
-          {{ match.driver_car_seats }} place{{ match.driver_car_seats > 1 ? "s" : "" }}
-        </Badge>
       </div>
 
       <div class="mt-2 space-y-1 text-sm text-slate-600">

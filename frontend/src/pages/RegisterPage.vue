@@ -77,7 +77,7 @@
 
         <div class="md:col-span-2">
           <p class="text-xs text-slate-500">
-            Photo de profil et nombre de places se renseignent ensuite depuis votre profil.
+            La photo de profil se renseigne ensuite depuis votre profil.
           </p>
         </div>
 

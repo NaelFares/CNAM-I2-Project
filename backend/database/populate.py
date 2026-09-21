@@ -185,8 +185,6 @@ def _create_seed_users() -> int:
             else []
         )
         smoking_preference = ["peu_importe", "non_fumeur", "non_fumeur", "fumeur"][i % 4]
-        # Les passagers purs n'ont pas de voiture : 0 place.
-        car_seats = 0 if role == "passenger" else rng.randint(1, 4)
         school_name, school_addr, school_lat, school_lon = schools_geocoded[i % len(schools_geocoded)]
         street, city, street_lat, street_lon = streets_geocoded[i % len(streets_geocoded)]
 
@@ -199,7 +197,6 @@ def _create_seed_users() -> int:
             music_preference=music_preference,
             music_genres=music_genres,
             smoking_preference=smoking_preference,
-            car_seats=car_seats,
             start_address=f"{rng.randint(1, 120)} {street}, {city}",
             start_lat=street_lat,
             start_lon=street_lon,

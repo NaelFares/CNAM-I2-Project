@@ -49,7 +49,6 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
         music_preference=payload.music_preference,
         music_genres=payload.music_genres,
         smoking_preference=payload.smoking_preference,
-        car_seats=payload.car_seats,
         start_address=payload.start_address.strip(),
         start_lat=payload.start_lat,
         start_lon=payload.start_lon,

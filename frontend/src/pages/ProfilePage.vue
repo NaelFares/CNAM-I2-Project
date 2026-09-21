@@ -75,7 +75,7 @@
           <Car class="h-4 w-4" />
           Préférences de trajet
         </h2>
-        <div class="grid gap-4 md:grid-cols-3">
+        <div class="grid gap-4 md:grid-cols-2">
           <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Musique</label>
             <select v-model="form.music_preference" class="input">
@@ -85,8 +85,17 @@
             </select>
           </div>
 
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
+            <select v-model="form.smoking_preference" class="input">
+              <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+
           <!-- Styles : uniquement si la musique est acceptée -->
-          <div v-if="showMusicGenres" class="md:col-span-3">
+          <div v-if="showMusicGenres" class="md:col-span-2">
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">
               Styles de musique
               <span class="ml-1 font-normal text-slate-400">
@@ -113,21 +122,6 @@
             </div>
             <p class="mt-1.5 text-xs text-slate-500">
               Facultatif — {{ MAX_MUSIC_GENRES }} styles maximum.
-            </p>
-          </div>
-          <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
-            <select v-model="form.smoking_preference" class="input">
-              <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Places passager</label>
-            <Input v-model.number="form.car_seats" type="number" min="0" :max="MAX_CAR_SEATS" :disabled="!isDriver" />
-            <p class="mt-1 text-xs text-slate-500">
-              {{ isDriver ? "0 si vous préférez ne pas le préciser." : "Réservé aux profils conducteurs." }}
             </p>
           </div>
         </div>
@@ -257,7 +251,6 @@ import { getRoutePreview } from "../api/endpoints";
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
 import { GENDER_OPTIONS } from "../lib/gender";
 import {
-  MAX_CAR_SEATS,
   MAX_MUSIC_GENRES,
   MUSIC_GENRE_OPTIONS,
   MUSIC_OPTIONS,
@@ -274,7 +267,6 @@ const photoInput = ref(null);
 // La photo ne transite pas par `form` : elle a son propre endpoint et le
 // store fait foi apres chaque televersement.
 const photoUrl = computed(() => app.profile?.photo_url || "");
-const isDriver = computed(() => form.role === "driver" || form.role === "both");
 const showMusicGenres = computed(() => wantsMusic(form.music_preference));
 
 function isGenreDisabled(value) {
@@ -304,7 +296,6 @@ const form = reactive({
   music_preference: "peu_importe",
   music_genres: [],
   smoking_preference: "peu_importe",
-  car_seats: 0,
   start_address: "",
   start_lat: 46.603354,
   start_lon: 1.888334,
@@ -375,7 +366,6 @@ onMounted(async () => {
   form.music_preference = source.music_preference || "peu_importe";
   form.music_genres = [...(source.music_genres || [])];
   form.smoking_preference = source.smoking_preference || "peu_importe";
-  form.car_seats = source.car_seats || 0;
   form.start_address = source.start_address;
   form.start_lat = source.start_lat || form.start_lat;
   form.start_lon = source.start_lon || form.start_lon;
@@ -410,8 +400,6 @@ async function onSubmit() {
     // la reponse contredise ce que l'utilisateur vient de voir a l'ecran.
     music_genres: showMusicGenres.value ? form.music_genres : [],
     smoking_preference: form.smoking_preference,
-    // Un profil non-conducteur ne declare pas de places.
-    car_seats: isDriver.value ? form.car_seats : 0,
     start_address: form.start_address,
     start_lat: form.start_lat,
     start_lon: form.start_lon,

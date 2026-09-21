@@ -90,9 +90,6 @@
                 :key="badge"
                 variant="info"
               >{{ badge }}</Badge>
-              <Badge v-if="match.driver_car_seats" variant="info">
-                {{ match.driver_car_seats }} place{{ match.driver_car_seats > 1 ? "s" : "" }}
-              </Badge>
             </div>
             <div class="mt-2 space-y-1 text-sm text-slate-600">
               <p>Départ&nbsp;: {{ match.ride_time }}</p>

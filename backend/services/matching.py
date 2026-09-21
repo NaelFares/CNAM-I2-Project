@@ -96,7 +96,6 @@ class Match:
             "driver_music_preference": self.driver.music_preference,
             "driver_music_genres": list(self.driver.music_genres),
             "driver_smoking_preference": self.driver.smoking_preference,
-            "driver_car_seats": self.driver.car_seats,
             "passenger_name": self.passenger.name,
             "passenger_id": self.passenger.id,
             "passenger_gender": self.passenger.gender,

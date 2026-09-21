@@ -46,9 +46,6 @@ export const SMOKING_OPTIONS = [
   { value: "fumeur", label: "Fumeur" },
 ];
 
-// Nombre de places passager : borne alignee sur MAX_CAR_SEATS cote backend.
-export const MAX_CAR_SEATS = 8;
-
 function labelOf(options, value) {
   return options.find((option) => option.value === value)?.label ?? "";
 }
