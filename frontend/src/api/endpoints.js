@@ -1,5 +1,7 @@
 import { apiClient } from "./api";
 
+const MATCHING_TIMEOUT_MS = 180000;
+
 export async function login(email, password) {
   return (await apiClient.post("/auth/login", { email, password })).data;
 }
@@ -59,12 +61,28 @@ export async function generateRides() {
   return (await apiClient.post("/rides/generate")).data;
 }
 
+export async function getMyRideSelections() {
+  return (await apiClient.get("/rides/my-selections")).data;
+}
+
+export async function getMyRideOffers() {
+  return (await apiClient.get("/rides/my-offers")).data;
+}
+
+export async function selectRide(rideId) {
+  return (await apiClient.post(`/rides/${rideId}/select`)).data;
+}
+
+export async function cancelRideSelection(rideId) {
+  return (await apiClient.delete(`/rides/${rideId}/select`)).data;
+}
+
 export async function findMatches() {
-  return (await apiClient.post("/matches/find", null, { timeout: 45000 })).data;
+  return (await apiClient.post("/matches/find", null, { timeout: MATCHING_TIMEOUT_MS })).data;
 }
 
 export async function searchCarpoolMatches(payload) {
-  return (await apiClient.post("/matches/search", payload, { timeout: 45000 })).data;
+  return (await apiClient.post("/matches/search", payload, { timeout: MATCHING_TIMEOUT_MS })).data;
 }
 
 export async function getRoutePreview(params) {

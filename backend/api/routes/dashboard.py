@@ -16,12 +16,18 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/summary", response_model=DashboardSummaryResponse)
 def dashboard_summary(user: User = Depends(require_current_user)):
     events_count = len(db.get_events_by_user(user.id))
-    rides_count = len(db.get_rides_by_user(user.id))
+    rides_count = len(db.get_active_rides_by_user(user.id))
 
-    # Matches are computed on demand, keep lightweight summary by default.
+    if user.is_driver():
+        matches_count = sum(
+            offer["occupied_seats"] for offer in db.get_driver_offers(user.id)
+        )
+    else:
+        matches_count = len(db.get_passenger_selections(user.id))
+
     return DashboardSummaryResponse(
         events_count=events_count,
         rides_count=rides_count,
-        matches_count=0,
+        matches_count=matches_count,
         profile_completed=bool(user.name and user.email),
     )

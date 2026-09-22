@@ -4,6 +4,7 @@ import AppLayout from "../layouts/AppLayout.vue";
 import DashboardPage from "../pages/DashboardPage.vue";
 import LoginPage from "../pages/LoginPage.vue";
 import MatchesPage from "../pages/MatchesPage.vue";
+import RideRecapPage from "../pages/RideRecapPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
 import RegisterPage from "../pages/RegisterPage.vue";
 import SchedulePage from "../pages/SchedulePage.vue";
@@ -24,6 +25,7 @@ const router = createRouter({
         { path: "schedule", component: SchedulePage },
         { path: "rides", redirect: "matches" },
         { path: "matches", component: MatchesPage },
+        { path: "matches/recap/:rideId", component: RideRecapPage },
       ],
     },
   ],

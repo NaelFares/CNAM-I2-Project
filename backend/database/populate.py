@@ -166,7 +166,10 @@ def _create_seed_users() -> int:
     created = 0
     for i in range(1, SEED_COUNT + 1):
         name = unique_names[i - 1]
-        role = ["driver", "passenger", "both"][i % 3]
+        # Le compte 01 reste passager et le compte 07 conducteur afin de
+        # conserver le scenario de demonstration utilise pour le matching.
+        role = "driver" if i % 2 == 0 or i == 7 else "passenger"
+        car_seats = rng.randint(1, 4) if role == "driver" else None
         school_name, school_addr, school_lat, school_lon = schools_geocoded[i % len(schools_geocoded)]
         street, city, street_lat, street_lon = streets_geocoded[i % len(streets_geocoded)]
 
@@ -175,6 +178,7 @@ def _create_seed_users() -> int:
             email=f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}",
             hashed_password=hashed,
             role=role,
+            car_seats=car_seats,
             start_address=f"{rng.randint(1, 120)} {street}, {city}",
             start_lat=street_lat,
             start_lon=street_lon,
@@ -198,7 +202,7 @@ def _write_accounts_file() -> None:
         "Comptes de test Stud'Ride (generes par backend/database/populate.py)",
         f"Mot de passe commun a tous les comptes : {SEED_PASSWORD}",
         "",
-        f"{'email':<28} {'nom':<20} {'role':<10} {'adresse de depart':<48} {'adresse ecole':<48} ecole",
+        f"{'email':<28} {'nom':<20} {'role':<10} {'places':<8} {'adresse de depart':<48} {'adresse ecole':<48} ecole",
         "-" * 200,
     ]
     for i in range(1, SEED_COUNT + 1):
@@ -207,8 +211,9 @@ def _write_accounts_file() -> None:
         if not user:
             continue
         school_name = TOULOUSE_SCHOOLS[i % len(TOULOUSE_SCHOOLS)][0]
+        car_seats = str(user.car_seats) if user.car_seats is not None else "-"
         lines.append(
-            f"{user.email:<28} {user.name:<20} {user.role:<10} {user.start_address:<48} "
+            f"{user.email:<28} {user.name:<20} {user.role:<10} {car_seats:<8} {user.start_address:<48} "
             f"{user.school_address:<48} {school_name}"
         )
 
