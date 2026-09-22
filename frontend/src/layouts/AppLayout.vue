@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter, RouterLink, RouterView } from "vue-router";
 import { CalendarDays, LayoutDashboard, LogOut, Menu, Monitor, Smartphone, UserRound, UsersRound, X } from "lucide-vue-next";
 
@@ -114,12 +114,16 @@ const display = useDisplayStore();
 const mobileMenuOpen = ref(false);
 const headerRef = ref(null);
 
-const links = [
+const links = computed(() => [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/profile", label: "Profil", icon: UserRound },
   { to: "/schedule", label: "Planning", icon: CalendarDays },
-  { to: "/matches", label: "Covoiturage", icon: UsersRound },
-];
+  {
+    to: "/matches",
+    label: auth.user?.role === "driver" ? "Mes trajets proposés" : "Covoiturage",
+    icon: UsersRound,
+  },
+]);
 
 async function handleLogout() {
   mobileMenuOpen.value = false;

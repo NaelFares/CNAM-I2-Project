@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, Response, status
 
 from backend.database.manager import db
 
-from backend.api.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
+from backend.api.constants import (
+    MAX_CAR_SEATS,
+    MIN_CAR_SEATS,
+    SESSION_COOKIE_NAME,
+    SESSION_TTL_SECONDS,
+)
 from passlib.context import CryptContext
 from backend.api.deps import get_current_user
 from backend.api.feedback import make_feedback, raise_api_error
@@ -70,10 +75,19 @@ def register(payload: RegisterRequest, response: Response):
     if payload.time_tolerance_min < 5 or payload.time_tolerance_min > 60:
         raise_api_error("VALIDATION_TIME_TOLERANCE_INVALID")
 
+    if payload.role == "driver" and not (
+        payload.car_seats is not None
+        and MIN_CAR_SEATS <= payload.car_seats <= MAX_CAR_SEATS
+    ):
+        raise_api_error("VALIDATION_CAR_SEATS_INVALID")
+
+    car_seats = payload.car_seats if payload.role == "driver" else None
+
     user = User(
         name=payload.name.strip(),
         email=str(payload.email).strip().lower(),
         role=payload.role,
+        car_seats=car_seats,
         hashed_password=_hash_password(payload.password),
         start_address=payload.start_address.strip(),
         start_lat=payload.start_lat,

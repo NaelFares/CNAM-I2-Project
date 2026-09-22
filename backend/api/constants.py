@@ -1,6 +1,9 @@
 """Shared API constants and lightweight domain helpers."""
 
-ROLE_VALUES = {"both", "driver", "passenger"}
+ROLE_VALUES = {"driver", "passenger"}
+
+MIN_CAR_SEATS = 1
+MAX_CAR_SEATS = 4
 
 SESSION_COOKIE_NAME = "covoit_session"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30

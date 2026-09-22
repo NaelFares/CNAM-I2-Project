@@ -61,6 +61,22 @@ export async function generateRides() {
   return (await apiClient.post("/rides/generate")).data;
 }
 
+export async function getMyRideSelections() {
+  return (await apiClient.get("/rides/my-selections")).data;
+}
+
+export async function getMyRideOffers() {
+  return (await apiClient.get("/rides/my-offers")).data;
+}
+
+export async function selectRide(rideId) {
+  return (await apiClient.post(`/rides/${rideId}/select`)).data;
+}
+
+export async function cancelRideSelection(rideId) {
+  return (await apiClient.delete(`/rides/${rideId}/select`)).data;
+}
+
 export async function findMatches() {
   return (await apiClient.post("/matches/find", null, { timeout: MATCHING_TIMEOUT_MS })).data;
 }

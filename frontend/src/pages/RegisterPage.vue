@@ -35,6 +35,20 @@
           </p>
         </div>
 
+        <div>
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Je souhaite être</label>
+          <select v-model="form.role" class="input" required>
+            <option value="passenger">Passager</option>
+            <option value="driver">Conducteur</option>
+          </select>
+        </div>
+
+        <div v-if="form.role === 'driver'">
+          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Places disponibles</label>
+          <input v-model.number="form.car_seats" type="number" min="1" max="4" required class="input" />
+          <p class="mt-1 text-xs text-slate-500">De 1 à 4 places passagers.</p>
+        </div>
+
         <div class="md:col-span-2 mt-2">
           <button class="btn-primary w-full" :disabled="auth.loading">
             <LoaderCircle v-if="auth.loading" class="h-4 w-4 animate-spin" />
@@ -68,6 +82,8 @@ const form = reactive({
   email: auth.pendingEmail || "",
   password: "",
   passwordConfirmation: "",
+  role: "passenger",
+  car_seats: null,
 });
 
 const passwordMismatch = computed(
@@ -77,7 +93,11 @@ const passwordMismatch = computed(
 async function onSubmit() {
   if (form.password !== form.passwordConfirmation) return;
   // détachement de passwordConfirmation car il ne doit pas être stocké
-  const { passwordConfirmation, ...payload } = form;
+  const { passwordConfirmation, ...values } = form;
+  const payload = {
+    ...values,
+    car_seats: values.role === "driver" ? Number(values.car_seats || 1) : null,
+  };
   const ok = await auth.registerUser(payload);
   if (ok) {
     router.push("/");

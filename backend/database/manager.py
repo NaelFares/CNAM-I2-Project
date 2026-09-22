@@ -37,9 +37,9 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, hashed_password, role, start_address, start_lat, start_lon, time_tolerance_min,
+            INSERT INTO users (name, email, hashed_password, role, car_seats, start_address, start_lat, start_lon, time_tolerance_min,
                                school_address, school_lat, school_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -47,6 +47,7 @@ class Database:
                 user.email,
                 user.hashed_password,
                 user.role,
+                user.car_seats,
                 user.start_address,
                 user.start_lat,
                 user.start_lon,
@@ -107,7 +108,7 @@ class Database:
         cursor.execute(
             """
             UPDATE users
-            SET name = %s, email = %s, role = %s, start_address = %s, start_lat = %s, start_lon = %s,
+            SET name = %s, email = %s, role = %s, car_seats = %s, start_address = %s, start_lat = %s, start_lon = %s,
                 time_tolerance_min = %s, school_address = %s, school_lat = %s, school_lon = %s
             WHERE id = %s
             """,
@@ -115,6 +116,7 @@ class Database:
                 user.name,
                 user.email,
                 user.role,
+                user.car_seats,
                 user.start_address,
                 user.start_lat,
                 user.start_lon,
@@ -179,8 +181,8 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO rides (user_id, event_id, ride_type, ride_time, start_lat, start_lon, end_lat, end_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO rides (user_id, event_id, ride_type, ride_time, start_lat, start_lon, end_lat, end_lon, status, archived_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -192,6 +194,8 @@ class Database:
                 ride.start_lon,
                 ride.end_lat,
                 ride.end_lon,
+                ride.status,
+                ride.archived_at,
             ),
         )
         ride_id = cursor.fetchone()[0]
@@ -210,11 +214,36 @@ class Database:
         conn.close()
         return [Ride.from_dict(row) for row in rows]
 
+    def get_active_rides_by_user(self, user_id: int) -> List[Ride]:
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(
+            """
+            SELECT * FROM rides
+            WHERE user_id = %s AND status = 'active'
+            ORDER BY ride_time
+            """,
+            (user_id,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [Ride.from_dict(row) for row in rows]
+
     def get_all_rides(self) -> List[Ride]:
         """Récupère tous les trajets"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM rides ORDER BY ride_time")
+        rows = cursor.fetchall()
+        conn.close()
+        return [Ride.from_dict(row) for row in rows]
+
+    def get_all_active_rides(self) -> List[Ride]:
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM rides WHERE status = 'active' ORDER BY ride_time")
         rows = cursor.fetchall()
         conn.close()
         return [Ride.from_dict(row) for row in rows]
@@ -226,6 +255,318 @@ class Database:
         cursor.execute("DELETE FROM rides WHERE user_id = %s", (user_id,))
         conn.commit()
         conn.close()
+
+    def delete_active_rides_by_user(self, user_id: int):
+        """Supprime uniquement les propositions en cours et preserve l'historique."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM rides WHERE user_id = %s AND status = 'active'",
+            (user_id,),
+        )
+        conn.commit()
+        conn.close()
+
+    def archive_expired_rides(self) -> int:
+        """Archive les trajets termines depuis au moins trois heures."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE rides
+            SET status = 'archived', archived_at = NOW()
+            WHERE status = 'active'
+              AND ride_time < LOCALTIMESTAMP - INTERVAL '3 hours'
+            """
+        )
+        count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return count
+
+    # --- RIDE SELECTIONS ---
+    def get_ride_selection_counts(self) -> dict[int, int]:
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ride_id, COUNT(*)
+            FROM ride_selections
+            GROUP BY ride_id
+            """
+        )
+        counts = {int(ride_id): int(count) for ride_id, count in cursor.fetchall()}
+        conn.close()
+        return counts
+
+    def get_passenger_selected_ride_ids(self, passenger_id: int) -> set[int]:
+        """Retourne les trajets actifs deja reserves par un passager."""
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT rs.ride_id
+            FROM ride_selections rs
+            JOIN rides r ON r.id = rs.ride_id
+            WHERE rs.passenger_id = %s AND r.status = 'active'
+            """,
+            (passenger_id,),
+        )
+        ride_ids = {int(row[0]) for row in cursor.fetchall()}
+        conn.close()
+        return ride_ids
+
+    def get_passenger_reserved_times(self, passenger_id: int) -> set:
+        """Créneaux déjà réservés, à la minute affichée dans l'application."""
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT date_trunc('minute', r.ride_time)
+            FROM ride_selections rs
+            JOIN rides r ON r.id = rs.ride_id
+            WHERE rs.passenger_id = %s AND r.status = 'active'
+            """,
+            (passenger_id,),
+        )
+        reserved_times = {row[0] for row in cursor.fetchall()}
+        conn.close()
+        return reserved_times
+
+    def get_max_active_occupancy_for_driver(self, user_id: int) -> int:
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT COALESCE(MAX(occupied), 0)
+            FROM (
+                SELECT r.id, COUNT(rs.id) AS occupied
+                FROM rides r
+                LEFT JOIN ride_selections rs ON rs.ride_id = r.id
+                WHERE r.user_id = %s AND r.status = 'active'
+                GROUP BY r.id
+            ) AS active_occupancy
+            """,
+            (user_id,),
+        )
+        value = int(cursor.fetchone()[0])
+        conn.close()
+        return value
+
+    def select_ride(self, ride_id: int, passenger_id: int) -> dict:
+        """Réserve une place sans surbooking ni double réservation du créneau."""
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            # Sérialise les réservations du même passager, y compris pour deux
+            # trajets différents validés simultanément dans deux onglets.
+            cursor.execute("SELECT id FROM users WHERE id = %s FOR UPDATE", (passenger_id,))
+            cursor.fetchone()
+            cursor.execute(
+                """
+                SELECT
+                    r.id,
+                    r.user_id,
+                    r.status,
+                    r.ride_time,
+                    u.role AS owner_role,
+                    u.car_seats,
+                    r.ride_time <= LOCALTIMESTAMP AS is_past
+                FROM rides r
+                JOIN users u ON u.id = r.user_id
+                WHERE r.id = %s
+                FOR UPDATE OF r
+                """,
+                (ride_id,),
+            )
+            ride = cursor.fetchone()
+            if not ride:
+                return {"status": "not_found"}
+            if ride["user_id"] == passenger_id:
+                return {"status": "own_ride"}
+            if (
+                ride["status"] != "active"
+                or ride["owner_role"] != "driver"
+                or ride["is_past"]
+            ):
+                return {"status": "unavailable"}
+
+            cursor.execute(
+                "SELECT 1 FROM ride_selections WHERE ride_id = %s AND passenger_id = %s",
+                (ride_id, passenger_id),
+            )
+            if cursor.fetchone():
+                return {"status": "already_selected"}
+
+            cursor.execute(
+                """
+                SELECT 1
+                FROM ride_selections rs
+                JOIN rides reserved ON reserved.id = rs.ride_id
+                WHERE rs.passenger_id = %s
+                  AND reserved.status = 'active'
+                  AND date_trunc('minute', reserved.ride_time) = date_trunc('minute', %s::timestamp)
+                LIMIT 1
+                """,
+                (passenger_id, ride["ride_time"]),
+            )
+            if cursor.fetchone():
+                return {"status": "time_conflict"}
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM ride_selections WHERE ride_id = %s",
+                (ride_id,),
+            )
+            occupied = int(cursor.fetchone()["count"])
+            capacity = int(ride["car_seats"] or 0)
+            if capacity <= occupied:
+                return {"status": "full"}
+
+            cursor.execute(
+                """
+                INSERT INTO ride_selections (ride_id, passenger_id)
+                VALUES (%s, %s)
+                """,
+                (ride_id, passenger_id),
+            )
+            conn.commit()
+            return {
+                "status": "selected",
+                "available_seats": capacity - occupied - 1,
+            }
+        finally:
+            conn.close()
+
+    def cancel_ride_selection(self, ride_id: int, passenger_id: int) -> dict:
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(
+            """
+            DELETE FROM ride_selections
+            WHERE ride_id = %s AND passenger_id = %s
+            RETURNING id
+            """,
+            (ride_id, passenger_id),
+        )
+        deleted = cursor.fetchone()
+        if not deleted:
+            conn.rollback()
+            conn.close()
+            return {"status": "not_found"}
+
+        cursor.execute(
+            """
+            SELECT u.car_seats - COUNT(rs.id) AS available_seats
+            FROM rides r
+            JOIN users u ON u.id = r.user_id
+            LEFT JOIN ride_selections rs ON rs.ride_id = r.id
+            WHERE r.id = %s
+            GROUP BY u.car_seats
+            """,
+            (ride_id,),
+        )
+        row = cursor.fetchone()
+        conn.commit()
+        conn.close()
+        return {
+            "status": "cancelled",
+            "available_seats": max(0, int(row["available_seats"] if row else 0)),
+        }
+
+    def get_driver_offers(self, driver_id: int, archived: bool = False) -> list[dict]:
+        self.archive_expired_rides()
+        target_status = "archived" if archived else "active"
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(
+            """
+            SELECT
+                r.*,
+                u.car_seats,
+                COUNT(rs.id) OVER (PARTITION BY r.id) AS occupied_seats,
+                rs.selected_at,
+                p.id AS passenger_id,
+                p.name AS passenger_name,
+                p.email AS passenger_email
+            FROM rides r
+            JOIN users u ON u.id = r.user_id
+            LEFT JOIN ride_selections rs ON rs.ride_id = r.id
+            LEFT JOIN users p ON p.id = rs.passenger_id
+            WHERE r.user_id = %s AND r.status = %s
+            ORDER BY r.ride_time, rs.selected_at
+            """,
+            (driver_id, target_status),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        offers: dict[int, dict] = {}
+        for row in rows:
+            ride_id = int(row["id"])
+            if ride_id not in offers:
+                capacity = int(row["car_seats"] or 0)
+                occupied = int(row["occupied_seats"] or 0)
+                offers[ride_id] = {
+                    "id": ride_id,
+                    "ride_type": row["ride_type"],
+                    "ride_time": row["ride_time"],
+                    "start_lat": row["start_lat"],
+                    "start_lon": row["start_lon"],
+                    "end_lat": row["end_lat"],
+                    "end_lon": row["end_lon"],
+                    "status": row["status"],
+                    "archived_at": row["archived_at"],
+                    "car_seats": capacity,
+                    "occupied_seats": occupied,
+                    "available_seats": max(0, capacity - occupied),
+                    "passengers": [],
+                }
+            if row["passenger_id"] is not None:
+                offers[ride_id]["passengers"].append(
+                    {
+                        "id": int(row["passenger_id"]),
+                        "name": row["passenger_name"],
+                        "email": row["passenger_email"],
+                        "selected_at": row["selected_at"],
+                    }
+                )
+        return list(offers.values())
+
+    def get_passenger_selections(self, passenger_id: int, archived: bool = False) -> list[dict]:
+        self.archive_expired_rides()
+        target_status = "archived" if archived else "active"
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(
+            """
+            SELECT
+                rs.id AS selection_id,
+                rs.selected_at,
+                r.id AS ride_id,
+                r.ride_type,
+                r.ride_time,
+                r.start_lat,
+                r.start_lon,
+                r.end_lat,
+                r.end_lon,
+                r.status,
+                d.id AS driver_id,
+                d.name AS driver_name
+            FROM ride_selections rs
+            JOIN rides r ON r.id = rs.ride_id
+            JOIN users d ON d.id = r.user_id
+            WHERE rs.passenger_id = %s AND r.status = %s
+            ORDER BY r.ride_time
+            """,
+            (passenger_id, target_status),
+        )
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return rows
 
     # --- ROUTING CACHE ---
     def get_routing_cache(self, cache_key: str) -> Optional[dict]:

@@ -38,6 +38,7 @@ class Match:
         passenger_ride: Ride,
         route_points: List[Tuple[float, float]],
         extra_time_min: float,
+        occupied_seats: int = 0,
     ):
         self.driver = driver
         self.passenger = passenger
@@ -45,6 +46,8 @@ class Match:
         self.passenger_ride = passenger_ride
         self.route_points = route_points
         self.extra_time_min = extra_time_min
+        self.car_seats = int(driver.car_seats or 0)
+        self.available_seats = max(0, self.car_seats - occupied_seats)
         self.score = 0
         self.time_diff_min = 0
         self.departure_distance_km = 0.0
@@ -86,6 +89,7 @@ class Match:
 
     def to_dict(self) -> Dict:
         return {
+            "ride_id": self.driver_ride.id,
             "driver_name": self.driver.name,
             "driver_id": self.driver.id,
             "passenger_name": self.passenger.name,
@@ -101,6 +105,8 @@ class Match:
             "campus_coords": (self.driver_ride.end_lat, self.driver_ride.end_lon),
             "route_geometry": [[lat, lon] for lat, lon in self.route_points],
             "route_distance_km": self.departure_distance_km,
+            "car_seats": self.car_seats,
+            "available_seats": self.available_seats,
         }
 
 
@@ -135,7 +141,14 @@ class MatchingService:
         return cache[key]
 
     @staticmethod
-    def find_matches(current_user: User, my_rides: List[Ride], all_rides: List[Ride]) -> List[Dict]:
+    def find_matches(
+        current_user: User,
+        my_rides: List[Ride],
+        all_rides: List[Ride],
+        selection_counts: Optional[Dict[int, int]] = None,
+        selected_ride_ids: Optional[set[int]] = None,
+        reserved_times: Optional[set] = None,
+    ) -> List[Dict]:
         """
         Trouve les trajets compatibles pour l'utilisateur courant.
         Critère principal : le temps de détour réel pour aller récupérer le
@@ -151,6 +164,13 @@ class MatchingService:
         avec ORS. Cette limite fonctionne de la même manière que l'utilisateur
         soit conducteur ou passager.
         """
+        if not current_user.is_passenger():
+            return []
+
+        selection_counts = selection_counts or {}
+        selected_ride_ids = selected_ride_ids or set()
+        reserved_times = reserved_times or set()
+
         # --- Passe 1 : filtre bon marché, aucun appel réseau ---
         candidates_by_my_ride: Dict[object, List[Tuple[float, User, User, Ride, Ride]]] = {}
         users_by_id = {user.id: user for user in db.get_all_users()}
@@ -160,22 +180,24 @@ class MatchingService:
             for other_ride in all_rides:
                 if other_ride.user_id == current_user.id:
                     continue
+                if other_ride.id in selected_ride_ids:
+                    continue
                 if my_ride.ride_type != other_ride.ride_type:
                     continue
                 if not my_ride.ride_time or not other_ride.ride_time:
                     continue
-
-                other_user = users_by_id.get(other_ride.user_id)
-                if not other_user:
+                if other_ride.ride_time.replace(second=0, microsecond=0) in reserved_times:
                     continue
 
-                if current_user.is_driver() and other_user.is_passenger():
-                    driver, passenger = current_user, other_user
-                    driver_ride, passenger_ride = my_ride, other_ride
-                elif current_user.is_passenger() and other_user.is_driver():
-                    driver, passenger = other_user, current_user
-                    driver_ride, passenger_ride = other_ride, my_ride
-                else:
+                other_user = users_by_id.get(other_ride.user_id)
+                if not other_user or not other_user.is_driver():
+                    continue
+
+                driver, passenger = other_user, current_user
+                driver_ride, passenger_ride = other_ride, my_ride
+                capacity = int(driver.car_seats or 0)
+                occupied = selection_counts.get(driver_ride.id, 0)
+                if capacity < 1 or occupied >= capacity:
                     continue
 
                 time_diff_min = abs(
@@ -224,13 +246,33 @@ class MatchingService:
 
                 extra_time_min = max(0.0, (detour["duration_s"] - direct["duration_s"]) / 60)
 
-                match = Match(driver, passenger, driver_ride, passenger_ride, detour["geometry"], extra_time_min)
+                occupied = selection_counts.get(driver_ride.id, 0)
+                match = Match(
+                    driver,
+                    passenger,
+                    driver_ride,
+                    passenger_ride,
+                    detour["geometry"],
+                    extra_time_min,
+                    occupied_seats=occupied,
+                )
                 if match.score >= config.MIN_MATCH_SCORE:
                     matches.append(match)
 
-        # Tri principal par score, secondaire par temps de détour ajouté (asc)
+        # Tri principal par score, secondaire par temps de détour ajouté (asc).
+        # Un meme trajet conducteur peut correspondre a plusieurs entrees du
+        # planning passager : on ne conserve que sa meilleure correspondance.
         matches.sort(key=lambda m: (-m.score, m.extra_time_min))
-        return [match.to_dict() for match in matches]
+        unique_matches: List[Match] = []
+        seen_ride_ids: set[int] = set()
+        for match in matches:
+            ride_id = match.driver_ride.id
+            if ride_id in seen_ride_ids:
+                continue
+            seen_ride_ids.add(ride_id)
+            unique_matches.append(match)
+
+        return [match.to_dict() for match in unique_matches]
 
 
 matching_service = MatchingService()

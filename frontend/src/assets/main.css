@@ -781,6 +781,29 @@ a {
 .ranked-match-card__details span { display: inline-flex; align-items: center; gap: 0.25rem; }
 .ranked-match-card__details svg { width: 13px; height: 13px; color: #1d5eba; }
 
+.ranked-match-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.23);
+}
+
+.ranked-match-card__seats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #166534;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.ranked-match-card__seats.is-low { color: #9a3412; }
+.ranked-match-card__seats svg { width: 14px; height: 14px; }
+.ranked-match-card__choose { flex: 0 0 auto; padding: 0.48rem 0.7rem; font-size: 0.72rem; }
+
 .matches-explorer__map-panel { position: relative; min-width: 0; min-height: 0; background: #e9f0f7; }
 .matches-explorer__map { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
 

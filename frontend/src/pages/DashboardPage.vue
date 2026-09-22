@@ -57,8 +57,12 @@
       <RouterLink to="/matches" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-strong)]">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <h2 class="text-lg font-bold text-slate-900">Trouver un covoiturage</h2>
-            <p class="mt-1 text-sm text-slate-600">Cherchez des correspondances compatibles.</p>
+            <h2 class="text-lg font-bold text-slate-900">
+              {{ isDriver ? "Voir mes trajets proposés" : "Trouver un covoiturage" }}
+            </h2>
+            <p class="mt-1 text-sm text-slate-600">
+              {{ isDriver ? "Consultez les passagers inscrits à vos trajets." : "Cherchez des correspondances compatibles." }}
+            </p>
           </div>
           <ArrowRight class="h-5 w-5 text-blue-700 transition group-hover:translate-x-1" />
         </div>
@@ -78,6 +82,7 @@ import { useAuthStore } from "../stores/auth";
 const app = useAppStore();
 const auth = useAuthStore();
 const displayName = computed(() => auth.user?.name || "etudiant");
+const isDriver = computed(() => auth.user?.role === "driver");
 
 onMounted(async () => {
   await app.loadSummary();

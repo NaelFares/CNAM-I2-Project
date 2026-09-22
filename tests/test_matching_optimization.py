@@ -36,6 +36,7 @@ class MatchingOptimizationTests(unittest.TestCase):
             id=10 + index,
             name=f"Conducteur {index}",
             role="driver",
+            car_seats=4,
             time_tolerance_min=15,
         )
         ride = Ride(
@@ -89,6 +90,139 @@ class MatchingOptimizationTests(unittest.TestCase):
             )
 
         self.assertEqual(matches, [])
+        details.assert_not_called()
+        via.assert_not_called()
+
+    def test_full_driver_ride_is_filtered_before_any_routing_call(self):
+        driver, ride = self._driver_and_ride(1)
+        driver.car_seats = 1
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details") as details,
+            patch("backend.services.matching.routing_service.get_route_via_waypoint") as via,
+        ):
+            matches = MatchingService.find_matches(
+                self.passenger,
+                [self.passenger_ride],
+                [ride],
+                selection_counts={ride.id: 1},
+            )
+
+        self.assertEqual(matches, [])
+        details.assert_not_called()
+        via.assert_not_called()
+
+    def test_match_exposes_driver_ride_and_remaining_capacity(self):
+        driver, ride = self._driver_and_ride(1)
+        direct = {"geometry": [], "distance_m": 1000, "duration_s": 600}
+        detour = {
+            "geometry": [(43.60, 1.44), (43.61, 1.45)],
+            "distance_m": 1200,
+            "duration_s": 660,
+        }
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details", return_value=direct),
+            patch("backend.services.matching.routing_service.get_route_via_waypoint", return_value=detour),
+        ):
+            matches = MatchingService.find_matches(
+                self.passenger,
+                [self.passenger_ride],
+                [ride],
+                selection_counts={ride.id: 2},
+            )
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["ride_id"], ride.id)
+        self.assertEqual(matches[0]["car_seats"], 4)
+        self.assertEqual(matches[0]["available_seats"], 2)
+
+    def test_already_selected_ride_is_filtered_before_routing(self):
+        driver, ride = self._driver_and_ride(1)
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details") as details,
+            patch("backend.services.matching.routing_service.get_route_via_waypoint") as via,
+        ):
+            matches = MatchingService.find_matches(
+                self.passenger,
+                [self.passenger_ride],
+                [ride],
+                selected_ride_ids={ride.id},
+            )
+
+        self.assertEqual(matches, [])
+        details.assert_not_called()
+        via.assert_not_called()
+
+    def test_reserved_minute_is_filtered_before_routing(self):
+        driver, ride = self._driver_and_ride(1)
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details") as details,
+            patch("backend.services.matching.routing_service.get_route_via_waypoint") as via,
+        ):
+            matches = MatchingService.find_matches(
+                self.passenger,
+                [self.passenger_ride],
+                [ride],
+                reserved_times={ride.ride_time},
+            )
+
+        self.assertEqual(matches, [])
+        details.assert_not_called()
+        via.assert_not_called()
+
+    def test_same_driver_ride_is_returned_only_once(self):
+        driver, ride = self._driver_and_ride(1)
+        second_passenger_ride = Ride(
+            id=2,
+            user_id=self.passenger.id,
+            event_id=2,
+            ride_type="to_campus",
+            ride_time=self.when,
+            start_lat=self.passenger_ride.start_lat,
+            start_lon=self.passenger_ride.start_lon,
+            end_lat=self.passenger_ride.end_lat,
+            end_lon=self.passenger_ride.end_lon,
+        )
+        direct = {"geometry": [], "distance_m": 1000, "duration_s": 600}
+        detour = {
+            "geometry": [(43.60, 1.44), (43.61, 1.45)],
+            "distance_m": 1200,
+            "duration_s": 660,
+        }
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details", return_value=direct),
+            patch("backend.services.matching.routing_service.get_route_via_waypoint", return_value=detour),
+        ):
+            matches = MatchingService.find_matches(
+                self.passenger,
+                [self.passenger_ride, second_passenger_ride],
+                [ride],
+            )
+
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["ride_id"], ride.id)
+
+    def test_driver_cannot_use_passenger_matching(self):
+        driver, ride = self._driver_and_ride(1)
+
+        with (
+            patch("backend.services.matching.db.get_all_users") as users,
+            patch("backend.services.matching.routing_service.get_route_details") as details,
+            patch("backend.services.matching.routing_service.get_route_via_waypoint") as via,
+        ):
+            matches = MatchingService.find_matches(driver, [ride], [self.passenger_ride])
+
+        self.assertEqual(matches, [])
+        users.assert_not_called()
         details.assert_not_called()
         via.assert_not_called()
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, status
 
 from backend.database.manager import db
@@ -14,7 +16,7 @@ from backend.services.routing import (
     routing_service,
 )
 
-from backend.api.deps import require_current_user
+from backend.api.deps import require_passenger
 from backend.api.feedback import make_feedback, raise_api_error
 from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, MatchSearchResponse
 
@@ -22,14 +24,27 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 
 
 @router.post("/find", response_model=MatchesResponse)
-def find_matches(user: User = Depends(require_current_user)):
-    my_rides = db.get_rides_by_user(user.id)
-    all_rides = db.get_all_rides()
+def find_matches(user: User = Depends(require_passenger)):
+    now = datetime.now()
+    my_rides = [
+        ride for ride in db.get_active_rides_by_user(user.id)
+        if ride.ride_time and ride.ride_time >= now
+    ]
+    all_rides = [
+        ride for ride in db.get_all_active_rides()
+        if ride.ride_time and ride.ride_time >= now
+    ]
+    selection_counts = db.get_ride_selection_counts()
+    selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
+    reserved_times = db.get_passenger_reserved_times(user.id)
     try:
         matches = matching_service.find_matches(
             current_user=user,
             my_rides=my_rides,
             all_rides=all_rides,
+            selection_counts=selection_counts,
+            selected_ride_ids=selected_ride_ids,
+            reserved_times=reserved_times,
         )
     except RoutingQuotaExceededError:
         raise_api_error(
@@ -49,10 +64,10 @@ def find_matches(user: User = Depends(require_current_user)):
 
 
 @router.post("/search", response_model=MatchSearchResponse)
-def search_matches(body: MatchSearchRequest, user: User = Depends(require_current_user)):
+def search_matches(body: MatchSearchRequest, user: User = Depends(require_passenger)):
     transient_ride = Ride(
         user_id=user.id,
-        event_id=0,
+        event_id=None,
         ride_type=body.ride_type,
         ride_time=body.ride_time,
         start_lat=body.origin_lat,
@@ -60,12 +75,22 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_curren
         end_lat=body.dest_lat,
         end_lon=body.dest_lon,
     )
-    all_rides = db.get_all_rides()
+    now = datetime.now()
+    all_rides = [
+        ride for ride in db.get_all_active_rides()
+        if ride.ride_time and ride.ride_time >= now
+    ]
+    selection_counts = db.get_ride_selection_counts()
+    selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
+    reserved_times = db.get_passenger_reserved_times(user.id)
     try:
         matches = matching_service.find_matches(
             current_user=user,
             my_rides=[transient_ride],
             all_rides=all_rides,
+            selection_counts=selection_counts,
+            selected_ride_ids=selected_ride_ids,
+            reserved_times=reserved_times,
         )
         geometry = routing_service.get_route_geometry(
             (body.origin_lat, body.origin_lon),
