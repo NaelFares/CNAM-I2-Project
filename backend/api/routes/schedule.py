@@ -77,8 +77,10 @@ def confirm_import(user: User = Depends(require_current_user)):
     if not preview_events:
         raise_api_error("SCHEDULE_IMPORT_EMPTY")
 
+    # Les nouveaux cours remplacent uniquement les trajets actifs. Les trajets
+    # archives sont conserves et leur event_id passe a NULL via ON DELETE SET NULL.
+    db.delete_active_rides_by_user(user.id)
     db.delete_events_by_user(user.id)
-    db.delete_rides_by_user(user.id)
 
     for event_dict in preview_events:
         event = Event.from_dict(event_dict)

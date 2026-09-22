@@ -24,7 +24,6 @@
           <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Rôle</label>
             <select v-model="form.role" class="input">
-              <option value="both">Conducteur et passager</option>
               <option value="driver">Conducteur</option>
               <option value="passenger">Passager</option>
             </select>
@@ -32,6 +31,11 @@
           <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tolérance horaire (minutes)</label>
             <Input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
+          </div>
+          <div v-if="form.role === 'driver'" class="md:col-span-2">
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Places disponibles dans la voiture</label>
+            <Input v-model.number="form.car_seats" type="number" min="1" max="4" required />
+            <p class="mt-1 text-xs text-slate-500">Indiquez entre 1 et 4 places passagers. Le conducteur n'est pas compté.</p>
           </div>
         </div>
       </Card>
@@ -134,7 +138,7 @@
           :route-label="previewRoute.geometry.length ? `${formattedDuration} · ${previewRoute.distanceKm.toFixed(1)} km` : ''"
         />
         <p class="mt-2 text-xs text-slate-500">
-          Recalculé automatiquement à chaque changement d'adresse — non enregistré.
+          Recalculé automatiquement à chaque changement d'adresse. Cette valeur n'est pas enregistrée.
         </p>
       </Card>
 
@@ -172,7 +176,8 @@ const showSchoolMap = ref(false);
 const form = reactive({
   name: "",
   email: "",
-  role: "both",
+  role: "passenger",
+  car_seats: null,
   start_address: "",
   start_lat: 46.603354,
   start_lon: 1.888334,
@@ -239,6 +244,7 @@ onMounted(async () => {
   form.name = source.name;
   form.email = source.email;
   form.role = source.role;
+  form.car_seats = source.role === "driver" ? source.car_seats || 1 : null;
   form.start_address = source.start_address;
   form.start_lat = source.start_lat || form.start_lat;
   form.start_lon = source.start_lon || form.start_lon;
@@ -254,6 +260,7 @@ async function onSubmit() {
     name: form.name,
     email: form.email,
     role: form.role,
+    car_seats: form.role === "driver" ? Number(form.car_seats) : null,
     start_address: form.start_address,
     start_lat: form.start_lat,
     start_lon: form.start_lon,

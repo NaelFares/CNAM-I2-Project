@@ -8,7 +8,7 @@ export default {
         body: ["Manrope", "sans-serif"]
       },
       // Colors/shadows/radii reference the CSS custom properties defined in
-      // src/assets/main.css :root — that file is the single source of truth,
+      // src/assets/main.css :root. That file is the single source of truth,
       // this config just exposes them as Tailwind utilities (bg-primary, etc).
       // Note: opacity modifiers (e.g. bg-primary/50) don't work with var()-based
       // colors in Tailwind 3; not used anywhere currently.
@@ -37,7 +37,7 @@ export default {
         card: "var(--radius-card)",
         control: "var(--radius-control)"
       },
-      // sm/md/lg/xl/2xl keep Tailwind's defaults (640/768/1024/1280/1536) —
+      // sm/md/lg/xl/2xl keep Tailwind's defaults (640/768/1024/1280/1536).
       // md = tablet/layout switch breakpoint, lg = desktop nav switch (AppLayout.vue).
       screens: {
         xs: "480px"

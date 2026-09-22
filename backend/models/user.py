@@ -13,7 +13,8 @@ class User:
     name: str = ""
     email: str = ""
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
-    role: str = "both"  # "driver", "passenger", "both"
+    role: str = "passenger"  # "driver" ou "passenger"
+    car_seats: Optional[int] = None
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -24,11 +25,11 @@ class User:
 
     def is_driver(self) -> bool:
         """Vérifie si l'utilisateur est conducteur"""
-        return self.role in ["driver", "both"]
+        return self.role == "driver"
 
     def is_passenger(self) -> bool:
         """Vérifie si l'utilisateur est passager"""
-        return self.role in ["passenger", "both"]
+        return self.role == "passenger"
 
     def has_school_location(self) -> bool:
         return bool(self.school_lat and self.school_lon)
@@ -41,6 +42,7 @@ class User:
             "email": self.email,
             "hashed_password": self.hashed_password,
             "role": self.role,
+            "car_seats": self.car_seats,
             "start_address": self.start_address,
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
@@ -58,7 +60,8 @@ class User:
             name=data.get("name", ""),
             email=data.get("email", ""),
             hashed_password=data.get("hashed_password", ""),
-            role=data.get("role", "both"),
+            role=data.get("role", "passenger"),
+            car_seats=data.get("car_seats"),
             start_address=data.get("start_address", ""),
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),

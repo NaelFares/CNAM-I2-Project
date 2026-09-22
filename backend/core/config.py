@@ -53,12 +53,13 @@ class Config:
     # Temps de detour maximum accepte (minutes) pour aller recuperer le
     # passager par rapport au trajet direct du conducteur (voir matching.py).
     MAX_DETOUR_MIN = float(os.getenv("MAX_DETOUR_MIN", "12.0"))
-    # Nombre max de candidats (par trajet conducteur) pour lesquels on calcule
+    # Nombre max de candidats (par trajet de l'utilisateur courant) pour lesquels on calcule
     # le detour reel via ORS - borne le nombre d'appels au service de routing.
-    MAX_DETOUR_CANDIDATES = int(os.getenv("MAX_DETOUR_CANDIDATES", "8"))
+    MAX_DETOUR_CANDIDATES = int(os.getenv("MAX_DETOUR_CANDIDATES", "3"))
 
     # Routing (OpenRouteService)
     ORS_API_KEY = os.getenv("ORS_API_KEY", "")
+    ORS_MAX_REQUESTS_PER_MINUTE = int(os.getenv("ORS_MAX_REQUESTS_PER_MINUTE", "35"))
 
     # Upload
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "5"))
