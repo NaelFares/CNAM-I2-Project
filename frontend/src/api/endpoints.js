@@ -81,8 +81,8 @@ export async function cancelRideSelection(rideId) {
   return (await apiClient.delete(`/rides/${rideId}/select`)).data;
 }
 
-export async function findMatches() {
-  return (await apiClient.post("/matches/find", null, { timeout: MATCHING_TIMEOUT_MS })).data;
+export async function findMatches(weekStart) {
+  return (await apiClient.post("/matches/find", { week_start: weekStart }, { timeout: MATCHING_TIMEOUT_MS })).data;
 }
 
 export async function searchCarpoolMatches(payload) {

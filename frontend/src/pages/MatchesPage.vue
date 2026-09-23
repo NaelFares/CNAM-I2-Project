@@ -27,8 +27,26 @@
         </Button>
       </Card>
 
-      <div v-else class="grid gap-4 lg:grid-cols-2">
-        <Card v-for="ride in app.driverOffers" :key="ride.id" class="space-y-4">
+      <div v-else class="space-y-4">
+        <div class="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 text-blue-700 hover:bg-blue-50" aria-label="Semaine précédente" @click="changeDriverWeek(-1)">
+            <ChevronLeft class="h-5 w-5" aria-hidden="true" />
+          </button>
+          <div class="min-w-0 flex-1 text-center">
+            <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Mes trajets proposés</p>
+            <h2 class="text-sm font-bold text-slate-900 sm:text-base">Du {{ driverWeekDays[0]?.label }} au {{ driverWeekDays[6]?.label }}</h2>
+          </div>
+          <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 text-blue-700 hover:bg-blue-50" aria-label="Semaine suivante" @click="changeDriverWeek(1)">
+            <ChevronRight class="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <Card v-if="!driverOffersForWeek.length" class="text-sm font-semibold text-slate-600">
+          Aucun trajet proposé pour cette semaine. Utilisez les flèches pour voir une autre semaine.
+        </Card>
+
+        <div v-else class="grid gap-4 lg:grid-cols-2">
+        <Card v-for="ride in driverOffersForWeek" :key="ride.id" class="space-y-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p class="text-xs font-bold uppercase tracking-wide text-blue-700">{{ directionLabel(ride.ride_type) }}</p>
@@ -89,6 +107,7 @@
           </div>
           <p v-else class="border-t border-slate-200 pt-3 text-sm text-slate-500">Aucune demande pour le moment.</p>
         </Card>
+        </div>
       </div>
     </template>
 
@@ -134,7 +153,7 @@
           Recherche rapide
         </Button>
         <Button :variant="activeTab === 'planning' ? 'primary' : 'secondary'" @click="activeTab = 'planning'">
-          Tout mon planning
+          Recherche par semaine
         </Button>
       </div>
 
@@ -166,30 +185,49 @@
 
       <div v-show="activeTab === 'planning'" class="space-y-4">
         <div class="advice-banner">
-          Conseil: plus le profil et le planning sont précis, plus le score de compatibilité est fiable.
+          Choisissez une semaine de votre planning pour rechercher des covoiturages.
         </div>
 
-        <Card v-if="!planningSearchPerformed">
-          <Button :disabled="app.loading" @click="runFullPlanningSearch">
+        <Card v-if="!planningSearchPerformed" class="space-y-4">
+          <div>
+            <label for="planning-week" class="mb-1 block text-sm font-bold text-slate-800">Semaine à rechercher</label>
+            <input id="planning-week" v-model="selectedWeekDate" type="date" class="input max-w-xs" />
+            <p class="mt-2 text-sm text-slate-600">Du {{ selectedWeekDays[0]?.label }} au {{ selectedWeekDays[4]?.label }}.</p>
+          </div>
+          <Button :disabled="app.loading || !selectedWeekStart" @click="runPlanningSearch">
             <UsersRound class="h-4 w-4" aria-hidden="true" />
-            Trouver un covoiturage
+            Rechercher cette semaine
           </Button>
         </Card>
 
         <template v-else>
-          <div class="flex justify-end">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-slate-700">Semaine du {{ searchedDays[0]?.label }} au {{ searchedDays[4]?.label }}</p>
             <Button variant="secondary" @click="resetPlanningSearch">Nouvelle recherche</Button>
           </div>
 
-          <RankedMatchesExplorer
-            v-if="app.matches.length"
-            :matches="app.matches"
-            :loading-ride-id="app.selectionLoadingRideId"
-            @choose-ride="chooseRide"
-          />
+          <div v-if="app.matches.length" class="planning-day-results">
+            <div class="planning-day-results__header">
+              <button type="button" class="planning-day-results__arrow" :disabled="activeDayIndex === 0" aria-label="Jour précédent" @click="activeDayIndex--">
+                <ChevronLeft class="h-5 w-5" aria-hidden="true" />
+              </button>
+              <div class="text-center">
+                <p class="text-xs font-bold uppercase tracking-wide text-blue-700">{{ activeDayIndex + 1 }} / {{ searchedDays.length }}</p>
+                <h2 class="text-base font-bold capitalize text-slate-900">{{ activeDay?.label }}</h2>
+              </div>
+              <button type="button" class="planning-day-results__arrow" :disabled="activeDayIndex === searchedDays.length - 1" aria-label="Jour suivant" @click="activeDayIndex++">
+                <ChevronRight class="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <RankedMatchesExplorer
+              :matches="dayMatches"
+              :loading-ride-id="app.selectionLoadingRideId"
+              @choose-ride="chooseRide"
+            />
+          </div>
 
           <Card v-else>
-            <p class="text-sm font-semibold text-slate-700">Aucun covoiturage compatible n’a été trouvé dans votre planning.</p>
+            <p class="text-sm font-semibold text-slate-700">Aucun covoiturage compatible n’a été trouvé pour cette semaine.</p>
           </Card>
         </template>
       </div>
@@ -200,11 +238,12 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { CarFront, Check, CircleCheckBig, UserRoundCheck, UsersRound, X } from "lucide-vue-next";
+import { CarFront, Check, ChevronLeft, ChevronRight, CircleCheckBig, UserRoundCheck, UsersRound, X } from "lucide-vue-next";
 
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
 import RankedMatchesExplorer from "../components/RankedMatchesExplorer.vue";
 import { Button, Card } from "../components/ui";
+import { calendarWeekDays, localDateIso, matchesForDay, mondayIso, ridesForWeek, schoolWeekDays, shiftWeek } from "../lib/week";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";
 
@@ -214,7 +253,18 @@ const router = useRouter();
 const activeTab = ref("quick");
 const quickSearchPerformed = ref(false);
 const planningSearchPerformed = ref(false);
+const selectedWeekDate = ref(localDateIso());
+const selectedWeekStart = computed(() => mondayIso(selectedWeekDate.value));
+const selectedWeekDays = computed(() => schoolWeekDays(selectedWeekStart.value));
+const searchedWeekStart = ref(null);
+const searchedDays = computed(() => schoolWeekDays(searchedWeekStart.value));
+const activeDayIndex = ref(0);
+const activeDay = computed(() => searchedDays.value[activeDayIndex.value]);
+const dayMatches = computed(() => matchesForDay(app.matches, activeDay.value?.iso));
 const isDriver = computed(() => auth.user?.role === "driver");
+const driverWeekStart = ref(mondayIso(localDateIso()));
+const driverWeekDays = computed(() => calendarWeekDays(driverWeekStart.value));
+const driverOffersForWeek = computed(() => ridesForWeek(app.driverOffers, driverWeekStart.value));
 
 onMounted(() => {
   if (isDriver.value) app.loadDriverOffers();
@@ -232,17 +282,24 @@ function resetQuickSearch() {
   app.searchRouteGeometry = [];
 }
 
-async function runFullPlanningSearch() {
-  const ok = await app.generateRides();
-  if (!ok) return;
-
-  const matchesFound = await app.findMatches();
-  if (matchesFound) planningSearchPerformed.value = true;
+async function runPlanningSearch() {
+  const weekStart = selectedWeekStart.value;
+  if (!weekStart) return;
+  const matchesFound = await app.findMatches(weekStart);
+  if (!matchesFound) return;
+  searchedWeekStart.value = weekStart;
+  const firstDayWithMatches = schoolWeekDays(weekStart).findIndex(
+    (day) => matchesForDay(app.matches, day.iso).length > 0,
+  );
+  activeDayIndex.value = Math.max(0, firstDayWithMatches);
+  planningSearchPerformed.value = true;
 }
 
 function resetPlanningSearch() {
   planningSearchPerformed.value = false;
   app.matches = [];
+  searchedWeekStart.value = null;
+  activeDayIndex.value = 0;
 }
 
 function chooseRide(match) {
@@ -261,6 +318,10 @@ function directionLabel(rideType) {
 
 function seatsLabel(count) {
   return `${count} place${count > 1 ? "s" : ""} restante${count > 1 ? "s" : ""}`;
+}
+
+function changeDriverWeek(offset) {
+  driverWeekStart.value = shiftWeek(driverWeekStart.value, offset);
 }
 
 function selectionStatusLabel(status) {

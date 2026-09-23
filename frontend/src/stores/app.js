@@ -256,11 +256,11 @@ export const useAppStore = defineStore("app", {
         this.selectionLoadingRideId = null;
       }
     },
-    async findMatches() {
+    async findMatches(weekStart) {
       const feedback = useFeedbackStore();
       this.startLoading("Recherche des correspondances...", "Comparaison des trajets disponibles.");
       try {
-        const data = await findMatches();
+        const data = await findMatches(weekStart);
         this.matches = data.matches;
         feedback.showSuccess(data.feedback.message);
         return true;

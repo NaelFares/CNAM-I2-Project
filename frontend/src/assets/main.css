@@ -565,6 +565,38 @@ a {
 }
 
 /* Carte partagee et classement des propositions. */
+.planning-day-results {
+  overflow: hidden;
+  border: 1px solid var(--color-stroke);
+  border-radius: 22px;
+  box-shadow: var(--shadow-card-strong);
+}
+
+.planning-day-results__header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  min-height: 72px;
+  padding: 0.7rem;
+  background: #fff;
+  border-bottom: 1px solid var(--color-stroke);
+}
+
+.planning-day-results__arrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-stroke-strong);
+  border-radius: 12px;
+  color: #1d4ed8;
+}
+
+.planning-day-results__arrow:hover:not(:disabled) { background: #eff6ff; }
+.planning-day-results__arrow:disabled { opacity: 0.35; cursor: not-allowed; }
+.planning-day-results .matches-explorer { border: 0; border-radius: 0; box-shadow: none; }
+
 .matches-explorer {
   display: grid;
   grid-template-columns: minmax(330px, 0.82fr) minmax(0, 1.55fr);

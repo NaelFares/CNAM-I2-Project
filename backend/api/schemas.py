@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -149,6 +149,10 @@ class MatchDTO(BaseModel):
 class MatchesResponse(BaseModel):
     matches: list[MatchDTO]
     feedback: ApiMessage
+
+
+class PlanningMatchRequest(BaseModel):
+    week_start: date
 
 
 class MatchSearchRequest(BaseModel):

@@ -54,7 +54,7 @@
       >
         <LoaderCircle v-if="busy" class="h-4 w-4 animate-spin" aria-hidden="true" />
         <CircleCheckBig v-else class="h-4 w-4" aria-hidden="true" />
-        {{ match.already_selected ? "Déjà sélectionné" : "Voir le récapitulatif" }}
+        {{ match.already_selected ? "Déjà sélectionné" : "Choisir ce trajet" }}
       </button>
     </div>
   </article>

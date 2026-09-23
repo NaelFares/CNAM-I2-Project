@@ -17,6 +17,9 @@
       </div>
 
       <div ref="resultsList" class="matches-explorer__scroll">
+        <p v-if="!displayedMatches.length" class="rounded-xl bg-white p-4 text-sm font-semibold text-slate-600">
+          Aucun trajet compatible pour ce jour. Utilisez les flèches pour voir les autres jours.
+        </p>
         <section v-if="goldMatches.length" class="matches-explorer__gold-group">
           <header>
             <Trophy class="matches-explorer__award-icon" aria-hidden="true" />
