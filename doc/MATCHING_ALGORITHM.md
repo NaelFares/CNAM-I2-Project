@@ -14,6 +14,15 @@ horaires et le detour reel.
 Un conducteur ne recherche pas de covoiturage. Il consulte ses trajets
 proposes, leurs places restantes et les passagers inscrits.
 
+La recherche ponctuelle compare un trajet saisi a la main. Dans l'onglet
+« Tout mon planning », le passager choisit une semaine de cours (lundi a
+vendredi, semaine courante par defaut). `POST /matches/find` recoit
+`week_start`, complete uniquement les trajets manquants des cours de cette
+semaine sans supprimer les demandes existantes, puis filtre les trajets du
+passager et des conducteurs sur cette periode avant tout calcul d'itineraire.
+Les resultats sont groupes par jour : les fleches de l'interface parcourent
+les resultats deja calcules, sans relancer la recherche.
+
 ## Vue d'ensemble
 
 ```mermaid
