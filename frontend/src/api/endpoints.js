@@ -73,6 +73,10 @@ export async function selectRide(rideId) {
   return (await apiClient.post(`/rides/${rideId}/select`)).data;
 }
 
+export async function decideRidePassenger(rideId, passengerId, decision) {
+  return (await apiClient.post(`/rides/${rideId}/passengers/${passengerId}/${decision}`)).data;
+}
+
 export async function cancelRideSelection(rideId) {
   return (await apiClient.delete(`/rides/${rideId}/select`)).data;
 }

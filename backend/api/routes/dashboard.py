@@ -23,7 +23,10 @@ def dashboard_summary(user: User = Depends(require_current_user)):
             offer["occupied_seats"] for offer in db.get_driver_offers(user.id)
         )
     else:
-        matches_count = len(db.get_passenger_selections(user.id))
+        matches_count = sum(
+            ride["selection_status"] == "accepted"
+            for ride in db.get_passenger_selections(user.id)
+        )
 
     return DashboardSummaryResponse(
         events_count=events_count,

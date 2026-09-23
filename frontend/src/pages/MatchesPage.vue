@@ -4,8 +4,8 @@
       <h1 class="page-title">{{ isDriver ? "Mes trajets proposés" : "Covoiturage" }}</h1>
       <p class="page-subtitle">
         {{ isDriver
-          ? "Consultez les places restantes et les passagers inscrits à vos trajets."
-          : "Trouvez puis sélectionnez un trajet compatible avec vos horaires." }}
+          ? "Acceptez ou refusez les demandes de passagers pour vos trajets."
+          : "Trouvez un trajet compatible et demandez une place au conducteur." }}
       </p>
     </header>
 
@@ -48,20 +48,46 @@
           </div>
 
           <div v-if="ride.passengers.length" class="space-y-2 border-t border-slate-200 pt-3">
-            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Passagers inscrits</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Demandes et passagers</p>
             <div
               v-for="passenger in ride.passengers"
               :key="passenger.id"
               class="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2"
             >
               <UserRoundCheck class="h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-bold text-slate-800">{{ passenger.name }}</p>
                 <p class="truncate text-xs text-slate-500">{{ passenger.email }}</p>
+                <p class="text-xs font-semibold" :class="passenger.selection_status === 'accepted' ? 'text-emerald-700' : passenger.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'">
+                  {{ selectionStatusLabel(passenger.selection_status) }}
+                </p>
+              </div>
+              <div v-if="passenger.selection_status !== 'rejected'" class="flex shrink-0 items-center gap-1">
+                <button
+                  v-if="passenger.selection_status === 'pending'"
+                  type="button"
+                  class="rounded-lg p-2 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  :disabled="app.selectionLoadingRideId === ride.id"
+                  :aria-label="`Accepter ${passenger.name}`"
+                  :title="`Accepter ${passenger.name}`"
+                  @click="app.decidePassenger(ride.id, passenger.id, 'accept')"
+                >
+                  <Check class="h-5 w-5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg p-2 text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                  :disabled="app.selectionLoadingRideId === ride.id"
+                  :aria-label="`Refuser ${passenger.name}`"
+                  :title="`Refuser ${passenger.name}`"
+                  @click="app.decidePassenger(ride.id, passenger.id, 'reject')"
+                >
+                  <X class="h-5 w-5" aria-hidden="true" />
+                </button>
               </div>
             </div>
           </div>
-          <p v-else class="border-t border-slate-200 pt-3 text-sm text-slate-500">Aucun passager inscrit pour le moment.</p>
+          <p v-else class="border-t border-slate-200 pt-3 text-sm text-slate-500">Aucune demande pour le moment.</p>
         </Card>
       </div>
     </template>
@@ -70,14 +96,14 @@
       <Card class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-bold text-slate-900">Mes trajets sélectionnés</h2>
-            <p class="text-sm text-slate-600">Les places que vous avez réservées auprès d'un conducteur.</p>
+            <h2 class="text-lg font-bold text-slate-900">Mes demandes de trajet</h2>
+            <p class="text-sm text-slate-600">Suivez la réponse du conducteur à vos demandes.</p>
           </div>
           <CircleCheckBig class="h-6 w-6 shrink-0 text-blue-700" aria-hidden="true" />
         </div>
 
         <p v-if="app.ridesViewLoading" class="text-sm font-semibold text-slate-500">Chargement...</p>
-        <p v-else-if="!app.mySelections.length" class="text-sm text-slate-500">Vous n'avez encore sélectionné aucun trajet.</p>
+        <p v-else-if="!app.mySelections.length" class="text-sm text-slate-500">Vous n'avez encore demandé aucun trajet.</p>
         <div v-else class="grid gap-2 md:grid-cols-2">
           <div
             v-for="ride in app.mySelections"
@@ -87,6 +113,9 @@
             <div class="min-w-0">
               <p class="truncate text-sm font-bold text-slate-900">Avec {{ ride.driver_name }}</p>
               <p class="mt-0.5 text-xs text-slate-600">{{ directionLabel(ride.ride_type) }} · {{ formatRideTime(ride.ride_time) }}</p>
+              <p class="mt-1 text-xs font-semibold" :class="ride.selection_status === 'accepted' ? 'text-emerald-700' : ride.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'">
+                {{ selectionStatusLabel(ride.selection_status) }}
+              </p>
             </div>
             <Button
               variant="secondary"
@@ -171,7 +200,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { CarFront, CircleCheckBig, UserRoundCheck, UsersRound, X } from "lucide-vue-next";
+import { CarFront, Check, CircleCheckBig, UserRoundCheck, UsersRound, X } from "lucide-vue-next";
 
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
 import RankedMatchesExplorer from "../components/RankedMatchesExplorer.vue";
@@ -232,6 +261,12 @@ function directionLabel(rideType) {
 
 function seatsLabel(count) {
   return `${count} place${count > 1 ? "s" : ""} restante${count > 1 ? "s" : ""}`;
+}
+
+function selectionStatusLabel(status) {
+  if (status === "accepted") return "Confirmé";
+  if (status === "rejected") return "Refusé";
+  return "En attente du conducteur";
 }
 
 function formatRideTime(value) {

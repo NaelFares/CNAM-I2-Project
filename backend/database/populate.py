@@ -353,7 +353,8 @@ def _ensure_seed_selections() -> int:
     users = [user for user in users if user]
     rides_by_user = {user.id: db.get_rides_by_user(user.id) for user in users}
     drivers = [user for user in users if user.is_driver() and user.car_seats]
-    counts = db.get_ride_selection_counts()
+    counts = db.get_ride_request_counts()
+    accepted_counts = db.get_ride_selection_counts()
     now = datetime.now()
     created = 0
 
@@ -395,6 +396,12 @@ def _ensure_seed_selections() -> int:
                     counts[ride.id] = counts.get(ride.id, 0) + 1
                     reserved_times.add(ride.ride_time)
                     created += 1
+                    # Une place déjà confirmée par trajet, puis des demandes
+                    # en attente pour que le conducteur teste son choix.
+                    if accepted_counts.get(ride.id, 0) == 0:
+                        decision = db.decide_ride_selection(ride.id, passenger.id, driver.id, "accept")
+                        if decision["status"] == "accepted":
+                            accepted_counts[ride.id] = 1
                     break
                 if result["status"] in ("already_selected", "time_conflict"):
                     reserved_times.add(ride.ride_time)

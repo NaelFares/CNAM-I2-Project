@@ -49,7 +49,10 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
     if (
         user.is_passenger()
         and payload.role == "driver"
-        and db.get_passenger_selections(user.id)
+        and any(
+            ride["selection_status"] in ("pending", "accepted")
+            for ride in db.get_passenger_selections(user.id)
+        )
     ):
         raise_api_error(
             "VALIDATION_ROLE_ACTIVE_SELECTIONS",

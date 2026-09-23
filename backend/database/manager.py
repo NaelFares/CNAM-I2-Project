@@ -292,6 +292,22 @@ class Database:
             """
             SELECT ride_id, COUNT(*)
             FROM ride_selections
+            WHERE status = 'accepted'
+            GROUP BY ride_id
+            """
+        )
+        counts = {int(ride_id): int(count) for ride_id, count in cursor.fetchall()}
+        conn.close()
+        return counts
+
+    def get_ride_request_counts(self) -> dict[int, int]:
+        """Nombre de demandes en attente ou acceptées, pour le seed de démonstration."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ride_id, COUNT(*) FROM ride_selections
+            WHERE status IN ('pending', 'accepted')
             GROUP BY ride_id
             """
         )
@@ -300,7 +316,7 @@ class Database:
         return counts
 
     def get_passenger_selected_ride_ids(self, passenger_id: int) -> set[int]:
-        """Retourne les trajets actifs deja reserves par un passager."""
+        """Retourne les trajets actifs déjà demandés par un passager, même refusés."""
         self.archive_expired_rides()
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -328,6 +344,7 @@ class Database:
             FROM ride_selections rs
             JOIN rides r ON r.id = rs.ride_id
             WHERE rs.passenger_id = %s AND r.status = 'active'
+              AND rs.status IN ('pending', 'accepted')
             """,
             (passenger_id,),
         )
@@ -345,7 +362,7 @@ class Database:
             FROM (
                 SELECT r.id, COUNT(rs.id) AS occupied
                 FROM rides r
-                LEFT JOIN ride_selections rs ON rs.ride_id = r.id
+                LEFT JOIN ride_selections rs ON rs.ride_id = r.id AND rs.status = 'accepted'
                 WHERE r.user_id = %s AND r.status = 'active'
                 GROUP BY r.id
             ) AS active_occupancy
@@ -357,7 +374,7 @@ class Database:
         return value
 
     def select_ride(self, ride_id: int, passenger_id: int) -> dict:
-        """Réserve une place sans surbooking ni double réservation du créneau."""
+        """Crée une demande sans double réservation du créneau."""
         self.archive_expired_rides()
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -409,6 +426,7 @@ class Database:
                 JOIN rides reserved ON reserved.id = rs.ride_id
                 WHERE rs.passenger_id = %s
                   AND reserved.status = 'active'
+                  AND rs.status IN ('pending', 'accepted')
                   AND date_trunc('minute', reserved.ride_time) = date_trunc('minute', %s::timestamp)
                 LIMIT 1
                 """,
@@ -418,7 +436,7 @@ class Database:
                 return {"status": "time_conflict"}
 
             cursor.execute(
-                "SELECT COUNT(*) FROM ride_selections WHERE ride_id = %s",
+                "SELECT COUNT(*) FROM ride_selections WHERE ride_id = %s AND status = 'accepted'",
                 (ride_id,),
             )
             occupied = int(cursor.fetchone()["count"])
@@ -428,15 +446,100 @@ class Database:
 
             cursor.execute(
                 """
-                INSERT INTO ride_selections (ride_id, passenger_id)
-                VALUES (%s, %s)
+                INSERT INTO ride_selections (ride_id, passenger_id, status)
+                VALUES (%s, %s, 'pending')
                 """,
                 (ride_id, passenger_id),
             )
             conn.commit()
             return {
                 "status": "selected",
-                "available_seats": capacity - occupied - 1,
+                "available_seats": capacity - occupied,
+            }
+        finally:
+            conn.close()
+
+    def decide_ride_selection(
+        self, ride_id: int, passenger_id: int, driver_id: int, decision: str
+    ) -> dict:
+        """Accepte ou refuse une demande appartenant au conducteur connecté."""
+        if decision not in ("accept", "reject"):
+            raise ValueError("Invalid ride selection decision")
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            # Même ordre de verrouillage que select_ride pour éviter les conflits.
+            cursor.execute("SELECT id FROM users WHERE id = %s FOR UPDATE", (passenger_id,))
+            cursor.fetchone()
+            cursor.execute(
+                """
+                SELECT r.id, r.status, r.ride_time, u.car_seats,
+                       r.ride_time <= LOCALTIMESTAMP AS is_past
+                FROM rides r
+                JOIN users u ON u.id = r.user_id
+                WHERE r.id = %s AND r.user_id = %s
+                FOR UPDATE OF r
+                """,
+                (ride_id, driver_id),
+            )
+            ride = cursor.fetchone()
+            if not ride:
+                return {"status": "not_found"}
+            if ride["status"] != "active" or ride["is_past"]:
+                return {"status": "unavailable"}
+
+            cursor.execute(
+                """
+                SELECT id, status FROM ride_selections
+                WHERE ride_id = %s AND passenger_id = %s
+                FOR UPDATE
+                """,
+                (ride_id, passenger_id),
+            )
+            selection = cursor.fetchone()
+            if not selection:
+                return {"status": "not_found"}
+            if selection["status"] == "rejected" or (
+                decision == "accept" and selection["status"] == "accepted"
+            ):
+                return {"status": "already_decided"}
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM ride_selections WHERE ride_id = %s AND status = 'accepted'",
+                (ride_id,),
+            )
+            occupied = int(cursor.fetchone()["count"])
+            capacity = int(ride["car_seats"] or 0)
+            if decision == "accept":
+                if occupied >= capacity:
+                    return {"status": "full"}
+                cursor.execute(
+                    """
+                    SELECT 1 FROM ride_selections rs
+                    JOIN rides r ON r.id = rs.ride_id
+                    WHERE rs.passenger_id = %s AND rs.status = 'accepted'
+                      AND rs.ride_id <> %s AND r.status = 'active'
+                      AND date_trunc('minute', r.ride_time) = date_trunc('minute', %s::timestamp)
+                    LIMIT 1
+                    """,
+                    (passenger_id, ride_id, ride["ride_time"]),
+                )
+                if cursor.fetchone():
+                    return {"status": "time_conflict"}
+
+            new_status = "accepted" if decision == "accept" else "rejected"
+            cursor.execute(
+                "UPDATE ride_selections SET status = %s WHERE id = %s",
+                (new_status, selection["id"]),
+            )
+            conn.commit()
+            new_occupied = occupied + (1 if new_status == "accepted" else 0)
+            if new_status == "rejected" and selection["status"] == "accepted":
+                new_occupied -= 1
+            return {
+                "status": new_status,
+                "available_seats": max(0, capacity - new_occupied),
             }
         finally:
             conn.close()
@@ -463,7 +566,7 @@ class Database:
             SELECT u.car_seats - COUNT(rs.id) AS available_seats
             FROM rides r
             JOIN users u ON u.id = r.user_id
-            LEFT JOIN ride_selections rs ON rs.ride_id = r.id
+            LEFT JOIN ride_selections rs ON rs.ride_id = r.id AND rs.status = 'accepted'
             WHERE r.id = %s
             GROUP BY u.car_seats
             """,
@@ -487,8 +590,9 @@ class Database:
             SELECT
                 r.*,
                 u.car_seats,
-                COUNT(rs.id) OVER (PARTITION BY r.id) AS occupied_seats,
+                COUNT(rs.id) FILTER (WHERE rs.status = 'accepted') OVER (PARTITION BY r.id) AS occupied_seats,
                 rs.selected_at,
+                rs.status AS selection_status,
                 p.id AS passenger_id,
                 p.name AS passenger_name,
                 p.email AS passenger_email
@@ -532,6 +636,7 @@ class Database:
                         "name": row["passenger_name"],
                         "email": row["passenger_email"],
                         "selected_at": row["selected_at"],
+                        "selection_status": row["selection_status"],
                     }
                 )
         return list(offers.values())
@@ -546,6 +651,7 @@ class Database:
             SELECT
                 rs.id AS selection_id,
                 rs.selected_at,
+                rs.status AS selection_status,
                 r.id AS ride_id,
                 r.ride_type,
                 r.ride_time,

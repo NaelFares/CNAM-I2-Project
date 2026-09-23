@@ -178,6 +178,7 @@ class SelectedPassengerDTO(BaseModel):
     name: str
     email: EmailStr
     selected_at: datetime
+    selection_status: Literal["pending", "accepted", "rejected"]
 
 
 class DriverOfferDTO(BaseModel):
@@ -213,6 +214,7 @@ class PassengerSelectionDTO(BaseModel):
     end_lon: float
     status: Literal["active", "archived"]
     selected_at: datetime
+    selection_status: Literal["pending", "accepted", "rejected"]
 
 
 class PassengerSelectionsResponse(BaseModel):

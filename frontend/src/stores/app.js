@@ -5,6 +5,7 @@ import {
   cancelRideSelection,
   confirmSchedule,
   dashboardSummary,
+  decideRidePassenger,
   findMatches,
   generateRides,
   getMyRideOffers,
@@ -196,6 +197,21 @@ export const useAppStore = defineStore("app", {
         return false;
       } finally {
         this.ridesViewLoading = false;
+      }
+    },
+    async decidePassenger(rideId, passengerId, decision) {
+      const feedback = useFeedbackStore();
+      this.selectionLoadingRideId = rideId;
+      try {
+        const data = await decideRidePassenger(rideId, passengerId, decision);
+        await this.loadDriverOffers();
+        feedback.showSuccess(data.feedback?.message || "Demande traitée.");
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.selectionLoadingRideId = null;
       }
     },
     async selectRide(rideId) {

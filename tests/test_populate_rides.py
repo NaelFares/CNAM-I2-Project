@@ -79,24 +79,32 @@ class PopulateRidesTests(unittest.TestCase):
             7: [Ride(id=17, user_id=7, ride_time=ride_time)],
         }
         selections = set()
+        accepted = set()
 
         def select_ride(ride_id, passenger_id):
             selections.add((ride_id, passenger_id))
             return {"status": "selected"}
 
+        def decide_ride_selection(ride_id, passenger_id, driver_id, decision):
+            accepted.add((ride_id, passenger_id))
+            return {"status": "accepted"}
+
         with patch.object(populate, "db") as database:
             database.get_user_by_email.side_effect = lambda email: users.get(int(email[8:10]))
             database.get_rides_by_user.side_effect = lambda user_id: rides[user_id]
-            database.get_ride_selection_counts.side_effect = lambda: {17: len(selections)}
+            database.get_ride_request_counts.side_effect = lambda: {17: len(selections)}
+            database.get_ride_selection_counts.side_effect = lambda: {17: len(accepted)}
             database.get_passenger_reserved_times.side_effect = lambda user_id: {
                 ride_time for _, selected_user_id in selections if selected_user_id == user_id
             }
             database.select_ride.side_effect = select_ride
+            database.decide_ride_selection.side_effect = decide_ride_selection
 
             self.assertEqual(populate._ensure_seed_selections(), 2)
             self.assertEqual(populate._ensure_seed_selections(), 0)
 
         self.assertEqual(selections, {(17, 1), (17, 3)})
+        self.assertEqual(accepted, {(17, 1)})
 
 
 if __name__ == "__main__":

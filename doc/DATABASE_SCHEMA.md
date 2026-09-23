@@ -64,6 +64,7 @@ erDiagram
         INTEGER ride_id FK
         INTEGER passenger_id FK
         TIMESTAMPTZ selected_at
+        TEXT status
     }
 
     routing_cache {
@@ -157,15 +158,16 @@ trajets.
 | `ride_id` | INTEGER | FK `rides.id`, NOT NULL | Trajet conducteur choisi |
 | `passenger_id` | INTEGER | FK `users.id`, NOT NULL | Passager connecte |
 | `selected_at` | TIMESTAMPTZ | NOT NULL | Date du choix |
+| `status` | TEXT | NOT NULL, CHECK | `pending`, `accepted` ou `rejected` |
 
 La paire `(ride_id, passenger_id)` est unique. Les deux cles etrangeres sont
 en `ON DELETE CASCADE` afin qu'une suppression explicite d'un trajet ou d'un
 compte ne laisse pas de selection orpheline.
 
-Une selection occupe une place. Le nombre restant n'est pas stocke :
+Seule une demande acceptee occupe une place. Le nombre restant n'est pas stocke :
 
 ```text
-places_restantes = users.car_seats - COUNT(ride_selections.id)
+places_restantes = users.car_seats - COUNT(*) FILTER (WHERE status = 'accepted')
 ```
 
 Un trajet dont le resultat vaut zero est complet. Il reste visible dans les
@@ -195,8 +197,8 @@ parametres de routing produit une nouvelle `cache_key`.
 - Seul un conducteur possede une capacite, comprise entre 1 et 4.
 - Une personne ne peut selectionner deux fois le meme trajet.
 - La selection et l'annulation sont effectuees pour l'utilisateur connecte.
-- La prise de la derniere place est protegee par une transaction et un
-  verrouillage du trajet.
+- L'acceptation de la derniere place est protegee par une transaction et un
+  verrouillage du trajet. Seul le conducteur du trajet peut accepter ou refuser.
 - Les trajets archives, passes ou complets sont filtres avant les appels au
   service externe d'itineraires.
 
