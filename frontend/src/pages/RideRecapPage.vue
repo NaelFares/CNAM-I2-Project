@@ -7,7 +7,7 @@
       </Button>
       <div class="mt-4">
         <h1 class="page-title">Récapitulatif du trajet</h1>
-        <p class="page-subtitle">Vérifiez les informations avant de réserver votre place.</p>
+        <p class="page-subtitle">Vérifiez les informations avant d'envoyer votre demande au conducteur.</p>
       </div>
     </header>
 
@@ -92,7 +92,7 @@
 
             <div class="flex items-center gap-2 border-t border-slate-200 pt-4 text-sm font-semibold text-slate-700">
               <CarFront class="h-5 w-5 text-emerald-700" aria-hidden="true" />
-              {{ seatsLabel }} avant votre réservation
+              {{ seatsLabel }} actuellement
             </div>
           </Card>
 
@@ -100,9 +100,9 @@
             <div class="flex items-start gap-3">
               <ShieldCheck class="mt-0.5 h-6 w-6 shrink-0 text-blue-700" aria-hidden="true" />
               <div>
-                <h2 class="font-bold text-slate-900">Confirmation nécessaire</h2>
+                <h2 class="font-bold text-slate-900">Accord du conducteur nécessaire</h2>
                 <p class="mt-1 text-sm text-slate-600">
-                  Aucune place n'est encore réservée. La réservation sera enregistrée uniquement après votre validation.
+                  Votre demande sera envoyée au conducteur. Votre place ne sera réservée que s'il l'accepte.
                 </p>
               </div>
             </div>
@@ -112,7 +112,7 @@
               <Button :disabled="isConfirming" @click="confirmRide">
                 <LoaderCircle v-if="isConfirming" class="h-4 w-4 animate-spin" aria-hidden="true" />
                 <CircleCheckBig v-else class="h-4 w-4" aria-hidden="true" />
-                {{ isConfirming ? "Validation..." : "Valider la réservation" }}
+                {{ isConfirming ? "Envoi..." : "Demander une place" }}
               </Button>
             </div>
           </Card>

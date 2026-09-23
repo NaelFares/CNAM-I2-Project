@@ -132,6 +132,37 @@ def select_ride(ride_id: int, user: User = Depends(require_passenger)):
     )
 
 
+@router.post("/{ride_id}/passengers/{passenger_id}/accept", response_model=RideSelectionResponse)
+def accept_passenger(ride_id: int, passenger_id: int, user: User = Depends(require_driver)):
+    return _decide_passenger(ride_id, passenger_id, user.id, "accept")
+
+
+@router.post("/{ride_id}/passengers/{passenger_id}/reject", response_model=RideSelectionResponse)
+def reject_passenger(ride_id: int, passenger_id: int, user: User = Depends(require_driver)):
+    return _decide_passenger(ride_id, passenger_id, user.id, "reject")
+
+
+def _decide_passenger(ride_id: int, passenger_id: int, driver_id: int, decision: str):
+    result = db.decide_ride_selection(ride_id, passenger_id, driver_id, decision)
+    if result["status"] == "not_found":
+        raise_api_error("RIDE_SELECTION_NOT_FOUND", http_status=status.HTTP_404_NOT_FOUND)
+    if result["status"] == "unavailable":
+        raise_api_error("RIDE_UNAVAILABLE", http_status=status.HTTP_409_CONFLICT)
+    if result["status"] == "already_decided":
+        raise_api_error("RIDE_SELECTION_ALREADY_DECIDED", http_status=status.HTTP_409_CONFLICT)
+    if result["status"] == "full":
+        raise_api_error("RIDE_FULL", http_status=status.HTTP_409_CONFLICT)
+    if result["status"] == "time_conflict":
+        raise_api_error("RIDE_TIME_CONFLICT", http_status=status.HTTP_409_CONFLICT)
+    return RideSelectionResponse(
+        ride_id=ride_id,
+        available_seats=result["available_seats"],
+        feedback=make_feedback(
+            "RIDE_SELECTION_ACCEPTED" if decision == "accept" else "RIDE_SELECTION_REJECTED"
+        ),
+    )
+
+
 @router.delete("/{ride_id}/select", response_model=RideSelectionResponse)
 def cancel_ride_selection(ride_id: int, user: User = Depends(require_passenger)):
     result = db.cancel_ride_selection(ride_id, user.id)

@@ -46,12 +46,97 @@ class RideSelectionTests(unittest.TestCase):
 
         self.assertEqual(
             result,
-            {"status": "selected", "available_seats": 1},
+            {"status": "selected", "available_seats": 2},
         )
         self.assertIn("FOR UPDATE", self.cursor.execute.call_args_list[0].args[0])
         self.assertIn("FOR UPDATE OF r", self.cursor.execute.call_args_list[1].args[0])
         self.connection.commit.assert_called_once_with()
         self.connection.close.assert_called_once_with()
+        insert_query = self.cursor.execute.call_args_list[-1].args[0]
+        self.assertIn("'pending'", insert_query)
+
+    def test_driver_accepts_pending_passenger(self):
+        self.cursor.fetchone.side_effect = [
+            {"id": 7},
+            {"id": 25, "status": "active", "ride_time": datetime(2026, 9, 28, 8, 15),
+             "car_seats": 3, "is_past": False},
+            {"id": 5, "status": "pending"},
+            {"count": 1},
+            None,
+        ]
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.decide_ride_selection(25, 7, 10, "accept")
+
+        self.assertEqual(result, {"status": "accepted", "available_seats": 1})
+        self.assertEqual(self.cursor.execute.call_args.args[1], ("accepted", 5))
+        self.connection.commit.assert_called_once_with()
+
+    def test_driver_rejects_accepted_passenger_and_frees_seat(self):
+        self.cursor.fetchone.side_effect = [
+            {"id": 7},
+            {"id": 25, "status": "active", "ride_time": datetime(2026, 9, 28, 8, 15),
+             "car_seats": 3, "is_past": False},
+            {"id": 5, "status": "accepted"},
+            {"count": 2},
+        ]
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.decide_ride_selection(25, 7, 10, "reject")
+
+        self.assertEqual(result, {"status": "rejected", "available_seats": 2})
+        self.connection.commit.assert_called_once_with()
+
+    def test_driver_cannot_accept_when_car_is_full(self):
+        self.cursor.fetchone.side_effect = [
+            {"id": 7},
+            {"id": 25, "status": "active", "ride_time": datetime(2026, 9, 28, 8, 15),
+             "car_seats": 1, "is_past": False},
+            {"id": 5, "status": "pending"},
+            {"count": 1},
+        ]
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.decide_ride_selection(25, 7, 10, "accept")
+
+        self.assertEqual(result, {"status": "full"})
+        self.connection.commit.assert_not_called()
+
+    def test_driver_cannot_accept_conflicting_reservation(self):
+        self.cursor.fetchone.side_effect = [
+            {"id": 7},
+            {"id": 25, "status": "active", "ride_time": datetime(2026, 9, 28, 8, 15),
+             "car_seats": 3, "is_past": False},
+            {"id": 5, "status": "pending"},
+            {"count": 0},
+            {"exists": 1},
+        ]
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.decide_ride_selection(25, 7, 10, "accept")
+
+        self.assertEqual(result, {"status": "time_conflict"})
+        self.connection.commit.assert_not_called()
+
+    def test_other_driver_cannot_decide_passenger(self):
+        self.cursor.fetchone.side_effect = [{"id": 7}, None]
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.decide_ride_selection(25, 7, 99, "accept")
+
+        self.assertEqual(result, {"status": "not_found"})
+        self.assertEqual(self.cursor.execute.call_args.args[1], (25, 99))
+        self.connection.commit.assert_not_called()
 
     def test_select_ride_refuses_a_full_car(self):
         self.cursor.fetchone.side_effect = [

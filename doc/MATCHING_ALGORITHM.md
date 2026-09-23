@@ -81,11 +81,12 @@ selections, mais ne participent plus au matching.
 
 ## 3. Places restantes
 
-Une ligne de `ride_selections` represente un passager ayant choisi un trajet.
+Une ligne de `ride_selections` represente une demande de passager (`pending`,
+`accepted` ou `rejected`).
 Le nombre de places restantes est calcule, et non duplique dans `rides` :
 
 ```text
-places_restantes = conducteur.car_seats - nombre_de_selections
+places_restantes = conducteur.car_seats - nombre_de_demandes_acceptees
 ```
 
 Un trajet complet est exclu avant tout appel a OpenRouteService. Il ne consomme
@@ -102,7 +103,7 @@ les controles suivants dans cet ordre :
 3. Le trajet conducteur doit etre `active` et futur.
 4. Il doit rester au moins une place.
 5. Le passager ne doit pas avoir deja selectionne ce trajet conducteur.
-6. Le passager ne doit pas avoir de reservation active a la meme date et a la
+6. Le passager ne doit pas avoir de demande en attente ou acceptee a la meme date et a la
    meme minute que le trajet conducteur.
 7. Les deux trajets doivent avoir le meme sens, `to_campus` ou `from_campus`.
 8. L'ecart horaire doit respecter la tolerance des profils.
@@ -167,22 +168,22 @@ Le clic depuis les resultats ouvre d'abord une page de recapitulatif avec la
 carte, l'horaire, le conducteur, le passager, la compatibilite et les places
 restantes. Aucune donnee n'est inseree avant la validation finale.
 
-Le passager connecte selectionne un trajet conducteur. Le backend :
+Le passager connecte demande une place sur un trajet conducteur. Le backend :
 
 1. verrouille la ligne du passager, puis celle du trajet avec `SELECT ... FOR UPDATE` ;
 2. verifie le role, l'etat du trajet et l'identite du conducteur ;
-3. refuse une reservation deja presente pour ce trajet ou cette meme minute ;
-4. recompte les selections et refuse le trajet s'il est complet ;
-5. insere la selection et retourne le nouveau nombre de places.
+3. refuse une demande deja presente pour ce trajet ou cette meme minute ;
+4. recompte les demandes acceptees et refuse le trajet s'il est complet ;
+5. insere une demande `pending`, sans occuper de place.
 
-Le verrouillage empeche deux passagers de prendre simultanement la derniere
-place. La contrainte unique sur `(ride_id, passenger_id)` interdit une double
-selection du meme trajet par le meme utilisateur. Le backend verrouille aussi
-la ligne du passager et refuse une autre selection a la meme minute, meme si
-deux confirmations arrivent simultanement depuis deux onglets.
+Le conducteur voit la demande dans ses trajets et peut l'accepter ou la refuser.
+L'acceptation recompte les places sous verrou ; seule une demande `accepted`
+occupe une place. Les reservations existantes avant cette evolution restent
+acceptees. La contrainte unique sur `(ride_id, passenger_id)` interdit une
+seconde demande pour le meme trajet.
 
 L'annulation supprime uniquement la selection appartenant au passager
-connecte. La place est alors liberee automatiquement par le prochain calcul.
+connecte. Si elle etait acceptee, la place est liberee automatiquement.
 
 ## 8. Cache des itineraires et quota ORS
 

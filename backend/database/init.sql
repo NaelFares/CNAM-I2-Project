@@ -94,8 +94,16 @@ CREATE TABLE IF NOT EXISTS ride_selections (
     ride_id         INTEGER NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
     passenger_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     selected_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status          TEXT NOT NULL DEFAULT 'accepted',
     UNIQUE (ride_id, passenger_id)
 );
+-- Les réservations déjà présentes restent confirmées ; les nouvelles demandes
+-- sont créées explicitement avec le statut pending.
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'accepted';
+ALTER TABLE ride_selections ALTER COLUMN status SET DEFAULT 'pending';
+ALTER TABLE ride_selections DROP CONSTRAINT IF EXISTS ride_selections_status_check;
+ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_status_check
+    CHECK (status IN ('pending', 'accepted', 'rejected'));
 CREATE INDEX IF NOT EXISTS idx_ride_selections_passenger
     ON ride_selections(passenger_id);
 
