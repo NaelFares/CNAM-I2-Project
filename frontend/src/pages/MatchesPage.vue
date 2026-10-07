@@ -194,6 +194,19 @@
             <input id="planning-week" v-model="selectedWeekDate" type="date" class="input max-w-xs" />
             <p class="mt-2 text-sm text-slate-600">Du {{ selectedWeekDays[0]?.label }} au {{ selectedWeekDays[4]?.label }}.</p>
           </div>
+          <label v-if="ladiesOnlyAvailable" class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <input v-model="ladiesOnly" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
+            <span>
+              <span class="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                <Venus class="h-4 w-4 text-pink-600" aria-hidden="true" />
+                Covoiturer entre femmes
+              </span>
+              <span class="mt-0.5 block text-xs text-slate-500">
+                Cette recherche ne proposera que des conductrices.
+              </span>
+            </span>
+          </label>
+
           <Button :disabled="app.loading || !selectedWeekStart" @click="runPlanningSearch">
             <UsersRound class="h-4 w-4" aria-hidden="true" />
             Rechercher cette semaine
@@ -238,16 +251,19 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { CarFront, Check, ChevronLeft, ChevronRight, CircleCheckBig, UserRoundCheck, UsersRound, X } from "lucide-vue-next";
+import { CarFront, Check, ChevronLeft, ChevronRight, CircleCheckBig, UserRoundCheck, UsersRound, Venus, X } from "lucide-vue-next";
 
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
 import RankedMatchesExplorer from "../components/RankedMatchesExplorer.vue";
 import { Button, Card } from "../components/ui";
 import { calendarWeekDays, localDateIso, matchesForDay, mondayIso, ridesForWeek, schoolWeekDays, shiftWeek } from "../lib/week";
 import { useAppStore } from "../stores/app";
+import { canUseLadiesOnly } from "../lib/gender";
 import { useAuthStore } from "../stores/auth";
 
 const app = useAppStore();
+const ladiesOnly = ref(false);
+const ladiesOnlyAvailable = computed(() => canUseLadiesOnly(app.profile));
 const auth = useAuthStore();
 const router = useRouter();
 const activeTab = ref("quick");
@@ -285,7 +301,12 @@ function resetQuickSearch() {
 async function runPlanningSearch() {
   const weekStart = selectedWeekStart.value;
   if (!weekStart) return;
-  const matchesFound = await app.findMatches(weekStart);
+  // La case n'est affichee qu'aux utilisatrices, mais on ne se fie pas au
+  // rendu : le flag est neutralise si le profil ne le permet pas.
+  const matchesFound = await app.findMatches(
+    weekStart,
+    ladiesOnlyAvailable.value && ladiesOnly.value,
+  );
   if (!matchesFound) return;
   searchedWeekStart.value = weekStart;
   const firstDayWithMatches = schoolWeekDays(weekStart).findIndex(

@@ -102,7 +102,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter, RouterLink, RouterView } from "vue-router";
-import { CalendarDays, LayoutDashboard, LogOut, Menu, Monitor, Smartphone, UserRound, UsersRound, X } from "lucide-vue-next";
+import { CalendarDays, LayoutDashboard, LogOut, Menu, Monitor, Route, Smartphone, UserRound, UsersRound, X } from "lucide-vue-next";
 
 import { Button } from "../components/ui";
 import { useAuthStore } from "../stores/auth";
@@ -123,6 +123,7 @@ const links = computed(() => [
     label: auth.user?.role === "driver" ? "Mes trajets proposés" : "Covoiturage",
     icon: UsersRound,
   },
+  { to: "/tracking", label: "Mes courses", icon: Route },
 ]);
 
 async function handleLogout() {

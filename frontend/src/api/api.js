@@ -1,7 +1,11 @@
 import axios from "axios";
 
+// Exportee a part : les photos de profil sont servies par l'API sous un
+// chemin absolu ("/media/..."), qu'il faut prefixer pour les afficher.
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:8000",
+  baseURL: API_BASE_URL,
   withCredentials: true,
   timeout: 20000,
 });

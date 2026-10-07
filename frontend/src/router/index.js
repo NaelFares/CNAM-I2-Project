@@ -8,6 +8,7 @@ import RideRecapPage from "../pages/RideRecapPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
 import RegisterPage from "../pages/RegisterPage.vue";
 import SchedulePage from "../pages/SchedulePage.vue";
+import TrackingPage from "../pages/TrackingPage.vue";
 import { useAuthStore } from "../stores/auth";
 
 const router = createRouter({
@@ -25,6 +26,7 @@ const router = createRouter({
         { path: "schedule", component: SchedulePage },
         { path: "rides", redirect: "matches" },
         { path: "matches", component: MatchesPage },
+        { path: "tracking", component: TrackingPage },
         { path: "matches/recap/:rideId", component: RideRecapPage },
       ],
     },

@@ -204,6 +204,25 @@ cache, cela represente au plus trois routes directes et trois detours. Les
 filtres de role, d'etat, de places, d'horaire et de distance ont tous lieu
 avant ces appels.
 
+## Option « ladies only »
+
+Option **ponctuelle d'une recherche**, pas un réglage de profil : elle est
+transmise à chaque appel (`ladies_only` dans le corps de `POST /matches/search`,
+paramètre de requête du même nom sur `POST /matches/find`) et rien n'est
+persisté à son sujet. Seul `users.gender` est stocké.
+
+Deux propriétés à garder en tête :
+
+- **Réservée aux utilisatrices.** Le serveur refuse l'option à tout compte dont
+  `gender` n'est pas `femme` (403, `MATCHES_LADIES_ONLY_FORBIDDEN`). C'est un
+  espace entre femmes, pas un filtre de préférence ouvert à tous. Le front se
+  contente de masquer la case : la vérification qui fait foi est côté serveur.
+- **Filtre unilatéral.** Il restreint les résultats de *celle qui cherche* ;
+  il ne la retire pas des résultats renvoyés aux autres. Rendre le choix
+  mutuel supposerait de le persister (par exemple une colonne sur `rides`),
+  puisque le moteur doit alors connaître le choix des deux côtés d'une paire
+  qu'aucun des deux n'a encore ouverte.
+
 ## Configuration
 
 | Variable | Defaut | Role |

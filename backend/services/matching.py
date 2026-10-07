@@ -2,6 +2,10 @@
 Moteur de recommandation de covoiturage basé sur l'itinéraire.
 
 Critères primaires (filtre d'éligibilité) :
+  0. Option "ladies only" de la recherche, si elle est activée : seules les
+     autres utilisatrices sont retenues. C'est un filtre unilatéral posé par
+     l'utilisatrice qui cherche — il restreint ses résultats à elle, sans
+     changer sa propre visibilité dans les recherches des autres.
   1. Horaires d'arrivée dans la tolérance des deux utilisateurs (score 0-50)
   2. Temps de détour réel pour aller récupérer le passager (aller direct vs
      aller-via-passager, calculé par le moteur de routing), en dessous de
@@ -24,6 +28,7 @@ from backend.core.geo import haversine_distance
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
+from backend.services.photo_storage import build_photo_url
 from backend.services.routing import routing_service
 
 
@@ -92,8 +97,16 @@ class Match:
             "ride_id": self.driver_ride.id,
             "driver_name": self.driver.name,
             "driver_id": self.driver.id,
+            "driver_ride_id": self.driver_ride.id,
+            "driver_gender": self.driver.gender,
+            "driver_photo_url": build_photo_url(self.driver.photo_filename),
+            "driver_music_preference": self.driver.music_preference,
+            "driver_music_genres": list(self.driver.music_genres),
+            "driver_smoking_preference": self.driver.smoking_preference,
             "passenger_name": self.passenger.name,
             "passenger_id": self.passenger.id,
+            "passenger_gender": self.passenger.gender,
+            "passenger_photo_url": build_photo_url(self.passenger.photo_filename),
             "ride_time": self.driver_ride.format_time(),
             "ride_type": self.driver_ride.get_direction_label(),
             "time_diff_min": self.time_diff_min,
@@ -148,9 +161,16 @@ class MatchingService:
         selection_counts: Optional[Dict[int, int]] = None,
         selected_ride_ids: Optional[set[int]] = None,
         reserved_times: Optional[set] = None,
+        ladies_only: bool = False,
     ) -> List[Dict]:
         """
         Trouve les trajets compatibles pour l'utilisateur courant.
+
+        `ladies_only` restreint les résultats aux autres utilisatrices. C'est
+        une option ponctuelle de la recherche (pas un réglage de profil), et
+        un filtre unilatéral : il ne retire pas `current_user` des résultats
+        renvoyés aux autres. Son autorisation est vérifiée côté route.
+
         Critère principal : le temps de détour réel pour aller récupérer le
         passager (aller-via-passager vs aller direct) doit rester sous
         MAX_DETOUR_MIN — indépendant de la destination du passager, tant que
@@ -191,6 +211,11 @@ class MatchingService:
 
                 other_user = users_by_id.get(other_ride.user_id)
                 if not other_user or not other_user.is_driver():
+                    continue
+
+                # "Ladies only" : filtre applique avant tout calcul, pour ne
+                # gaspiller aucun appel de routing sur une paire ecartee.
+                if ladies_only and not other_user.is_woman():
                     continue
 
                 driver, passenger = other_user, current_user

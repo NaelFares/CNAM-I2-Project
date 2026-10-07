@@ -37,9 +37,12 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, hashed_password, role, car_seats, start_address, start_lat, start_lon, time_tolerance_min,
+            INSERT INTO users (name, email, hashed_password, role, car_seats,
+                               gender, photo_filename, music_preference, music_genres,
+                               smoking_preference,
+                               start_address, start_lat, start_lon, time_tolerance_min,
                                school_address, school_lat, school_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -48,6 +51,11 @@ class Database:
                 user.hashed_password,
                 user.role,
                 user.car_seats,
+                user.gender,
+                user.photo_filename,
+                user.music_preference,
+                list(user.music_genres),
+                user.smoking_preference,
                 user.start_address,
                 user.start_lat,
                 user.start_lon,
@@ -102,13 +110,21 @@ class Database:
         conn.close()
 
     def update_user(self, user: User):
-        """Met à jour un utilisateur"""
+        """Met à jour un utilisateur.
+
+        `photo_filename` est volontairement exclu : la photo se change par son
+        propre endpoint, et l'inclure ici ferait effacer la photo à chaque
+        sauvegarde du formulaire de profil, qui ne la transporte pas.
+        Voir `update_user_photo`.
+        """
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
             UPDATE users
-            SET name = %s, email = %s, role = %s, car_seats = %s, start_address = %s, start_lat = %s, start_lon = %s,
+            SET name = %s, email = %s, role = %s, car_seats = %s,
+                gender = %s, music_preference = %s, music_genres = %s, smoking_preference = %s,
+                start_address = %s, start_lat = %s, start_lon = %s,
                 time_tolerance_min = %s, school_address = %s, school_lat = %s, school_lon = %s
             WHERE id = %s
             """,
@@ -117,6 +133,10 @@ class Database:
                 user.email,
                 user.role,
                 user.car_seats,
+                user.gender,
+                user.music_preference,
+                list(user.music_genres),
+                user.smoking_preference,
                 user.start_address,
                 user.start_lat,
                 user.start_lon,
@@ -126,6 +146,17 @@ class Database:
                 user.school_lon,
                 user.id,
             ),
+        )
+        conn.commit()
+        conn.close()
+
+    def update_user_photo(self, user_id: int, photo_filename: str):
+        """Met à jour la seule photo de profil (chaîne vide = suppression)."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET photo_filename = %s WHERE id = %s",
+            (photo_filename, user_id),
         )
         conn.commit()
         conn.close()
@@ -213,6 +244,17 @@ class Database:
         rows = cursor.fetchall()
         conn.close()
         return [Ride.from_dict(row) for row in rows]
+
+    def get_ride_by_id(self, ride_id: int) -> Optional[Ride]:
+        """Récupère un trajet par ID"""
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT * FROM rides WHERE id = %s", (ride_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return Ride.from_dict(row)
+        return None
 
     def get_active_rides_by_user(self, user_id: int) -> List[Ride]:
         self.archive_expired_rides()

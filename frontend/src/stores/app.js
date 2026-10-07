@@ -6,6 +6,7 @@ import {
   confirmSchedule,
   dashboardSummary,
   decideRidePassenger,
+  deleteProfilePhoto,
   findMatches,
   generateRides,
   getMyRideOffers,
@@ -16,6 +17,7 @@ import {
   searchCarpoolMatches,
   selectRide,
   updateProfile,
+  uploadProfilePhoto,
 } from "../api/endpoints";
 import { useAuthStore } from "./auth";
 import { useFeedbackStore } from "./feedback";
@@ -94,6 +96,34 @@ export const useAppStore = defineStore("app", {
         const auth = useAuthStore();
         auth.user = { ...(auth.user || {}), ...this.profile };
         feedback.showSuccess("Profil sauvegarde avec succes.");
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async savePhoto(file) {
+      const feedback = useFeedbackStore();
+      this.startLoading("Envoi de la photo...", "Televersement de votre photo de profil.");
+      try {
+        this.profile = await uploadProfilePhoto(file);
+        feedback.showSuccess("Photo de profil mise a jour.");
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.stopLoading();
+      }
+    },
+    async removePhoto() {
+      const feedback = useFeedbackStore();
+      this.startLoading("Suppression de la photo...", "Retrait de votre photo de profil.");
+      try {
+        this.profile = await deleteProfilePhoto();
+        feedback.showSuccess("Photo de profil supprimee.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -256,11 +286,11 @@ export const useAppStore = defineStore("app", {
         this.selectionLoadingRideId = null;
       }
     },
-    async findMatches(weekStart) {
+    async findMatches(weekStart, ladiesOnly = false) {
       const feedback = useFeedbackStore();
       this.startLoading("Recherche des correspondances...", "Comparaison des trajets disponibles.");
       try {
-        const data = await findMatches(weekStart);
+        const data = await findMatches(weekStart, ladiesOnly);
         this.matches = data.matches;
         feedback.showSuccess(data.feedback.message);
         return true;
@@ -282,6 +312,7 @@ export const useAppStore = defineStore("app", {
           dest_lon: payload.destLon,
           ride_time: payload.rideTime,
           ride_type: payload.rideType,
+          ladies_only: Boolean(payload.ladiesOnly),
         });
         this.searchResults = data.matches;
         this.searchRouteGeometry = data.search_route_geometry;

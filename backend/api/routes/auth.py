@@ -15,7 +15,8 @@ from backend.api.constants import (
 from passlib.context import CryptContext
 from backend.api.deps import get_current_user
 from backend.api.feedback import make_feedback, raise_api_error
-from backend.api.schemas import LoginRequest, LoginResponse, RegisterRequest, SessionResponse, UserDTO
+from backend.api.schemas import LoginRequest, LoginResponse, RegisterRequest, SessionResponse
+from backend.api.serialization import user_to_dto
 from backend.api.session import create_session_token
 from backend.models.user import User
 
@@ -61,7 +62,7 @@ def login(payload: LoginRequest, response: Response):
     _set_session_cookie(response, user.id, user.email)
     return LoginResponse(
         status="ok",
-        user=UserDTO(**user.to_dict()),
+        user=user_to_dto(user),
         feedback=make_feedback("PROFILE_SAVE_SUCCESS"),
     )
 
@@ -88,6 +89,10 @@ def register(payload: RegisterRequest, response: Response):
         email=str(payload.email).strip().lower(),
         role=payload.role,
         car_seats=car_seats,
+        gender=payload.gender,
+        music_preference=payload.music_preference,
+        music_genres=payload.music_genres,
+        smoking_preference=payload.smoking_preference,
         hashed_password=_hash_password(payload.password),
         start_address=payload.start_address.strip(),
         start_lat=payload.start_lat,
@@ -97,12 +102,16 @@ def register(payload: RegisterRequest, response: Response):
         school_lat=payload.school_lat,
         school_lon=payload.school_lon,
     )
+    # Cf. update_profile : pas de styles declares sans musique.
+    if not user.wants_music():
+        user.music_genres = []
+
     user.id = db.create_user(user)
     _set_session_cookie(response, user.id, user.email)
 
     return LoginResponse(
         status="ok",
-        user=UserDTO(**user.to_dict()),
+        user=user_to_dto(user),
         feedback=make_feedback("PROFILE_SAVE_SUCCESS"),
     )
 
@@ -116,4 +125,4 @@ def logout(response: Response):
 def session(user=Depends(get_current_user)):
     if not user:
         return SessionResponse(authenticated=False, user=None)
-    return SessionResponse(authenticated=True, user=UserDTO(**user.to_dict()))
+    return SessionResponse(authenticated=True, user=user_to_dto(user))

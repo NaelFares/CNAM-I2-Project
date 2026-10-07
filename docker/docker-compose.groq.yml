@@ -12,6 +12,9 @@ services:
       - database
     volumes:
       - ../backend:/app/backend
+      # Photos de profil : sans ce volume, elles disparaissent a chaque
+      # reconstruction de l'image backend.
+      - covoiturage_profile_photos:/app/data/profile_photos
     env_file:
       - ../.env
     environment:
@@ -54,3 +57,5 @@ services:
 volumes:
   covoiturage_postgres_data:
     name: covoiturage_postgres_data
+  covoiturage_profile_photos:
+    name: covoiturage_profile_photos

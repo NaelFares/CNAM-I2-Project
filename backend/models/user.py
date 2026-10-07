@@ -1,8 +1,8 @@
 """
 Modèle de données pour les utilisateurs (étudiants).
 """
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 
 @dataclass
@@ -14,7 +14,15 @@ class User:
     email: str = ""
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
     role: str = "passenger"  # "driver" ou "passenger"
-    car_seats: Optional[int] = None
+    car_seats: Optional[int] = None  # Places proposees ; None pour un passager
+    gender: str = "autre"  # "homme", "femme", "autre"
+    photo_filename: str = ""  # Nom de fichier seul, jamais un chemin (cf. init.sql)
+    music_preference: str = "peu_importe"  # "peu_importe", "avec", "sans"
+    # Styles ecoutes ; vide si aucun n'est precise ou si music_preference
+    # vaut "sans" (cf. wants_music). default_factory : une liste mutable ne
+    # peut pas etre partagee entre instances.
+    music_genres: List[str] = field(default_factory=list)
+    smoking_preference: str = "peu_importe"  # "peu_importe", "fumeur", "non_fumeur"
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -31,6 +39,20 @@ class User:
         """Vérifie si l'utilisateur est passager"""
         return self.role == "passenger"
 
+    def is_woman(self) -> bool:
+        """Seules les femmes peuvent activer le filtre "ladies only" et y
+        apparaître (cf. backend/services/matching.py)."""
+        return self.gender == "femme"
+
+    def wants_music(self) -> bool:
+        """Les styles musicaux n'ont de sens que si la musique est acceptée.
+
+        Quelqu'un qui roule sans musique n'a pas de styles à déclarer : la
+        liste est vidée à la sauvegarde plutôt que conservée en sourdine,
+        pour qu'aucun écran n'affiche « sans musique » à côté d'un genre.
+        """
+        return self.music_preference in ("avec", "peu_importe")
+
     def has_school_location(self) -> bool:
         return bool(self.school_lat and self.school_lon)
 
@@ -43,6 +65,11 @@ class User:
             "hashed_password": self.hashed_password,
             "role": self.role,
             "car_seats": self.car_seats,
+            "gender": self.gender,
+            "photo_filename": self.photo_filename,
+            "music_preference": self.music_preference,
+            "music_genres": list(self.music_genres),
+            "smoking_preference": self.smoking_preference,
             "start_address": self.start_address,
             "start_lat": self.start_lat,
             "start_lon": self.start_lon,
@@ -62,6 +89,11 @@ class User:
             hashed_password=data.get("hashed_password", ""),
             role=data.get("role", "passenger"),
             car_seats=data.get("car_seats"),
+            gender=data.get("gender") or "autre",
+            photo_filename=data.get("photo_filename") or "",
+            music_preference=data.get("music_preference") or "peu_importe",
+            music_genres=list(data.get("music_genres") or []),
+            smoking_preference=data.get("smoking_preference") or "peu_importe",
             start_address=data.get("start_address", ""),
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),

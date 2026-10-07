@@ -24,8 +24,22 @@ from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, M
 router = APIRouter(prefix="/matches", tags=["matches"])
 
 
+def _check_ladies_only_allowed(user: User, ladies_only: bool):
+    """L'option est reservee aux utilisatrices : c'est un espace entre femmes,
+    pas un filtre de preference ouvert a tous. Verifie cote serveur, le front
+    se contentant de masquer la case."""
+    if ladies_only and not user.is_woman():
+        raise_api_error("MATCHES_LADIES_ONLY_FORBIDDEN", http_status=status.HTTP_403_FORBIDDEN)
+
+
 @router.post("/find", response_model=MatchesResponse)
-def find_matches(body: PlanningMatchRequest, user: User = Depends(require_passenger)):
+def find_matches(
+    body: PlanningMatchRequest,
+    ladies_only: bool = False,
+    user: User = Depends(require_passenger),
+):
+    _check_ladies_only_allowed(user, ladies_only)
+
     now = datetime.now()
     monday = body.week_start - timedelta(days=body.week_start.weekday())
     start = datetime.combine(monday, time.min)
@@ -50,6 +64,7 @@ def find_matches(body: PlanningMatchRequest, user: User = Depends(require_passen
             selection_counts=selection_counts,
             selected_ride_ids=selected_ride_ids,
             reserved_times=reserved_times,
+            ladies_only=ladies_only,
         )
     except RoutingQuotaExceededError:
         raise_api_error(
@@ -106,6 +121,8 @@ def _ensure_week_rides(user: User, start: datetime, end: datetime, now: datetime
 
 @router.post("/search", response_model=MatchSearchResponse)
 def search_matches(body: MatchSearchRequest, user: User = Depends(require_passenger)):
+    _check_ladies_only_allowed(user, body.ladies_only)
+
     transient_ride = Ride(
         user_id=user.id,
         event_id=None,
@@ -132,6 +149,7 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
             selection_counts=selection_counts,
             selected_ride_ids=selected_ride_ids,
             reserved_times=reserved_times,
+            ladies_only=body.ladies_only,
         )
         geometry = routing_service.get_route_geometry(
             (body.origin_lat, body.origin_lon),

@@ -8,6 +8,11 @@ CREATE TABLE IF NOT EXISTS users (
     hashed_password     TEXT NOT NULL DEFAULT '',
     role                TEXT NOT NULL DEFAULT 'passenger',
     car_seats           INTEGER,
+    gender              TEXT NOT NULL DEFAULT 'autre',
+    photo_filename      TEXT NOT NULL DEFAULT '',
+    music_preference    TEXT NOT NULL DEFAULT 'peu_importe',
+    music_genres        TEXT[] NOT NULL DEFAULT '{}',
+    smoking_preference  TEXT NOT NULL DEFAULT 'peu_importe',
     start_address       TEXT DEFAULT '',
     start_lat           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
     start_lon           DOUBLE PRECISION NOT NULL DEFAULT 0.0,
@@ -46,6 +51,24 @@ ALTER TABLE users ADD CONSTRAINT users_car_seats_check
         (role = 'passenger' AND car_seats IS NULL)
         OR (role = 'driver' AND car_seats BETWEEN 1 AND 4)
     );
+
+-- Sexe : les comptes anterieurs prennent le repli neutre 'autre'.
+-- Le filtre "ladies only" n'est pas stocke ici : c'est une option ponctuelle
+-- posee a chaque recherche (cf. MatchSearchRequest.ladies_only).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT NOT NULL DEFAULT 'autre';
+
+-- Preferences de trajet et photo de profil.
+-- photo_filename ne stocke que le nom du fichier, jamais un chemin : les
+-- fichiers vivent dans un volume Docker (cf. config.PHOTO_STORAGE_DIR) et
+-- l'URL publique est reconstruite par l'API. Deplacer le stockage ne demande
+-- donc aucune migration de donnees.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_filename TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS music_preference TEXT NOT NULL DEFAULT 'peu_importe';
+-- Styles musicaux, uniquement pertinents quand music_preference vaut 'avec'
+-- ou 'peu_importe'. Tableau : on en accepte plusieurs, la plupart des gens
+-- n'ecoutant pas un seul genre. Vide = aucun style precise.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS music_genres TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS smoking_preference TEXT NOT NULL DEFAULT 'peu_importe';
 
 -- EVENTS
 CREATE TABLE IF NOT EXISTS events (
@@ -133,3 +156,14 @@ CREATE TABLE IF NOT EXISTS routing_cache (
 DROP INDEX IF EXISTS idx_routing_cache_expires_at;
 ALTER TABLE routing_cache DROP COLUMN IF EXISTS expires_at;
 CREATE INDEX IF NOT EXISTS idx_routing_cache_last_used_at ON routing_cache(last_used_at);
+
+-- Suivi du covoiturage : quatre confirmations independantes, horodatees.
+-- NULL = etape pas encore confirmee. On stocke un instant plutot qu'un
+-- booleen pour savoir QUAND chaque partie a confirme, et un statut unique
+-- representerait mal deux confirmations qui arrivent dans un ordre libre.
+-- Ces colonnes completent le flux de reservation (status pending/accepted/
+-- rejected) : elles ne deviennent pertinentes qu'une fois le passager accepte.
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_picked_up_at   TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_onboard_at  TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_completed_at   TIMESTAMPTZ;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_arrived_at  TIMESTAMPTZ;

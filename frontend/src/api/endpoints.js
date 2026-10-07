@@ -26,6 +26,18 @@ export async function updateProfile(payload) {
   return (await apiClient.put("/profile", payload)).data;
 }
 
+export async function uploadProfilePhoto(file) {
+  const form = new FormData();
+  form.append("file", file);
+  // Content-Type volontairement non fixe : axios doit poser lui-meme la
+  // frontiere multipart.
+  return (await apiClient.post("/profile/photo", form, { timeout: 30000 })).data;
+}
+
+export async function deleteProfilePhoto() {
+  return (await apiClient.delete("/profile/photo")).data;
+}
+
 export async function searchAddress(query) {
   return (await apiClient.get("/geocode/search", { params: { q: query, limit: 5 } })).data;
 }
@@ -61,6 +73,7 @@ export async function generateRides() {
   return (await apiClient.post("/rides/generate")).data;
 }
 
+// --- Reservation (flux conducteur/passager) ---
 export async function getMyRideSelections() {
   return (await apiClient.get("/rides/my-selections")).data;
 }
@@ -81,8 +94,23 @@ export async function cancelRideSelection(rideId) {
   return (await apiClient.delete(`/rides/${rideId}/select`)).data;
 }
 
-export async function findMatches(weekStart) {
-  return (await apiClient.post("/matches/find", { week_start: weekStart }, { timeout: MATCHING_TIMEOUT_MS })).data;
+// --- Suivi de la course (une fois la reservation acceptee) ---
+export async function fetchTrackings() {
+  return (await apiClient.get("/tracking")).data;
+}
+
+export async function confirmTrackingStep(selectionId, step) {
+  return (await apiClient.post(`/tracking/selections/${selectionId}/steps/${step}`)).data;
+}
+
+export async function findMatches(weekStart, ladiesOnly = false) {
+  return (
+    await apiClient.post(
+      "/matches/find",
+      { week_start: weekStart },
+      { params: { ladies_only: ladiesOnly }, timeout: MATCHING_TIMEOUT_MS }
+    )
+  ).data;
 }
 
 export async function searchCarpoolMatches(payload) {

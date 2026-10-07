@@ -5,7 +5,14 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from backend.api.constants import clean_music_genres
+
+
+Gender = Literal["homme", "femme", "autre"]
+MusicPreference = Literal["peu_importe", "avec", "sans"]
+SmokingPreference = Literal["peu_importe", "fumeur", "non_fumeur"]
 
 
 class ApiMessage(BaseModel):
@@ -23,6 +30,10 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8)
     role: Literal["driver", "passenger"] = "passenger"
     car_seats: int | None = Field(default=None, ge=1, le=4)
+    gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
+    music_preference: MusicPreference = "peu_importe"
+    music_genres: list[str] = []
+    smoking_preference: SmokingPreference = "peu_importe"
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -30,6 +41,8 @@ class RegisterRequest(BaseModel):
     school_address: str = ""
     school_lat: float = 0.0
     school_lon: float = 0.0
+
+    _normalize_genres = field_validator("music_genres")(clean_music_genres)
 
 
 class LoginResponse(BaseModel):
@@ -44,6 +57,13 @@ class UserDTO(BaseModel):
     email: EmailStr
     role: Literal["driver", "passenger"]
     car_seats: int | None = None
+    gender: Gender = "autre"
+    # URL publique reconstruite par l'API depuis photo_filename ; vide si
+    # aucune photo n'a ete televersee.
+    photo_url: str = ""
+    music_preference: MusicPreference = "peu_importe"
+    music_genres: list[str] = []
+    smoking_preference: SmokingPreference = "peu_importe"
     start_address: str
     start_lat: float
     start_lon: float
@@ -63,6 +83,10 @@ class ProfileUpdateRequest(BaseModel):
     email: EmailStr
     role: Literal["driver", "passenger"]
     car_seats: int | None = Field(default=None, ge=1, le=4)
+    gender: Gender
+    music_preference: MusicPreference = "peu_importe"
+    music_genres: list[str] = []
+    smoking_preference: SmokingPreference = "peu_importe"
     start_address: str = ""
     start_lat: float = 0.0
     start_lon: float = 0.0
@@ -70,6 +94,8 @@ class ProfileUpdateRequest(BaseModel):
     school_address: str = ""
     school_lat: float = 0.0
     school_lon: float = 0.0
+
+    _normalize_genres = field_validator("music_genres")(clean_music_genres)
 
 
 class GeocodeResult(BaseModel):
@@ -129,8 +155,20 @@ class MatchDTO(BaseModel):
     ride_id: int
     driver_name: str
     driver_id: int
+    # Trajet du conducteur, cible d'une reservation. None pour une recherche
+    # rapide, dont le trajet est transitoire et n'existe pas en base.
+    driver_ride_id: int | None = None
+    driver_gender: Gender = "autre"
+    driver_photo_url: str = ""
+    # Ambiance du trajet : ce sont les preferences du conducteur qui
+    # s'appliquent, puisque c'est sa voiture.
+    driver_music_preference: MusicPreference = "peu_importe"
+    driver_music_genres: list[str] = []
+    driver_smoking_preference: SmokingPreference = "peu_importe"
     passenger_name: str
     passenger_id: int
+    passenger_gender: Gender = "autre"
+    passenger_photo_url: str = ""
     ride_time: str
     ride_type: str
     time_diff_min: int
@@ -162,11 +200,52 @@ class MatchSearchRequest(BaseModel):
     dest_lon: float
     ride_time: datetime
     ride_type: Literal["to_campus", "from_campus"]
+    # Option ponctuelle de la recherche : restreint les resultats aux femmes.
+    # Reservee aux utilisatrices (cf. routes/matches.py).
+    ladies_only: bool = False
 
 
 class MatchSearchResponse(BaseModel):
     matches: list[MatchDTO]
     search_route_geometry: list[list[float]] = []
+    feedback: ApiMessage
+
+
+TrackingStep = Literal["picked_up", "on_board", "completed", "arrived"]
+TrackingStatus = Literal[
+    "pending", "picking_up", "on_board", "arriving", "completed", "cancelled"
+]
+
+
+class RideTrackingDTO(BaseModel):
+    """Une reservation et son suivi, vue par l'un des deux participants."""
+
+    id: int
+    ride_id: int
+    ride_time: datetime
+    ride_type: Literal["to_campus", "from_campus"]
+    # Role du demandeur, qui determine les boutons a afficher.
+    my_role: Literal["driver", "passenger"]
+    # L'autre partie : c'est elle que l'utilisateur doit reconnaitre.
+    counterpart_id: int
+    counterpart_name: str
+    counterpart_photo_url: str = ""
+    status: TrackingStatus
+    # Etape que le demandeur peut confirmer maintenant ; None s'il doit
+    # attendre l'autre partie ou s'il a termine.
+    next_step: TrackingStep | None = None
+    driver_picked_up_at: datetime | None = None
+    passenger_onboard_at: datetime | None = None
+    driver_completed_at: datetime | None = None
+    passenger_arrived_at: datetime | None = None
+
+
+class RideTrackingListResponse(BaseModel):
+    trackings: list[RideTrackingDTO]
+
+
+class RideTrackingResponse(BaseModel):
+    tracking: RideTrackingDTO
     feedback: ApiMessage
 
 

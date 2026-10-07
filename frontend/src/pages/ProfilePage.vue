@@ -12,6 +12,31 @@
           <Info class="h-4 w-4" />
           Informations générales
         </h2>
+        <!-- Photo de profil : hors du formulaire, elle a son propre endpoint -->
+        <div class="mb-6 flex flex-wrap items-center gap-5">
+          <Avatar :name="form.name" :photo-url="photoUrl" size="xl" />
+          <div class="space-y-2">
+            <div class="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" :disabled="app.loading" @click="photoInput?.click()">
+                <ImagePlus class="h-4 w-4" />
+                {{ photoUrl ? "Changer la photo" : "Ajouter une photo" }}
+              </Button>
+              <Button v-if="photoUrl" type="button" variant="secondary" :disabled="app.loading" @click="onPhotoRemove">
+                <Trash2 class="h-4 w-4" />
+                Retirer
+              </Button>
+            </div>
+            <p class="text-xs text-slate-500">JPEG, PNG ou WebP — 2 Mo maximum.</p>
+          </div>
+          <input
+            ref="photoInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="hidden"
+            @change="onPhotoSelected"
+          />
+        </div>
+
         <div class="grid gap-4 md:grid-cols-2">
           <div class="md:col-span-2">
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Nom complet</label>
@@ -32,10 +57,76 @@
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tolérance horaire (minutes)</label>
             <Input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
           </div>
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Sexe</label>
+            <select v-model="form.gender" required class="input">
+              <option v-for="option in GENDER_OPTIONS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
           <div v-if="form.role === 'driver'" class="md:col-span-2">
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Places disponibles dans la voiture</label>
             <Input v-model.number="form.car_seats" type="number" min="1" max="4" required />
             <p class="mt-1 text-xs text-slate-500">Indiquez entre 1 et 4 places passagers. Le conducteur n'est pas compté.</p>
+          </div>
+        </div>
+      </Card>
+
+      <!-- Préférences de trajet -->
+      <Card>
+        <h2 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+          <Car class="h-4 w-4" />
+          Préférences de trajet
+        </h2>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
+            <select v-model="form.smoking_preference" class="input">
+              <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Musique</label>
+            <select v-model="form.music_preference" class="input">
+              <option v-for="option in MUSIC_OPTIONS" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Styles : uniquement si la musique est acceptée -->
+          <div v-if="showMusicGenres" class="md:col-span-2">
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">
+              Styles de musique
+              <span class="ml-1 font-normal text-slate-400">
+                ({{ form.music_genres.length }}/{{ MAX_MUSIC_GENRES }})
+              </span>
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in MUSIC_GENRE_OPTIONS"
+                :key="option.value"
+                type="button"
+                :disabled="isGenreDisabled(option.value)"
+                :class="[
+                  'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
+                  form.music_genres.includes(option.value)
+                    ? 'border-primary bg-primary-soft text-primary'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                  isGenreDisabled(option.value) ? 'cursor-not-allowed opacity-40' : '',
+                ]"
+                @click="toggleGenre(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            </div>
+            <p class="mt-1.5 text-xs text-slate-500">
+              Facultatif — {{ MAX_MUSIC_GENRES }} styles maximum.
+            </p>
           </div>
         </div>
       </Card>
@@ -155,18 +246,46 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { Info, LocateFixed, MapPin, MapPinned, Route, Save, School } from "lucide-vue-next";
+import { Car, ImagePlus, Info, LocateFixed, MapPin, MapPinned, Route, Save, School, Trash2 } from "lucide-vue-next";
 
 import MapPicker from "../components/MapPicker.vue";
 import RouteMap from "../components/RouteMap.vue";
-import { Badge, Button, Card, Input } from "../components/ui";
+import { Avatar, Badge, Button, Card, Input } from "../components/ui";
 import { getRoutePreview } from "../api/endpoints";
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
+import { GENDER_OPTIONS } from "../lib/gender";
+import {
+  MAX_MUSIC_GENRES,
+  MUSIC_GENRE_OPTIONS,
+  MUSIC_OPTIONS,
+  SMOKING_OPTIONS,
+  wantsMusic,
+} from "../lib/preferences";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
 const app = useAppStore();
+
+const photoInput = ref(null);
+// La photo ne transite pas par `form` : elle a son propre endpoint et le
+// store fait foi apres chaque televersement.
+const photoUrl = computed(() => app.profile?.photo_url || "");
+const showMusicGenres = computed(() => wantsMusic(form.music_preference));
+
+function isGenreDisabled(value) {
+  // Plafond atteint : on peut encore decocher, plus ajouter.
+  return !form.music_genres.includes(value) && form.music_genres.length >= MAX_MUSIC_GENRES;
+}
+
+function toggleGenre(value) {
+  const index = form.music_genres.indexOf(value);
+  if (index >= 0) {
+    form.music_genres.splice(index, 1);
+  } else if (form.music_genres.length < MAX_MUSIC_GENRES) {
+    form.music_genres.push(value);
+  }
+}
 
 const startPlaceLabel = ref("");
 const schoolPlaceLabel = ref("");
@@ -176,6 +295,11 @@ const showSchoolMap = ref(false);
 const form = reactive({
   name: "",
   email: "",
+  role: "both",
+  gender: "autre",
+  music_preference: "peu_importe",
+  music_genres: [],
+  smoking_preference: "peu_importe",
   role: "passenger",
   car_seats: null,
   start_address: "",
@@ -244,6 +368,10 @@ onMounted(async () => {
   form.name = source.name;
   form.email = source.email;
   form.role = source.role;
+  form.gender = source.gender || "autre";
+  form.music_preference = source.music_preference || "peu_importe";
+  form.music_genres = [...(source.music_genres || [])];
+  form.smoking_preference = source.smoking_preference || "peu_importe";
   form.car_seats = source.role === "driver" ? source.car_seats || 1 : null;
   form.start_address = source.start_address;
   form.start_lat = source.start_lat || form.start_lat;
@@ -254,12 +382,31 @@ onMounted(async () => {
   form.school_lon = source.school_lon || 0;
 });
 
+// --- Photo de profil ---
+async function onPhotoSelected(event) {
+  const file = event.target.files?.[0];
+  // Le champ est remis a zero systematiquement : sans ca, re-selectionner le
+  // meme fichier apres un echec ne declencherait aucun evenement.
+  event.target.value = "";
+  if (file) await app.savePhoto(file);
+}
+
+async function onPhotoRemove() {
+  await app.removePhoto();
+}
+
 // --- Soumission ---
 async function onSubmit() {
   await app.saveProfile({
     name: form.name,
     email: form.email,
     role: form.role,
+    gender: form.gender,
+    music_preference: form.music_preference,
+    // Le backend vide aussi cette liste, mais l'envoyer deja vide evite que
+    // la reponse contredise ce que l'utilisateur vient de voir a l'ecran.
+    music_genres: showMusicGenres.value ? form.music_genres : [],
+    smoking_preference: form.smoking_preference,
     car_seats: form.role === "driver" ? Number(form.car_seats) : null,
     start_address: form.start_address,
     start_lat: form.start_lat,

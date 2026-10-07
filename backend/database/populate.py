@@ -38,6 +38,10 @@ SEED_COUNT = 40
 SEED_EMAIL_DOMAIN = "studride-test.fr"
 ACCOUNTS_FILE = Path(__file__).parent / "seed_accounts.txt"
 
+# Sous-ensemble du catalogue (cf. backend/api/constants.py) suffisant pour
+# varier les profils de demo sans les rendre illisibles.
+SEED_MUSIC_GENRES = ["pop", "rap", "rnb", "shatta", "latino", "reggae", "afrobeat", "rock", "electro", "jazz"]
+
 FIRST_NAMES = ["Camille", "Lucas", "Léa", "Hugo", "Manon", "Nathan", "Chloé", "Enzo", "Sarah", "Louis"]
 LAST_NAMES = ["Martin", "Bernard", "Dubois", "Petit", "Durand", "Leroy", "Moreau", "Simon", "Laurent", "Roux"]
 
@@ -173,6 +177,20 @@ def _create_seed_users() -> int:
         # conserver le scenario de demonstration utilise pour le matching.
         role = "driver" if i % 2 == 0 or i == 7 else "passenger"
         car_seats = rng.randint(1, 4) if role == "driver" else None
+        # Repartition deterministe des sexes, pour qu'une recherche "ladies
+        # only" ait de quoi renvoyer des resultats en demo.
+        gender = ["homme", "femme", "autre"][i % 3]
+        # Preferences reparties pour que les cards de matching affichent des
+        # combinaisons variees ; aucun compte de test n'a de photo.
+        music_preference = ["peu_importe", "avec", "sans"][i % 3]
+        # Styles piochés sans remise, seulement pour ceux qui acceptent la
+        # musique — cf. User.wants_music.
+        music_genres = (
+            rng.sample(SEED_MUSIC_GENRES, rng.randint(1, 3))
+            if music_preference in ("avec", "peu_importe")
+            else []
+        )
+        smoking_preference = ["peu_importe", "non_fumeur", "non_fumeur", "fumeur"][i % 4]
         school_name, school_addr, school_lat, school_lon = schools_geocoded[i % len(schools_geocoded)]
         street, city, street_lat, street_lon = streets_geocoded[i % len(streets_geocoded)]
 
@@ -182,6 +200,10 @@ def _create_seed_users() -> int:
             hashed_password=hashed,
             role=role,
             car_seats=car_seats,
+            gender=gender,
+            music_preference=music_preference,
+            music_genres=music_genres,
+            smoking_preference=smoking_preference,
             start_address=f"{rng.randint(1, 120)} {street}, {city}",
             start_lat=street_lat,
             start_lon=street_lon,
@@ -205,8 +227,9 @@ def _write_accounts_file() -> None:
         "Comptes de test Stud'Ride (generes par backend/database/populate.py)",
         f"Mot de passe commun a tous les comptes : {SEED_PASSWORD}",
         "",
-        f"{'email':<28} {'nom':<20} {'role':<10} {'places':<8} {'adresse de depart':<48} {'adresse ecole':<48} ecole",
-        "-" * 200,
+        f"{'email':<28} {'nom':<20} {'role':<10} {'places':<8} {'sexe':<8} "
+        f"{'adresse de depart':<48} {'adresse ecole':<48} ecole",
+        "-" * 215,
     ]
     for i in range(1, SEED_COUNT + 1):
         email = f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}"
@@ -216,8 +239,8 @@ def _write_accounts_file() -> None:
         school_name = TOULOUSE_SCHOOLS[i % len(TOULOUSE_SCHOOLS)][0]
         car_seats = str(user.car_seats) if user.car_seats is not None else "-"
         lines.append(
-            f"{user.email:<28} {user.name:<20} {user.role:<10} {car_seats:<8} {user.start_address:<48} "
-            f"{user.school_address:<48} {school_name}"
+            f"{user.email:<28} {user.name:<20} {user.role:<10} {car_seats:<8} {user.gender:<8} "
+            f"{user.start_address:<48} {user.school_address:<48} {school_name}"
         )
 
     ACCOUNTS_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
