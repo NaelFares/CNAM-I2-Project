@@ -18,9 +18,21 @@
           </span>
         </div>
       </div>
-      <Badge class="ml-auto" :variant="summary.tier_key === 'expert' ? 'success' : 'info'">
-        {{ summary.tier_label }}
-      </Badge>
+      <!-- Un palier par role : conduire et etre passager se comptent a part -->
+      <div class="ml-auto flex flex-wrap items-center gap-4">
+        <div v-for="role in roles" :key="role.key" class="text-right">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ role.label }}</p>
+          <div class="mt-1 flex items-center justify-end gap-2">
+            <TierBadge :tier="role.tier" :role-label="role.label.toLowerCase()" />
+          </div>
+          <p class="mt-1 text-xs text-slate-500">
+            {{ role.tier.rides_count }} course{{ role.tier.rides_count > 1 ? "s" : "" }}
+            <span v-if="role.tier.rides_to_next">
+              · encore {{ role.tier.rides_to_next }}
+            </span>
+          </p>
+        </div>
+      </div>
 
       <!-- Avis recus : replies par defaut, pour ne pas noyer la page -->
       <div v-if="receivedRatings.length" class="w-full border-t border-slate-100 pt-3">
@@ -68,13 +80,20 @@ import { ChevronRight } from "lucide-vue-next";
 
 import RatingList from "../components/RatingList.vue";
 import TrackingCard from "../components/TrackingCard.vue";
-import { Badge, Card, StarRating } from "../components/ui";
+import { Card, StarRating, TierBadge } from "../components/ui";
 import { useTrackingStore } from "../stores/tracking";
 
 const store = useTrackingStore();
 
 const summary = computed(() => store.myRatings.summary);
 const receivedRatings = computed(() => store.myRatings.ratings || []);
+
+// Les deux paliers sont toujours affiches : voir qu'on repart de zero dans
+// l'autre role est une information utile, pas un manque.
+const roles = computed(() => [
+  { key: "driver", label: "Conducteur", tier: summary.value.driver || {} },
+  { key: "passenger", label: "Passager", tier: summary.value.passenger || {} },
+]);
 const showRatings = ref(false);
 
 onMounted(() => {

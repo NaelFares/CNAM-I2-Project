@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, status
 
 from backend.core.config import config
 from backend.database import ride_ratings as ratings_db
+from backend.database import ride_selections as selections_db
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
@@ -58,6 +59,9 @@ def find_matches(
     # Reputation des conducteurs candidats, chargee en une requete pour
     # eviter un N+1 sur la liste de resultats.
     rating_summaries = ratings_db.get_summaries([ride.user_id for ride in all_rides])
+    driver_ride_counts = selections_db.count_completed_rides_as_driver(
+        [ride.user_id for ride in all_rides]
+    )
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
     reserved_times = db.get_passenger_reserved_times(user.id)
     try:
@@ -70,6 +74,7 @@ def find_matches(
             reserved_times=reserved_times,
             ladies_only=ladies_only,
             rating_summaries=rating_summaries,
+            driver_ride_counts=driver_ride_counts,
         )
     except RoutingQuotaExceededError:
         raise_api_error(
@@ -145,6 +150,9 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
     ]
     selection_counts = db.get_ride_selection_counts()
     rating_summaries = ratings_db.get_summaries([ride.user_id for ride in all_rides])
+    driver_ride_counts = selections_db.count_completed_rides_as_driver(
+        [ride.user_id for ride in all_rides]
+    )
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
     reserved_times = db.get_passenger_reserved_times(user.id)
     try:
@@ -157,6 +165,7 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
             reserved_times=reserved_times,
             ladies_only=body.ladies_only,
             rating_summaries=rating_summaries,
+            driver_ride_counts=driver_ride_counts,
         )
         geometry = routing_service.get_route_geometry(
             (body.origin_lat, body.origin_lon),

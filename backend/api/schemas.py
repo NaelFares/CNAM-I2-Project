@@ -167,6 +167,10 @@ class MatchDTO(BaseModel):
     # Reputation du conducteur : None tant qu'il n'a recu aucune note.
     driver_rating_average: float | None = None
     driver_rating_count: int = 0
+    # Palier d'experience du conducteur, base sur ses courses terminees.
+    driver_tier_key: str = "beginner"
+    driver_tier_label: str = "Débutant"
+    driver_rides_count: int = 0
     driver_smoking_preference: SmokingPreference = "peu_importe"
     passenger_name: str
     passenger_id: int
@@ -276,17 +280,28 @@ class RideRatingResponse(BaseModel):
     feedback: ApiMessage
 
 
+class ExperienceTierDTO(BaseModel):
+    """Palier d'experience pour un role donne."""
+
+    # Courses terminees dans ce role.
+    rides_count: int = 0
+    tier_key: str = "beginner"
+    tier_label: str = "Débutant"
+    # Courses restantes avant le palier suivant ; None au dernier palier.
+    rides_to_next: int | None = None
+
+
 class RatingSummaryDTO(BaseModel):
     """Reputation agregee d'un utilisateur."""
 
     # None tant qu'aucune note n'a ete recue : distinct d'une mauvaise
-    # moyenne, et c'est ce que compute_tier attend pour ne pas promouvoir
-    # un profil jamais note.
+    # moyenne, ce qui permet d'afficher "pas encore note".
     average: float | None = None
     count: int = 0
-    # Palier derive (Nouveau / Confirme / Experimente).
-    tier_key: str = "newcomer"
-    tier_label: str = "Nouveau"
+    # Paliers d'experience, comptes separement par role : conduire et etre
+    # passager ne demandent pas les memes competences.
+    driver: ExperienceTierDTO = ExperienceTierDTO()
+    passenger: ExperienceTierDTO = ExperienceTierDTO()
 
 
 class ReceivedRatingDTO(BaseModel):

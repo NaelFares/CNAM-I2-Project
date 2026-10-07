@@ -19,6 +19,15 @@
           size="sm"
         />
         <span v-else class="text-xs text-slate-400">Pas encore noté</span>
+        <TierBadge
+          :tier="{
+            tier_key: match.driver_tier_key,
+            tier_label: match.driver_tier_label,
+            rides_count: match.driver_rides_count,
+            rides_to_next: null,
+          }"
+          role-label="conducteur"
+        />
         <ArrowRight class="h-4 w-4 shrink-0 text-slate-400" />
         <Avatar :name="match.passenger_name" :photo-url="match.passenger_photo_url" size="sm" />
         <span class="text-sm font-semibold text-slate-700">
@@ -86,7 +95,7 @@ import { computed, ref } from "vue";
 import { ArrowRight, X } from "lucide-vue-next";
 
 import RouteMap from "./RouteMap.vue";
-import { Avatar, Badge, StarRating } from "./ui";
+import { Avatar, Badge, StarRating, TierBadge } from "./ui";
 import { genderLabel } from "../lib/gender";
 import { tripPreferenceBadges } from "../lib/preferences";
 

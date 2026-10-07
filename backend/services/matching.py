@@ -29,6 +29,7 @@ from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
 from backend.services.photo_storage import build_photo_url
+from backend.services.reputation import compute_tier
 from backend.services.routing import routing_service
 
 
@@ -45,6 +46,7 @@ class Match:
         extra_time_min: float,
         occupied_seats: int = 0,
         driver_rating=None,
+        driver_rides_count: int = 0,
     ):
         self.driver = driver
         self.passenger = passenger
@@ -57,6 +59,7 @@ class Match:
         # Reputation injectee par l'appelant : le moteur ne doit pas emettre
         # une requete par match.
         self.driver_rating = driver_rating
+        self.driver_rides_count = driver_rides_count
         self.score = 0
         self.time_diff_min = 0
         self.departure_distance_km = 0.0
@@ -108,6 +111,9 @@ class Match:
             "driver_music_genres": list(self.driver.music_genres),
             "driver_rating_average": self.driver_rating.average if self.driver_rating else None,
             "driver_rating_count": self.driver_rating.count if self.driver_rating else 0,
+            "driver_tier_key": compute_tier(self.driver_rides_count).key,
+            "driver_tier_label": compute_tier(self.driver_rides_count).label,
+            "driver_rides_count": self.driver_rides_count,
             "driver_smoking_preference": self.driver.smoking_preference,
             "passenger_name": self.passenger.name,
             "passenger_id": self.passenger.id,
@@ -169,6 +175,7 @@ class MatchingService:
         reserved_times: Optional[set] = None,
         ladies_only: bool = False,
         rating_summaries: Optional[Dict[int, object]] = None,
+        driver_ride_counts: Optional[Dict[int, int]] = None,
     ) -> List[Dict]:
         """
         Trouve les trajets compatibles pour l'utilisateur courant.
@@ -288,6 +295,7 @@ class MatchingService:
                     extra_time_min,
                     occupied_seats=occupied,
                     driver_rating=(rating_summaries or {}).get(driver.id),
+                    driver_rides_count=(driver_ride_counts or {}).get(driver.id, 0),
                 )
                 if match.score >= config.MIN_MATCH_SCORE:
                     matches.append(match)

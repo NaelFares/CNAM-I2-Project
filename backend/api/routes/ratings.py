@@ -5,14 +5,16 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 
 from backend.database import ride_ratings as ratings_db
+from backend.database import ride_selections as selections_db
 from backend.database.manager import db
 from backend.models.user import User
 from backend.services.photo_storage import build_photo_url
-from backend.services.reputation import compute_tier
+from backend.services.reputation import compute_tier, rides_to_next_tier
 
 from backend.api.deps import require_current_user
 from backend.api.feedback import raise_api_error
 from backend.api.schemas import (
+    ExperienceTierDTO,
     RatingSummaryDTO,
     ReceivedRatingDTO,
     UserRatingsResponse,
@@ -21,20 +23,30 @@ from backend.api.schemas import (
 router = APIRouter(prefix="/ratings", tags=["ratings"])
 
 
-def _summary_dto(user_id: int) -> RatingSummaryDTO:
-    """Moyenne et palier d'un utilisateur.
+def _tier_dto(rides_count: int) -> ExperienceTierDTO:
+    tier = compute_tier(rides_count)
+    return ExperienceTierDTO(
+        rides_count=rides_count,
+        tier_key=tier.key,
+        tier_label=tier.label,
+        rides_to_next=rides_to_next_tier(rides_count),
+    )
 
-    Le nombre de courses retenu pour le palier est le nombre de notes
-    recues, et non le nombre de reservations : une course notee est une
-    course dont l'autre participant atteste qu'elle a bien eu lieu.
+
+def _summary_dto(user_id: int) -> RatingSummaryDTO:
+    """Moyenne des notes recues et paliers d'experience par role.
+
+    Le palier se base sur les courses terminees des deux cotes, pas sur le
+    nombre de notes : quelqu'un de jamais note progresse quand meme, et une
+    course confirmee par les deux participants ne peut pas etre gonflee.
     """
     summary = ratings_db.get_summary(user_id)
-    tier = compute_tier(summary.count, summary.average)
+    counts = selections_db.count_completed_rides(user_id)
     return RatingSummaryDTO(
         average=summary.average,
         count=summary.count,
-        tier_key=tier.key,
-        tier_label=tier.label,
+        driver=_tier_dto(counts["driver"]),
+        passenger=_tier_dto(counts["passenger"]),
     )
 
 
