@@ -1,4 +1,7 @@
-"""Reservation d'un trajet et suivi du covoiturage en cours."""
+"""Suivi d'un covoiturage, une fois la reservation acceptee.
+
+La reservation elle-meme (demande, acceptation, annulation) releve de
+`backend/api/routes/rides.py`."""
 
 from __future__ import annotations
 
@@ -15,7 +18,6 @@ from backend.services.photo_storage import build_photo_url
 from backend.api.deps import require_current_user
 from backend.api.feedback import make_feedback, raise_api_error
 from backend.api.schemas import (
-    RideSelectionCreateRequest,
     RideTrackingDTO,
     RideTrackingListResponse,
     RideTrackingResponse,
@@ -57,8 +59,7 @@ def _to_dto(selection: RideSelection, ride: Ride, viewer_id: int) -> RideTrackin
         passenger_onboard_at=selection.passenger_onboard_at,
         driver_completed_at=selection.driver_completed_at,
         passenger_arrived_at=selection.passenger_arrived_at,
-        cancelled_at=selection.cancelled_at,
-    )
+        )
 
 
 @router.get("", response_model=RideTrackingListResponse)
@@ -78,23 +79,6 @@ def list_trackings(user: User = Depends(require_current_user)):
     # Les courses en cours d'abord, puis les plus recentes.
     trackings.sort(key=lambda t: (t.status in ("completed", "cancelled"), -t.id))
     return RideTrackingListResponse(trackings=trackings)
-
-
-@router.post("/selections", response_model=RideTrackingResponse, status_code=status.HTTP_201_CREATED)
-def create_selection(payload: RideSelectionCreateRequest, user: User = Depends(require_current_user)):
-    ride = _get_ride(payload.ride_id)
-
-    if ride.user_id == user.id:
-        raise_api_error("TRACKING_OWN_RIDE", http_status=status.HTTP_409_CONFLICT)
-
-    selection = selections_db.create_selection(ride.id, user.id)
-    if selection is None:
-        raise_api_error("TRACKING_ALREADY_SELECTED", http_status=status.HTTP_409_CONFLICT)
-
-    return RideTrackingResponse(
-        tracking=_to_dto(selection, ride, user.id),
-        feedback=make_feedback("TRACKING_SELECTION_CREATED"),
-    )
 
 
 @router.post("/selections/{selection_id}/steps/{step}", response_model=RideTrackingResponse)
@@ -127,26 +111,4 @@ def confirm_step(step: str, selection_id: int, user: User = Depends(require_curr
     return RideTrackingResponse(
         tracking=_to_dto(updated, ride, user.id),
         feedback=make_feedback("TRACKING_STEP_CONFIRMED"),
-    )
-
-
-@router.post("/selections/{selection_id}/cancel", response_model=RideTrackingResponse)
-def cancel_selection(selection_id: int, user: User = Depends(require_current_user)):
-    selection = selections_db.get_selection(selection_id)
-    if not selection:
-        raise_api_error("TRACKING_SELECTION_NOT_FOUND", http_status=status.HTTP_404_NOT_FOUND)
-
-    ride = _get_ride(selection.ride_id)
-    if ride_tracking.role_of(selection, user.id, ride.user_id) is None:
-        raise_api_error("TRACKING_NOT_A_PARTICIPANT", http_status=status.HTTP_404_NOT_FOUND)
-
-    # Les deux parties peuvent annuler : un conducteur qui ne peut plus
-    # assurer le trajet doit pouvoir liberer le passager, et inversement.
-    updated = selections_db.cancel_selection(selection_id, user.id)
-    if updated is None:
-        raise_api_error("TRACKING_CANCEL_TOO_LATE", http_status=status.HTTP_409_CONFLICT)
-
-    return RideTrackingResponse(
-        tracking=_to_dto(updated, ride, user.id),
-        feedback=make_feedback("TRACKING_SELECTION_CANCELLED_OK"),
     )

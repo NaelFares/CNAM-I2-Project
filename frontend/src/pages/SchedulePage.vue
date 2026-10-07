@@ -101,16 +101,30 @@
       </div>
 
       <div class="card p-4">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div class="text-sm font-semibold text-slate-700">{{ currentWeekLabel }}</div>
-          <div class="flex items-center gap-2">
-            <button class="btn-secondary px-3 py-2" @click="goPreviousWeek">
+        <div class="schedule-toolbar mb-4">
+          <p class="schedule-period">{{ currentWeekLabel }}</p>
+          <div class="schedule-navigation" aria-label="Navigation entre les semaines">
+            <button
+              type="button"
+              class="schedule-navigation-button"
+              aria-label="Afficher la semaine précédente"
+              title="Semaine précédente"
+              @click="goPreviousWeek"
+            >
               <ChevronLeft class="h-4 w-4" />
-              Semaine precedente
+              <span class="schedule-navigation-label">Semaine précédente</span>
             </button>
-            <button class="btn-secondary px-3 py-2" @click="goCurrentWeek">Cette semaine</button>
-            <button class="btn-secondary px-3 py-2" @click="goNextWeek">
-              Semaine suivante
+            <button type="button" class="schedule-today-button" @click="goCurrentWeek">
+              Aujourd'hui
+            </button>
+            <button
+              type="button"
+              class="schedule-navigation-button"
+              aria-label="Afficher la semaine suivante"
+              title="Semaine suivante"
+              @click="goNextWeek"
+            >
+              <span class="schedule-navigation-label">Semaine suivante</span>
               <ChevronRight class="h-4 w-4" />
             </button>
           </div>

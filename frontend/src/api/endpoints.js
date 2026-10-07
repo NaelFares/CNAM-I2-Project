@@ -1,5 +1,7 @@
 import { apiClient } from "./api";
 
+const MATCHING_TIMEOUT_MS = 180000;
+
 export async function login(email, password) {
   return (await apiClient.post("/auth/login", { email, password })).data;
 }
@@ -71,33 +73,48 @@ export async function generateRides() {
   return (await apiClient.post("/rides/generate")).data;
 }
 
-export async function findMatches(ladiesOnly = false) {
-  return (
-    await apiClient.post("/matches/find", null, {
-      params: { ladies_only: ladiesOnly },
-      timeout: 45000,
-    })
-  ).data;
+// --- Reservation (flux conducteur/passager) ---
+export async function getMyRideSelections() {
+  return (await apiClient.get("/rides/my-selections")).data;
 }
 
+export async function getMyRideOffers() {
+  return (await apiClient.get("/rides/my-offers")).data;
+}
+
+export async function selectRide(rideId) {
+  return (await apiClient.post(`/rides/${rideId}/select`)).data;
+}
+
+export async function decideRidePassenger(rideId, passengerId, decision) {
+  return (await apiClient.post(`/rides/${rideId}/passengers/${passengerId}/${decision}`)).data;
+}
+
+export async function cancelRideSelection(rideId) {
+  return (await apiClient.delete(`/rides/${rideId}/select`)).data;
+}
+
+// --- Suivi de la course (une fois la reservation acceptee) ---
 export async function fetchTrackings() {
   return (await apiClient.get("/tracking")).data;
-}
-
-export async function createRideSelection(rideId) {
-  return (await apiClient.post("/tracking/selections", { ride_id: rideId })).data;
 }
 
 export async function confirmTrackingStep(selectionId, step) {
   return (await apiClient.post(`/tracking/selections/${selectionId}/steps/${step}`)).data;
 }
 
-export async function cancelRideSelection(selectionId) {
-  return (await apiClient.post(`/tracking/selections/${selectionId}/cancel`)).data;
+export async function findMatches(weekStart, ladiesOnly = false) {
+  return (
+    await apiClient.post(
+      "/matches/find",
+      { week_start: weekStart },
+      { params: { ladies_only: ladiesOnly }, timeout: MATCHING_TIMEOUT_MS }
+    )
+  ).data;
 }
 
 export async function searchCarpoolMatches(payload) {
-  return (await apiClient.post("/matches/search", payload, { timeout: 45000 })).data;
+  return (await apiClient.post("/matches/search", payload, { timeout: MATCHING_TIMEOUT_MS })).data;
 }
 
 export async function getRoutePreview(params) {

@@ -85,6 +85,9 @@ def evaluate_step(
     if selection.is_cancelled():
         return StepDecision(False, error_code="TRACKING_SELECTION_CANCELLED")
 
+    if not selection.is_accepted():
+        return StepDecision(False, error_code="TRACKING_NOT_ACCEPTED")
+
     if step in _COMPLETION_STEPS and not selection.can_confirm_completion():
         return StepDecision(False, error_code="TRACKING_PICKUP_REQUIRED")
 
@@ -97,7 +100,9 @@ def next_step_for(selection: RideSelection, role: str) -> Optional[str]:
     Sert a piloter l'interface : un seul bouton a la fois, celui qui a du
     sens pour l'utilisateur a cet instant.
     """
-    if selection.is_cancelled():
+    # Une demande encore en attente de la reponse du conducteur n'a aucune
+    # etape a confirmer : le suivi ne commence qu'une fois le passager accepte.
+    if selection.is_cancelled() or not selection.is_accepted():
         return None
 
     if role == "driver":

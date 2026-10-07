@@ -11,7 +11,7 @@ from unittest.mock import patch
 for name, attributes in (
     ("dotenv", {"load_dotenv": lambda *a, **k: None}),
     ("psycopg2", {"OperationalError": type("OperationalError", (Exception,), {}), "connect": None}),
-    ("psycopg2.extras", {"RealDictCursor": object}),
+    ("psycopg2.extras", {"RealDictCursor": object, "Json": lambda v: v}),
     ("psycopg2.extensions", {"connection": object}),
     ("requests", {}),
 ):
@@ -34,8 +34,15 @@ from backend.models.user import User
 from backend.services.matching import MatchingService
 
 
-def _user(user_id: int, gender: str) -> User:
-    return User(id=user_id, name=f"User {user_id}", gender=gender, role="both")
+def _user(user_id: int, gender: str, role: str = "driver") -> User:
+    """Conducteur par defaut : seul un conducteur peut etre propose en match."""
+    return User(
+        id=user_id,
+        name=f"User {user_id}",
+        gender=gender,
+        role=role,
+        car_seats=4 if role == "driver" else None,
+    )
 
 
 def _ride(user_id: int) -> Ride:
@@ -71,7 +78,7 @@ class LadiesOnlyFilterTests(unittest.TestCase):
     """Le filtre doit ecarter les non-femmes avant tout appel de routing."""
 
     def setUp(self):
-        self.searcher = _user(1, "femme")
+        self.searcher = _user(1, "femme", role="passenger")
         self.others = {2: _user(2, "femme"), 3: _user(3, "homme"), 4: _user(4, "autre")}
         self.all_rides = [_ride(uid) for uid in self.others]
 
@@ -83,22 +90,23 @@ class LadiesOnlyFilterTests(unittest.TestCase):
         """
         evaluated = set()
 
-        def fake_get_user_by_id(user_id):
-            return self.others.get(user_id)
-
         by_start = {(ride.start_lat, ride.start_lon): ride.user_id for ride in self.all_rides}
 
-        def fake_detour(_start, waypoint, _end):
-            evaluated.add(by_start[waypoint])
+        def fake_detour(start, _waypoint, _end):
+            # Le conducteur est l'origine de l'itineraire ; la passagere qui
+            # cherche est le point de passage.
+            evaluated.add(by_start[start])
             return None
 
-        with patch("backend.services.matching.db.get_user_by_id", side_effect=fake_get_user_by_id), \
-             patch("backend.services.matching.routing_service.get_route_details", return_value=None), \
-             patch("backend.services.matching.routing_service.get_route_via_waypoint", side_effect=fake_detour):
+        all_users = list(self.others.values()) + [self.searcher]
+        with patch("backend.services.matching.db.get_all_users", return_value=all_users),              patch("backend.services.matching.routing_service.get_route_details", return_value=None),              patch("backend.services.matching.routing_service.get_route_via_waypoint", side_effect=fake_detour):
             MatchingService.find_matches(
                 current_user=self.searcher,
                 my_rides=[_ride(1)],
                 all_rides=self.all_rides,
+                selection_counts={},
+                selected_ride_ids=set(),
+                reserved_times=set(),
                 ladies_only=ladies_only,
             )
         return evaluated

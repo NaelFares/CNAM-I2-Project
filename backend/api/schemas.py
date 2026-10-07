@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -28,7 +28,8 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8)
-    role: Literal["both", "driver", "passenger"] = "both"
+    role: Literal["driver", "passenger"] = "passenger"
+    car_seats: int | None = Field(default=None, ge=1, le=4)
     gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
@@ -54,7 +55,8 @@ class UserDTO(BaseModel):
     id: int
     name: str
     email: EmailStr
-    role: Literal["both", "driver", "passenger"]
+    role: Literal["driver", "passenger"]
+    car_seats: int | None = None
     gender: Gender = "autre"
     # URL publique reconstruite par l'API depuis photo_filename ; vide si
     # aucune photo n'a ete televersee.
@@ -79,7 +81,8 @@ class SessionResponse(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    role: Literal["both", "driver", "passenger"]
+    role: Literal["driver", "passenger"]
+    car_seats: int | None = Field(default=None, ge=1, le=4)
     gender: Gender
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
@@ -132,13 +135,15 @@ class EventDTO(BaseModel):
 class RideDTO(BaseModel):
     id: int | None = None
     user_id: int
-    event_id: int
+    event_id: int | None = None
     ride_type: Literal["to_campus", "from_campus"]
     ride_time: datetime
     start_lat: float
     start_lon: float
     end_lat: float
     end_lon: float
+    status: Literal["active", "archived"] = "active"
+    archived_at: datetime | None = None
 
 
 class RidesGenerateResponse(BaseModel):
@@ -147,6 +152,7 @@ class RidesGenerateResponse(BaseModel):
 
 
 class MatchDTO(BaseModel):
+    ride_id: int
     driver_name: str
     driver_id: int
     # Trajet du conducteur, cible d'une reservation. None pour une recherche
@@ -174,11 +180,17 @@ class MatchDTO(BaseModel):
     campus_coords: tuple[float, float]
     route_geometry: list[list[float]] = []
     route_distance_km: float = 0.0
+    car_seats: int
+    available_seats: int
 
 
 class MatchesResponse(BaseModel):
     matches: list[MatchDTO]
     feedback: ApiMessage
+
+
+class PlanningMatchRequest(BaseModel):
+    week_start: date
 
 
 class MatchSearchRequest(BaseModel):
@@ -226,7 +238,6 @@ class RideTrackingDTO(BaseModel):
     passenger_onboard_at: datetime | None = None
     driver_completed_at: datetime | None = None
     passenger_arrived_at: datetime | None = None
-    cancelled_at: datetime | None = None
 
 
 class RideTrackingListResponse(BaseModel):
@@ -238,15 +249,65 @@ class RideTrackingResponse(BaseModel):
     feedback: ApiMessage
 
 
-class RideSelectionCreateRequest(BaseModel):
-    ride_id: int
-
-
 class DashboardSummaryResponse(BaseModel):
     events_count: int
     rides_count: int
     matches_count: int
     profile_completed: bool
+
+
+class SelectedPassengerDTO(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    selected_at: datetime
+    selection_status: Literal["pending", "accepted", "rejected"]
+
+
+class DriverOfferDTO(BaseModel):
+    id: int
+    ride_type: Literal["to_campus", "from_campus"]
+    ride_time: datetime
+    start_lat: float
+    start_lon: float
+    end_lat: float
+    end_lon: float
+    status: Literal["active", "archived"]
+    archived_at: datetime | None = None
+    car_seats: int
+    occupied_seats: int
+    available_seats: int
+    passengers: list[SelectedPassengerDTO] = Field(default_factory=list)
+
+
+class DriverOffersResponse(BaseModel):
+    rides: list[DriverOfferDTO]
+
+
+class PassengerSelectionDTO(BaseModel):
+    selection_id: int
+    ride_id: int
+    driver_id: int
+    driver_name: str
+    ride_type: Literal["to_campus", "from_campus"]
+    ride_time: datetime
+    start_lat: float
+    start_lon: float
+    end_lat: float
+    end_lon: float
+    status: Literal["active", "archived"]
+    selected_at: datetime
+    selection_status: Literal["pending", "accepted", "rejected"]
+
+
+class PassengerSelectionsResponse(BaseModel):
+    rides: list[PassengerSelectionDTO]
+
+
+class RideSelectionResponse(BaseModel):
+    ride_id: int
+    available_seats: int
+    feedback: ApiMessage
 
 
 LoginResponse.model_rebuild()

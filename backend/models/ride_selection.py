@@ -39,13 +39,20 @@ class RideSelection:
     driver_completed_at: Optional[datetime] = None
     passenger_arrived_at: Optional[datetime] = None
 
-    cancelled_at: Optional[datetime] = None
-    cancelled_by: Optional[int] = None
+    # Statut de la reservation, porte par le flux conducteur/passager :
+    # pending (demande envoyee), accepted (conducteur a valide), rejected
+    # (refuse ou annule). Le suivi ci-dessous ne concerne que les 'accepted'.
+    selection_status: str = "pending"
 
     # --- Etat derive ---
 
     def is_cancelled(self) -> bool:
-        return self.cancelled_at is not None
+        """Reservation refusee par le conducteur ou annulee par le passager."""
+        return self.selection_status == "rejected"
+
+    def is_accepted(self) -> bool:
+        """Seule une reservation acceptee peut faire l'objet d'un suivi."""
+        return self.selection_status == "accepted"
 
     def is_pickup_confirmed(self) -> bool:
         """Prise en charge actee : les deux parties l'ont confirmee.
@@ -65,6 +72,10 @@ class RideSelection:
         """Etat courant, deduit des horodatages (jamais stocke)."""
         if self.is_cancelled():
             return STATUS_CANCELLED
+        if not self.is_accepted():
+            # Demande encore en attente de la reponse du conducteur : aucune
+            # etape de suivi n'a de sens avant son acceptation.
+            return STATUS_PENDING
         if self.is_completed():
             return STATUS_COMPLETED
         if self.driver_completed_at or self.passenger_arrived_at:
@@ -82,7 +93,7 @@ class RideSelection:
         personne ne soit jamais monte dans la voiture -- et alimenter ensuite
         un compteur de courses ou une note.
         """
-        return self.is_pickup_confirmed() and not self.is_cancelled()
+        return self.is_pickup_confirmed() and self.is_accepted()
 
     def to_dict(self) -> dict:
         return {
@@ -94,8 +105,7 @@ class RideSelection:
             "passenger_onboard_at": self.passenger_onboard_at,
             "driver_completed_at": self.driver_completed_at,
             "passenger_arrived_at": self.passenger_arrived_at,
-            "cancelled_at": self.cancelled_at,
-            "cancelled_by": self.cancelled_by,
+            "selection_status": self.selection_status,
         }
 
     @classmethod
@@ -109,6 +119,5 @@ class RideSelection:
             passenger_onboard_at=data.get("passenger_onboard_at"),
             driver_completed_at=data.get("driver_completed_at"),
             passenger_arrived_at=data.get("passenger_arrived_at"),
-            cancelled_at=data.get("cancelled_at"),
-            cancelled_by=data.get("cancelled_by"),
+            selection_status=data.get("status") or "pending",
         )

@@ -33,18 +33,13 @@
         {{ stepLabel(tracking.next_step) }}
       </Button>
       <p v-else class="text-sm text-slate-500">{{ waitingMessage(tracking) }}</p>
-
-      <Button variant="secondary" class="ml-auto" :disabled="store.loading" @click="onCancel">
-        <X class="h-4 w-4" />
-        Annuler
-      </Button>
     </div>
   </Card>
 </template>
 
 <script setup>
 import { computed } from "vue";
-import { Check, Circle, CircleCheck, X } from "lucide-vue-next";
+import { Check, Circle, CircleCheck } from "lucide-vue-next";
 
 import { Avatar, Badge, Button, Card } from "./ui";
 import {
@@ -94,9 +89,5 @@ const formattedTime = computed(() => {
 
 async function onConfirm() {
   await store.confirm(props.tracking.id, props.tracking.next_step);
-}
-
-async function onCancel() {
-  await store.cancel(props.tracking.id);
 }
 </script>

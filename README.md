@@ -12,7 +12,8 @@ Faciliter les trajets quotidiens entre étudiants en proposant des correspondanc
 - Import d'emploi du temps (ICS/CSV)
 - Visualisation du planning en calendrier hebdomadaire
 - Génération des trajets à partir des cours
-- Recherche de correspondances entre étudiants
+- Recherche ponctuelle ou par semaine de planning, avec résultats navigables jour par jour
+- Consultation des trajets proposés par semaine pour les conducteurs
 
 ## Demarrage rapide avec Groq
 

@@ -13,7 +13,8 @@ class User:
     name: str = ""
     email: str = ""
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
-    role: str = "both"  # "driver", "passenger", "both"
+    role: str = "passenger"  # "driver" ou "passenger"
+    car_seats: Optional[int] = None  # Places proposees ; None pour un passager
     gender: str = "autre"  # "homme", "femme", "autre"
     photo_filename: str = ""  # Nom de fichier seul, jamais un chemin (cf. init.sql)
     music_preference: str = "peu_importe"  # "peu_importe", "avec", "sans"
@@ -32,11 +33,11 @@ class User:
 
     def is_driver(self) -> bool:
         """Vérifie si l'utilisateur est conducteur"""
-        return self.role in ["driver", "both"]
+        return self.role == "driver"
 
     def is_passenger(self) -> bool:
         """Vérifie si l'utilisateur est passager"""
-        return self.role in ["passenger", "both"]
+        return self.role == "passenger"
 
     def is_woman(self) -> bool:
         """Seules les femmes peuvent activer le filtre "ladies only" et y
@@ -63,6 +64,7 @@ class User:
             "email": self.email,
             "hashed_password": self.hashed_password,
             "role": self.role,
+            "car_seats": self.car_seats,
             "gender": self.gender,
             "photo_filename": self.photo_filename,
             "music_preference": self.music_preference,
@@ -85,7 +87,8 @@ class User:
             name=data.get("name", ""),
             email=data.get("email", ""),
             hashed_password=data.get("hashed_password", ""),
-            role=data.get("role", "both"),
+            role=data.get("role", "passenger"),
+            car_seats=data.get("car_seats"),
             gender=data.get("gender") or "autre",
             photo_filename=data.get("photo_filename") or "",
             music_preference=data.get("music_preference") or "peu_importe",

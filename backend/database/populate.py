@@ -4,6 +4,7 @@ Appele systematiquement par setup.run_startup() a chaque demarrage.
 Toutes les requetes doivent etre idempotentes (INSERT ... WHERE NOT EXISTS).
 """
 import logging
+import math
 import os
 import random
 import sys
@@ -17,6 +18,7 @@ from passlib.context import CryptContext
 from backend.core.config import config
 from backend.database.manager import db
 from backend.models.event import Event
+from backend.models.ride import Ride
 from backend.models.user import User
 from backend.services.geocoding import geocoding_service
 
@@ -103,10 +105,14 @@ def run_populate() -> None:
             logger.info(f"{created}/{SEED_COUNT} profils de test recrees.")
         else:
             logger.info("Seed de test conserve tel quel.")
+            created = _ensure_existing_seed_rides()
+            logger.info("%s trajets de test manquants crees.", created)
     else:
         created = _create_seed_users()
         logger.info(f"{created}/{SEED_COUNT} profils de test crees.")
 
+    selected = _ensure_seed_selections()
+    logger.info("%s inscriptions de test creees.", selected)
     _write_accounts_file()
 
 
@@ -151,9 +157,6 @@ def _delete_seed_users() -> None:
 
 
 def _create_seed_users() -> int:
-    # Import tardif pour éviter tout cycle d'import avec backend.api.routes.rides
-    from backend.api.routes.rides import generate_rides_for_user
-
     rng = random.Random(42)
     schools_geocoded = _geocode_schools()
     streets_geocoded = _geocode_streets()
@@ -170,7 +173,10 @@ def _create_seed_users() -> int:
     created = 0
     for i in range(1, SEED_COUNT + 1):
         name = unique_names[i - 1]
-        role = ["driver", "passenger", "both"][i % 3]
+        # Le compte 01 reste passager et le compte 07 conducteur afin de
+        # conserver le scenario de demonstration utilise pour le matching.
+        role = "driver" if i % 2 == 0 or i == 7 else "passenger"
+        car_seats = rng.randint(1, 4) if role == "driver" else None
         # Repartition deterministe des sexes, pour qu'une recherche "ladies
         # only" ait de quoi renvoyer des resultats en demo.
         gender = ["homme", "femme", "autre"][i % 3]
@@ -193,6 +199,7 @@ def _create_seed_users() -> int:
             email=f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}",
             hashed_password=hashed,
             role=role,
+            car_seats=car_seats,
             gender=gender,
             music_preference=music_preference,
             music_genres=music_genres,
@@ -207,7 +214,7 @@ def _create_seed_users() -> int:
         )
         try:
             user.id = db.create_user(user)
-            _create_events_and_rides(user, school_name, generate_rides_for_user)
+            _ensure_seed_rides(user, school_name)
             created += 1
         except Exception as exc:
             logger.warning(f"Echec de creation du profil de test #{i:02d} ({name}): {exc!r}")
@@ -220,9 +227,9 @@ def _write_accounts_file() -> None:
         "Comptes de test Stud'Ride (generes par backend/database/populate.py)",
         f"Mot de passe commun a tous les comptes : {SEED_PASSWORD}",
         "",
-        f"{'email':<28} {'nom':<20} {'role':<10} {'sexe':<8} "
+        f"{'email':<28} {'nom':<20} {'role':<10} {'places':<8} {'sexe':<8} "
         f"{'adresse de depart':<48} {'adresse ecole':<48} ecole",
-        "-" * 210,
+        "-" * 215,
     ]
     for i in range(1, SEED_COUNT + 1):
         email = f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}"
@@ -230,8 +237,9 @@ def _write_accounts_file() -> None:
         if not user:
             continue
         school_name = TOULOUSE_SCHOOLS[i % len(TOULOUSE_SCHOOLS)][0]
+        car_seats = str(user.car_seats) if user.car_seats is not None else "-"
         lines.append(
-            f"{user.email:<28} {user.name:<20} {user.role:<10} {user.gender:<8} "
+            f"{user.email:<28} {user.name:<20} {user.role:<10} {car_seats:<8} {user.gender:<8} "
             f"{user.start_address:<48} {user.school_address:<48} {school_name}"
         )
 
@@ -289,17 +297,136 @@ def _geocode_streets() -> list[tuple[str, str, float, float]]:
     return results
 
 
-def _create_events_and_rides(user: User, school_name: str, generate_rides_for_user) -> None:
-    today = datetime.now()
+def _ensure_existing_seed_rides() -> int:
+    """Complete les trajets des comptes de test sans effacer leurs réservations."""
+    created = 0
+    for i in range(1, SEED_COUNT + 1):
+        user = db.get_user_by_email(f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}")
+        if not user:
+            continue
+        school_name = TOULOUSE_SCHOOLS[i % len(TOULOUSE_SCHOOLS)][0]
+        created += _ensure_seed_rides(user, school_name)
+    return created
+
+
+def _ensure_seed_rides(user: User, school_name: str, now: Optional[datetime] = None) -> int:
+    """Prépare deux jours de cours et leurs allers-retours, sans doublons."""
+    today = now or datetime.now()
     next_monday = today + timedelta(days=(7 - today.weekday()) % 7 or 7)
+    events = db.get_events_by_user(user.id)
+    target_events = []
     for day_offset in (0, 2):  # lundi, mercredi
         day = next_monday + timedelta(days=day_offset)
-        event = Event(
-            user_id=user.id,
-            title=f"Cours a {school_name}",
-            start_time=day.replace(hour=8, minute=0, second=0, microsecond=0),
-            end_time=day.replace(hour=12, minute=0, second=0, microsecond=0),
-            location=school_name,
-        )
-        event.id = db.create_event(event)
-    generate_rides_for_user(user)
+        start_time = day.replace(hour=8, minute=0, second=0, microsecond=0)
+        end_time = day.replace(hour=12, minute=0, second=0, microsecond=0)
+        event = next((item for item in events if item.start_time == start_time), None)
+        if event is None:
+            event = Event(
+                user_id=user.id,
+                title=f"Cours a {school_name}",
+                start_time=start_time,
+                end_time=end_time,
+                location=school_name,
+            )
+            event.id = db.create_event(event)
+            events.append(event)
+        target_events.append(event)
+
+    existing = {(ride.event_id, ride.ride_type) for ride in db.get_rides_by_user(user.id)}
+    dest_lat, dest_lon = (
+        (user.school_lat, user.school_lon)
+        if user.has_school_location()
+        else config.get_campus_coords()
+    )
+    created = 0
+    for event in target_events:
+        for ride_type, ride_time, start, end in (
+            ("to_campus", event.start_time, (user.start_lat, user.start_lon), (dest_lat, dest_lon)),
+            ("from_campus", event.end_time, (dest_lat, dest_lon), (user.start_lat, user.start_lon)),
+        ):
+            if (event.id, ride_type) in existing:
+                continue
+            db.create_ride(Ride(
+                user_id=user.id,
+                event_id=event.id,
+                ride_type=ride_type,
+                ride_time=ride_time,
+                start_lat=start[0],
+                start_lon=start[1],
+                end_lat=end[0],
+                end_lon=end[1],
+            ))
+            existing.add((event.id, ride_type))
+            created += 1
+    return created
+
+
+def _distance_km(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
+    """Distance approximative suffisante pour choisir des profils de démonstration proches."""
+    latitude = math.radians((a_lat + b_lat) / 2)
+    return 111.2 * math.hypot(a_lat - b_lat, (a_lon - b_lon) * math.cos(latitude))
+
+
+def _ensure_seed_selections() -> int:
+    """Inscrit des passagers de test aux trajets proches, sans remplir toutes les voitures."""
+    users = [
+        db.get_user_by_email(f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}")
+        for i in range(1, SEED_COUNT + 1)
+    ]
+    users = [user for user in users if user]
+    rides_by_user = {user.id: db.get_rides_by_user(user.id) for user in users}
+    drivers = [user for user in users if user.is_driver() and user.car_seats]
+    counts = db.get_ride_request_counts()
+    accepted_counts = db.get_ride_selection_counts()
+    now = datetime.now()
+    created = 0
+
+    for passenger in users:
+        if not passenger.is_passenger():
+            continue
+        reserved_times = db.get_passenger_reserved_times(passenger.id)
+        for passenger_ride in rides_by_user[passenger.id]:
+            if passenger_ride.status != "active" or passenger_ride.ride_time <= now:
+                continue
+            if passenger_ride.ride_time in reserved_times:
+                continue
+
+            candidates = []
+            for driver in drivers:
+                home_km = _distance_km(
+                    passenger.start_lat, passenger.start_lon, driver.start_lat, driver.start_lon
+                )
+                school_km = _distance_km(
+                    passenger.school_lat, passenger.school_lon, driver.school_lat, driver.school_lon
+                )
+                if home_km > 7 or school_km > 5:
+                    continue
+                for ride in rides_by_user[driver.id]:
+                    if (
+                        ride.status == "active"
+                        and ride.ride_type == passenger_ride.ride_type
+                        and ride.ride_time == passenger_ride.ride_time
+                    ):
+                        candidates.append((home_km + school_km, driver, ride))
+
+            for _, driver, ride in sorted(candidates, key=lambda item: (item[0], item[2].id)):
+                # Garder une place libre, sauf dans les voitures à une seule place passager.
+                seed_limit = max(1, min(2, driver.car_seats - 1))
+                if counts.get(ride.id, 0) >= seed_limit:
+                    continue
+                result = db.select_ride(ride.id, passenger.id)
+                if result["status"] == "selected":
+                    counts[ride.id] = counts.get(ride.id, 0) + 1
+                    reserved_times.add(ride.ride_time)
+                    created += 1
+                    # Une place déjà confirmée par trajet, puis des demandes
+                    # en attente pour que le conducteur teste son choix.
+                    if accepted_counts.get(ride.id, 0) == 0:
+                        decision = db.decide_ride_selection(ride.id, passenger.id, driver.id, "accept")
+                        if decision["status"] == "accepted":
+                            accepted_counts[ride.id] = 1
+                    break
+                if result["status"] in ("already_selected", "time_conflict"):
+                    reserved_times.add(ride.ride_time)
+                    break
+    return created

@@ -1,6 +1,9 @@
 """Shared API constants and lightweight domain helpers."""
 
-ROLE_VALUES = {"both", "driver", "passenger"}
+ROLE_VALUES = {"driver", "passenger"}
+
+MIN_CAR_SEATS = 1
+MAX_CAR_SEATS = 4
 
 # Styles musicaux proposes au profil. Liste fermee : elle sert a valider les
 # valeurs recues, et les libelles d'affichage vivent cote frontend

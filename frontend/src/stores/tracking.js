@@ -1,12 +1,7 @@
 import { defineStore } from "pinia";
 
 import { extractApiError } from "../api/api";
-import {
-  cancelRideSelection,
-  confirmTrackingStep,
-  createRideSelection,
-  fetchTrackings,
-} from "../api/endpoints";
+import { confirmTrackingStep, fetchTrackings } from "../api/endpoints";
 import { isFinished } from "../lib/tracking";
 import { useFeedbackStore } from "./feedback";
 
@@ -44,21 +39,6 @@ export const useTrackingStore = defineStore("tracking", {
         this.trackings.unshift(tracking);
       }
     },
-    async reserve(rideId) {
-      const feedback = useFeedbackStore();
-      this.loading = true;
-      try {
-        const data = await createRideSelection(rideId);
-        this._replace(data.tracking);
-        feedback.showSuccess(data.feedback.message);
-        return true;
-      } catch (err) {
-        feedback.showError(extractApiError(err).message);
-        return false;
-      } finally {
-        this.loading = false;
-      }
-    },
     async confirm(selectionId, step) {
       const feedback = useFeedbackStore();
       this.loading = true;
@@ -72,21 +52,6 @@ export const useTrackingStore = defineStore("tracking", {
         // L'autre partie a pu annuler entre-temps : on resynchronise pour
         // ne pas laisser un bouton qui ne marchera plus jamais.
         await this.load();
-        return false;
-      } finally {
-        this.loading = false;
-      }
-    },
-    async cancel(selectionId) {
-      const feedback = useFeedbackStore();
-      this.loading = true;
-      try {
-        const data = await cancelRideSelection(selectionId);
-        this._replace(data.tracking);
-        feedback.showSuccess(data.feedback.message);
-        return true;
-      } catch (err) {
-        feedback.showError(extractApiError(err).message);
         return false;
       } finally {
         this.loading = false;

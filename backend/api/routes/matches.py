@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
+from datetime import datetime, time, timedelta
+
 from fastapi import APIRouter, Depends, status
 
+from backend.core.config import config
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
 from backend.services.matching import matching_service
-from backend.services.routing import routing_service
+from backend.services.routing import (
+    RoutingQuotaExceededError,
+    RoutingRateLimitError,
+    routing_service,
+)
 
-from backend.api.deps import require_current_user
+from backend.api.deps import require_passenger
 from backend.api.feedback import make_feedback, raise_api_error
-from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, MatchSearchResponse
+from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, MatchSearchResponse, PlanningMatchRequest
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
@@ -26,14 +33,49 @@ def _check_ladies_only_allowed(user: User, ladies_only: bool):
 
 
 @router.post("/find", response_model=MatchesResponse)
-def find_matches(ladies_only: bool = False, user: User = Depends(require_current_user)):
+def find_matches(
+    body: PlanningMatchRequest,
+    ladies_only: bool = False,
+    user: User = Depends(require_passenger),
+):
     _check_ladies_only_allowed(user, ladies_only)
 
-    my_rides = db.get_rides_by_user(user.id)
-    all_rides = db.get_all_rides()
-    matches = matching_service.find_matches(
-        current_user=user, my_rides=my_rides, all_rides=all_rides, ladies_only=ladies_only
-    )
+    now = datetime.now()
+    monday = body.week_start - timedelta(days=body.week_start.weekday())
+    start = datetime.combine(monday, time.min)
+    end = start + timedelta(days=5)  # semaine de cours : lundi à vendredi
+    _ensure_week_rides(user, start, end, now)
+    my_rides = [
+        ride for ride in db.get_active_rides_by_user(user.id)
+        if ride.ride_time and max(start, now) <= ride.ride_time < end
+    ]
+    all_rides = [
+        ride for ride in db.get_all_active_rides()
+        if ride.ride_time and max(start, now) <= ride.ride_time < end
+    ]
+    selection_counts = db.get_ride_selection_counts()
+    selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
+    reserved_times = db.get_passenger_reserved_times(user.id)
+    try:
+        matches = matching_service.find_matches(
+            current_user=user,
+            my_rides=my_rides,
+            all_rides=all_rides,
+            selection_counts=selection_counts,
+            selected_ride_ids=selected_ride_ids,
+            reserved_times=reserved_times,
+            ladies_only=ladies_only,
+        )
+    except RoutingQuotaExceededError:
+        raise_api_error(
+            "MATCHES_ROUTING_QUOTA_EXCEEDED",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except RoutingRateLimitError:
+        raise_api_error(
+            "MATCHES_ROUTING_RATE_LIMITED",
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     return MatchesResponse(
         matches=[MatchDTO(**match) for match in matches],
@@ -41,13 +83,49 @@ def find_matches(ladies_only: bool = False, user: User = Depends(require_current
     )
 
 
+def _ensure_week_rides(user: User, start: datetime, end: datetime, now: datetime) -> None:
+    """Crée uniquement les trajets manquants de la semaine, sans effacer les réservations."""
+    events = [
+        event for event in db.get_events_by_user(user.id)
+        if event.start_time and start <= event.start_time < end
+    ]
+    if not events:
+        return
+    existing = {(ride.event_id, ride.ride_type) for ride in db.get_rides_by_user(user.id)}
+    school = (
+        (user.school_lat, user.school_lon)
+        if user.has_school_location() else config.get_campus_coords()
+    )
+    home = (user.start_lat, user.start_lon)
+    for event in events:
+        for ride_type, ride_time, origin, destination in (
+            ("to_campus", event.start_time, home, school),
+            ("from_campus", event.end_time, school, home),
+        ):
+            if not ride_time or not max(start, now) <= ride_time < end:
+                continue
+            if (event.id, ride_type) in existing:
+                continue
+            db.create_ride(Ride(
+                user_id=user.id,
+                event_id=event.id,
+                ride_type=ride_type,
+                ride_time=ride_time,
+                start_lat=origin[0],
+                start_lon=origin[1],
+                end_lat=destination[0],
+                end_lon=destination[1],
+            ))
+            existing.add((event.id, ride_type))
+
+
 @router.post("/search", response_model=MatchSearchResponse)
-def search_matches(body: MatchSearchRequest, user: User = Depends(require_current_user)):
+def search_matches(body: MatchSearchRequest, user: User = Depends(require_passenger)):
     _check_ladies_only_allowed(user, body.ladies_only)
 
     transient_ride = Ride(
         user_id=user.id,
-        event_id=0,
+        event_id=None,
         ride_type=body.ride_type,
         ride_time=body.ride_time,
         start_lat=body.origin_lat,
@@ -55,16 +133,38 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_curren
         end_lat=body.dest_lat,
         end_lon=body.dest_lon,
     )
-    all_rides = db.get_all_rides()
-    matches = matching_service.find_matches(
-        current_user=user,
-        my_rides=[transient_ride],
-        all_rides=all_rides,
-        ladies_only=body.ladies_only,
-    )
-    geometry = routing_service.get_route_geometry(
-        (body.origin_lat, body.origin_lon), (body.dest_lat, body.dest_lon)
-    ) or []
+    now = datetime.now()
+    all_rides = [
+        ride for ride in db.get_all_active_rides()
+        if ride.ride_time and ride.ride_time >= now
+    ]
+    selection_counts = db.get_ride_selection_counts()
+    selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
+    reserved_times = db.get_passenger_reserved_times(user.id)
+    try:
+        matches = matching_service.find_matches(
+            current_user=user,
+            my_rides=[transient_ride],
+            all_rides=all_rides,
+            selection_counts=selection_counts,
+            selected_ride_ids=selected_ride_ids,
+            reserved_times=reserved_times,
+            ladies_only=body.ladies_only,
+        )
+        geometry = routing_service.get_route_geometry(
+            (body.origin_lat, body.origin_lon),
+            (body.dest_lat, body.dest_lon),
+        ) or []
+    except RoutingQuotaExceededError:
+        raise_api_error(
+            "MATCHES_ROUTING_QUOTA_EXCEEDED",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    except RoutingRateLimitError:
+        raise_api_error(
+            "MATCHES_ROUTING_RATE_LIMITED",
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
 
     return MatchSearchResponse(
         matches=[MatchDTO(**match) for match in matches],

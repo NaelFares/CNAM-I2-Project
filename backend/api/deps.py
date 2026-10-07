@@ -33,3 +33,15 @@ def require_current_user(user: User | None = Depends(get_current_user)) -> User:
     if not user:
         raise_api_error("AUTH_EMAIL_REQUIRED", http_status=status.HTTP_401_UNAUTHORIZED)
     return user
+
+
+def require_driver(user: User = Depends(require_current_user)) -> User:
+    if not user.is_driver():
+        raise_api_error("DRIVER_ONLY", http_status=status.HTTP_403_FORBIDDEN)
+    return user
+
+
+def require_passenger(user: User = Depends(require_current_user)) -> User:
+    if not user.is_passenger():
+        raise_api_error("PASSENGER_ONLY", http_status=status.HTTP_403_FORBIDDEN)
+    return user

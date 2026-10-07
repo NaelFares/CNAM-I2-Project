@@ -1,9 +1,9 @@
-"""Acces BD aux reservations et a leur suivi.
+"""Acces BD au suivi d'une reservation acceptee.
 
-Volontairement separe de `manager.py` : la partie reservation est developpee
-en parallele sur une autre branche, et concentrer ces requetes dans un
-fichier dedie evite que les deux travaux se marchent dessus dans le meme
-gros module.
+La creation, l'acceptation et l'annulation d'une reservation relevent du
+flux existant (`backend/api/routes/rides.py`). Ce module ne couvre que les
+quatre confirmations du suivi, qui n'ont de sens qu'une fois le passager
+accepte par le conducteur.
 """
 
 from __future__ import annotations
@@ -27,29 +27,6 @@ CONFIRMATION_COLUMNS = (
 )
 
 
-def create_selection(ride_id: int, passenger_id: int) -> Optional[RideSelection]:
-    """Reserve une place. Retourne None si la reservation existe deja.
-
-    `ON CONFLICT DO NOTHING` s'appuie sur l'index unique (ride_id,
-    passenger_id) : deux clics simultanes ne creent pas deux reservations.
-    """
-    conn = db.get_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute(
-        """
-        INSERT INTO ride_selections (ride_id, passenger_id)
-        VALUES (%s, %s)
-        ON CONFLICT (ride_id, passenger_id) DO NOTHING
-        RETURNING *
-        """,
-        (ride_id, passenger_id),
-    )
-    row = cursor.fetchone()
-    conn.commit()
-    conn.close()
-    return RideSelection.from_dict(row) if row else None
-
-
 def get_selection(selection_id: int) -> Optional[RideSelection]:
     conn = db.get_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -63,7 +40,11 @@ def get_selections_for_passenger(passenger_id: int) -> List[RideSelection]:
     conn = db.get_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute(
-        "SELECT * FROM ride_selections WHERE passenger_id = %s ORDER BY selected_at DESC",
+        """
+        SELECT * FROM ride_selections
+        WHERE passenger_id = %s AND status = 'accepted'
+        ORDER BY selected_at DESC
+        """,
         (passenger_id,),
     )
     rows = cursor.fetchall()
@@ -79,7 +60,7 @@ def get_selections_for_driver(driver_id: int) -> List[RideSelection]:
         """
         SELECT s.* FROM ride_selections s
         JOIN rides r ON r.id = s.ride_id
-        WHERE r.user_id = %s
+        WHERE r.user_id = %s AND s.status = 'accepted'
         ORDER BY s.selected_at DESC
         """,
         (driver_id,),
@@ -105,35 +86,10 @@ def confirm_step(selection_id: int, column: str) -> Optional[RideSelection]:
         f"""
         UPDATE ride_selections
         SET {column} = COALESCE({column}, NOW())
-        WHERE id = %s AND cancelled_at IS NULL
+        WHERE id = %s AND status = 'accepted' 
         RETURNING *
         """,
         (selection_id,),
-    )
-    row = cursor.fetchone()
-    conn.commit()
-    conn.close()
-    return RideSelection.from_dict(row) if row else None
-
-
-def cancel_selection(selection_id: int, cancelled_by: int) -> Optional[RideSelection]:
-    """Annule une reservation non terminee.
-
-    Une course dont les deux parties ont confirme la fin ne s'annule plus :
-    elle a eu lieu, et l'effacer fausserait tout compteur qui s'y appuierait.
-    """
-    conn = db.get_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute(
-        """
-        UPDATE ride_selections
-        SET cancelled_at = COALESCE(cancelled_at, NOW()),
-            cancelled_by = COALESCE(cancelled_by, %s)
-        WHERE id = %s
-          AND NOT (driver_completed_at IS NOT NULL AND passenger_arrived_at IS NOT NULL)
-        RETURNING *
-        """,
-        (cancelled_by, selection_id),
     )
     row = cursor.fetchone()
     conn.commit()

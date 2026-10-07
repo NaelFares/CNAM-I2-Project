@@ -13,13 +13,15 @@ class Ride:
 
     id: Optional[int] = None
     user_id: int = 0
-    event_id: int = 0
+    event_id: Optional[int] = None
     ride_type: str = "to_campus"  # Canonical: to_campus or from_campus
     ride_time: datetime = None
     start_lat: float = 0.0
     start_lon: float = 0.0
     end_lat: float = 0.0
     end_lon: float = 0.0
+    status: str = "active"
+    archived_at: Optional[datetime] = None
 
     @staticmethod
     def normalize_ride_type(ride_type: str) -> str:
@@ -42,6 +44,8 @@ class Ride:
             "start_lon": self.start_lon,
             "end_lat": self.end_lat,
             "end_lon": self.end_lon,
+            "status": self.status,
+            "archived_at": self.archived_at.isoformat() if self.archived_at else None,
         }
 
     @classmethod
@@ -56,13 +60,19 @@ class Ride:
         return cls(
             id=data.get("id"),
             user_id=data.get("user_id", 0),
-            event_id=data.get("event_id", 0),
+            event_id=data.get("event_id"),
             ride_type=cls.normalize_ride_type(data.get("ride_type", "to_campus")),
             ride_time=ride_time,
             start_lat=data.get("start_lat", 0.0),
             start_lon=data.get("start_lon", 0.0),
             end_lat=data.get("end_lat", 0.0),
             end_lon=data.get("end_lon", 0.0),
+            status=data.get("status", "active"),
+            archived_at=(
+                datetime.fromisoformat(data["archived_at"])
+                if isinstance(data.get("archived_at"), str)
+                else data.get("archived_at")
+            ),
         )
 
     def format_time(self) -> str:
