@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status
 from backend.database import ride_ratings as ratings_db
 from backend.database.manager import db
 from backend.models.user import User
+from backend.services.photo_storage import build_photo_url
 from backend.services.reputation import compute_tier
 
 from backend.api.deps import require_current_user
@@ -37,15 +38,25 @@ def _summary_dto(user_id: int) -> RatingSummaryDTO:
     )
 
 
+def _received_dto(row: dict) -> ReceivedRatingDTO:
+    """Convertit une ligne jointe (note + auteur) en DTO d'affichage."""
+    return ReceivedRatingDTO(
+        id=row["id"],
+        score=row["score"],
+        comment=row.get("comment") or "",
+        created_at=row["created_at"],
+        rater_id=row.get("rater_id"),
+        rater_name=row.get("rater_name") or "Utilisateur supprimé",
+        rater_photo_url=build_photo_url(row.get("rater_photo_filename") or ""),
+    )
+
+
 @router.get("/me", response_model=UserRatingsResponse)
 def my_ratings(user: User = Depends(require_current_user)):
     """Ma reputation et les notes que j'ai recues."""
     return UserRatingsResponse(
         summary=_summary_dto(user.id),
-        ratings=[
-            ReceivedRatingDTO(score=r.score, comment=r.comment, created_at=r.created_at)
-            for r in ratings_db.get_received_ratings(user.id)
-        ],
+        ratings=[_received_dto(row) for row in ratings_db.get_received_ratings(user.id)],
     )
 
 
@@ -61,8 +72,5 @@ def user_ratings(user_id: int, _: User = Depends(require_current_user)):
 
     return UserRatingsResponse(
         summary=_summary_dto(user_id),
-        ratings=[
-            ReceivedRatingDTO(score=r.score, comment=r.comment, created_at=r.created_at)
-            for r in ratings_db.get_received_ratings(user_id)
-        ],
+        ratings=[_received_dto(row) for row in ratings_db.get_received_ratings(user_id)],
     )

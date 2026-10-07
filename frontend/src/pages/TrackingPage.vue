@@ -21,6 +21,20 @@
       <Badge class="ml-auto" :variant="summary.tier_key === 'expert' ? 'success' : 'info'">
         {{ summary.tier_label }}
       </Badge>
+
+      <!-- Avis recus : replies par defaut, pour ne pas noyer la page -->
+      <div v-if="receivedRatings.length" class="w-full border-t border-slate-100 pt-3">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 text-sm font-semibold text-primary"
+          @click="showRatings = !showRatings"
+        >
+          <ChevronRight :class="['h-4 w-4 transition', showRatings ? 'rotate-90' : '']" />
+          {{ showRatings ? "Masquer les avis reçus" : `Voir les ${receivedRatings.length} avis reçus` }}
+        </button>
+
+        <RatingList v-if="showRatings" class="mt-3" :ratings="receivedRatings" />
+      </div>
     </Card>
 
     <div v-if="!store.loaded && store.loading" class="text-sm text-slate-500">
@@ -49,8 +63,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
+import { ChevronRight } from "lucide-vue-next";
 
+import RatingList from "../components/RatingList.vue";
 import TrackingCard from "../components/TrackingCard.vue";
 import { Badge, Card, StarRating } from "../components/ui";
 import { useTrackingStore } from "../stores/tracking";
@@ -58,6 +74,8 @@ import { useTrackingStore } from "../stores/tracking";
 const store = useTrackingStore();
 
 const summary = computed(() => store.myRatings.summary);
+const receivedRatings = computed(() => store.myRatings.ratings || []);
+const showRatings = ref(false);
 
 onMounted(() => {
   store.load();

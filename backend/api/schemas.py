@@ -292,9 +292,15 @@ class RatingSummaryDTO(BaseModel):
 class ReceivedRatingDTO(BaseModel):
     """Note recue, telle qu'affichee sur un profil."""
 
+    id: int
     score: int
     comment: str = ""
     created_at: datetime
+    # Auteur de l'avis. Un compte supprime laisse son avis en place, d'ou
+    # le repli sur un nom neutre plutot qu'un champ vide.
+    rater_id: int | None = None
+    rater_name: str = "Utilisateur supprimé"
+    rater_photo_url: str = ""
 
 
 class UserRatingsResponse(BaseModel):

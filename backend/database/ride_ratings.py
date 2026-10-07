@@ -108,19 +108,26 @@ def get_summaries(user_ids: List[int]) -> Dict[int, RatingSummary]:
     return {row["rated_id"]: RatingSummary.from_dict(row) for row in rows}
 
 
-def get_received_ratings(user_id: int, limit: int = 20) -> List[RideRating]:
-    """Dernieres notes recues, pour les afficher sur un profil."""
+def get_received_ratings(user_id: int, limit: int = 20) -> List[dict]:
+    """Dernieres notes recues, avec l'identite de leur auteur.
+
+    Retourne des dictionnaires plutot que des `RideRating` : l'auteur
+    (nom, photo) vient d'une jointure et n'appartient pas au modele de note.
+    """
     conn = db.get_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     cursor.execute(
         """
-        SELECT * FROM ride_ratings
-        WHERE rated_id = %s
-        ORDER BY created_at DESC
+        SELECT r.id, r.score, r.comment, r.created_at,
+               r.rater_id, u.name AS rater_name, u.photo_filename AS rater_photo_filename
+        FROM ride_ratings r
+        LEFT JOIN users u ON u.id = r.rater_id
+        WHERE r.rated_id = %s
+        ORDER BY r.created_at DESC
         LIMIT %s
         """,
         (user_id, limit),
     )
     rows = cursor.fetchall()
     conn.close()
-    return [RideRating.from_dict(row) for row in rows]
+    return [dict(row) for row in rows]
