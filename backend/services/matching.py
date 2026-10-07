@@ -44,6 +44,7 @@ class Match:
         route_points: List[Tuple[float, float]],
         extra_time_min: float,
         occupied_seats: int = 0,
+        driver_rating=None,
     ):
         self.driver = driver
         self.passenger = passenger
@@ -53,6 +54,9 @@ class Match:
         self.extra_time_min = extra_time_min
         self.car_seats = int(driver.car_seats or 0)
         self.available_seats = max(0, self.car_seats - occupied_seats)
+        # Reputation injectee par l'appelant : le moteur ne doit pas emettre
+        # une requete par match.
+        self.driver_rating = driver_rating
         self.score = 0
         self.time_diff_min = 0
         self.departure_distance_km = 0.0
@@ -102,6 +106,8 @@ class Match:
             "driver_photo_url": build_photo_url(self.driver.photo_filename),
             "driver_music_preference": self.driver.music_preference,
             "driver_music_genres": list(self.driver.music_genres),
+            "driver_rating_average": self.driver_rating.average if self.driver_rating else None,
+            "driver_rating_count": self.driver_rating.count if self.driver_rating else 0,
             "driver_smoking_preference": self.driver.smoking_preference,
             "passenger_name": self.passenger.name,
             "passenger_id": self.passenger.id,
@@ -162,6 +168,7 @@ class MatchingService:
         selected_ride_ids: Optional[set[int]] = None,
         reserved_times: Optional[set] = None,
         ladies_only: bool = False,
+        rating_summaries: Optional[Dict[int, object]] = None,
     ) -> List[Dict]:
         """
         Trouve les trajets compatibles pour l'utilisateur courant.
@@ -280,6 +287,7 @@ class MatchingService:
                     detour["geometry"],
                     extra_time_min,
                     occupied_seats=occupied,
+                    driver_rating=(rating_summaries or {}).get(driver.id),
                 )
                 if match.score >= config.MIN_MATCH_SCORE:
                     matches.append(match)

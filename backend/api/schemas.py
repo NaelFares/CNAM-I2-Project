@@ -164,6 +164,9 @@ class MatchDTO(BaseModel):
     # s'appliquent, puisque c'est sa voiture.
     driver_music_preference: MusicPreference = "peu_importe"
     driver_music_genres: list[str] = []
+    # Reputation du conducteur : None tant qu'il n'a recu aucune note.
+    driver_rating_average: float | None = None
+    driver_rating_count: int = 0
     driver_smoking_preference: SmokingPreference = "peu_importe"
     passenger_name: str
     passenger_id: int
@@ -238,6 +241,10 @@ class RideTrackingDTO(BaseModel):
     passenger_onboard_at: datetime | None = None
     driver_completed_at: datetime | None = None
     passenger_arrived_at: datetime | None = None
+    # Notation : `can_rate` pilote l'affichage du formulaire, `my_rating`
+    # rappelle la note deja donnee (definitive, donc non modifiable).
+    can_rate: bool = False
+    my_rating: int | None = None
 
 
 class RideTrackingListResponse(BaseModel):
@@ -247,6 +254,52 @@ class RideTrackingListResponse(BaseModel):
 class RideTrackingResponse(BaseModel):
     tracking: RideTrackingDTO
     feedback: ApiMessage
+
+
+class RideRatingCreateRequest(BaseModel):
+    score: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=500)
+
+
+class RideRatingDTO(BaseModel):
+    id: int
+    ride_selection_id: int
+    rater_id: int
+    rated_id: int
+    score: int
+    comment: str = ""
+    created_at: datetime
+
+
+class RideRatingResponse(BaseModel):
+    rating: RideRatingDTO
+    feedback: ApiMessage
+
+
+class RatingSummaryDTO(BaseModel):
+    """Reputation agregee d'un utilisateur."""
+
+    # None tant qu'aucune note n'a ete recue : distinct d'une mauvaise
+    # moyenne, et c'est ce que compute_tier attend pour ne pas promouvoir
+    # un profil jamais note.
+    average: float | None = None
+    count: int = 0
+    # Palier derive (Nouveau / Confirme / Experimente).
+    tier_key: str = "newcomer"
+    tier_label: str = "Nouveau"
+
+
+class ReceivedRatingDTO(BaseModel):
+    """Note recue, telle qu'affichee sur un profil."""
+
+    score: int
+    comment: str = ""
+    created_at: datetime
+
+
+class UserRatingsResponse(BaseModel):
+    summary: RatingSummaryDTO
+    ratings: list[ReceivedRatingDTO]
 
 
 class DashboardSummaryResponse(BaseModel):

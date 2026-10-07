@@ -71,6 +71,13 @@ MESSAGE_CATALOG = {
     "TRACKING_SELECTION_CANCELLED_OK": "Reservation annulee.",
     "MATCHES_ROUTING_QUOTA_EXCEEDED": "Le quota quotidien du service d'itineraire est epuise. Consultez votre tableau de bord ORS avant de reessayer.",
     "MATCHES_ROUTING_RATE_LIMITED": "Trop de calculs d'itineraire ont ete demandes en une minute. Reessayez dans quelques instants.",
+    "RATING_NOT_A_PARTICIPANT": "Cette course est introuvable.",
+    "RATING_SELECTION_NOT_FOUND": "Cette course est introuvable.",
+    "RATING_RIDE_NOT_COMPLETED": "Vous pourrez noter cette course une fois qu'elle sera terminee.",
+    "RATING_SELECTION_CANCELLED": "Cette course a ete annulee : il n'y a rien a noter.",
+    "RATING_SCORE_INVALID": "La note doit etre comprise entre 1 et 5 etoiles.",
+    "RATING_ALREADY_RATED": "Vous avez deja note cette course, et une note est definitive.",
+    "RATING_CREATED": "Merci ! Votre note a bien ete enregistree.",
     "VALIDATION_TIME_TOLERANCE_INVALID": "La tolerance horaire doit etre un nombre entre 5 et 60.",
 }
 

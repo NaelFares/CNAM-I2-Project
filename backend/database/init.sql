@@ -167,3 +167,37 @@ ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_picked_up_at   TIMES
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_onboard_at  TIMESTAMPTZ;
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_completed_at   TIMESTAMPTZ;
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_arrived_at  TIMESTAMPTZ;
+
+-- RIDE_RATINGS
+-- Notation d'une course terminee. Une note porte sur une reservation precise
+-- (le couple conducteur/passager d'un trajet donne), pas sur un utilisateur
+-- en general : c'est ce qui la rend verifiable -- on ne peut noter que
+-- quelqu'un avec qui on a reellement roule.
+--
+-- Les deux parties se notent mutuellement, d'ou `rater_id` / `rated_id` :
+-- deux lignes au maximum par reservation, une dans chaque sens.
+CREATE TABLE IF NOT EXISTS ride_ratings (
+    id                BIGSERIAL PRIMARY KEY,
+    ride_selection_id BIGINT NOT NULL REFERENCES ride_selections(id) ON DELETE CASCADE,
+    rater_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rated_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    score             SMALLINT NOT NULL,
+    comment           TEXT NOT NULL DEFAULT '',
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Une seule note par personne et par course : la contrainte rend
+    -- l'unicite impossible a contourner, meme par un double clic.
+    UNIQUE (ride_selection_id, rater_id)
+);
+
+ALTER TABLE ride_ratings DROP CONSTRAINT IF EXISTS ride_ratings_score_check;
+ALTER TABLE ride_ratings ADD CONSTRAINT ride_ratings_score_check
+    CHECK (score BETWEEN 1 AND 5);
+
+-- Personne ne se note soi-meme : sans cette contrainte, un utilisateur
+-- pourrait gonfler sa propre moyenne en inserant des lignes.
+ALTER TABLE ride_ratings DROP CONSTRAINT IF EXISTS ride_ratings_no_self_check;
+ALTER TABLE ride_ratings ADD CONSTRAINT ride_ratings_no_self_check
+    CHECK (rater_id <> rated_id);
+
+-- Lecture typique : la moyenne et le nombre de notes recues par un profil.
+CREATE INDEX IF NOT EXISTS idx_ride_ratings_rated ON ride_ratings(rated_id);

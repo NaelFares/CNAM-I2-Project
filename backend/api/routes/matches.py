@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 from fastapi import APIRouter, Depends, status
 
 from backend.core.config import config
+from backend.database import ride_ratings as ratings_db
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
@@ -54,6 +55,9 @@ def find_matches(
         if ride.ride_time and max(start, now) <= ride.ride_time < end
     ]
     selection_counts = db.get_ride_selection_counts()
+    # Reputation des conducteurs candidats, chargee en une requete pour
+    # eviter un N+1 sur la liste de resultats.
+    rating_summaries = ratings_db.get_summaries([ride.user_id for ride in all_rides])
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
     reserved_times = db.get_passenger_reserved_times(user.id)
     try:
@@ -65,6 +69,7 @@ def find_matches(
             selected_ride_ids=selected_ride_ids,
             reserved_times=reserved_times,
             ladies_only=ladies_only,
+            rating_summaries=rating_summaries,
         )
     except RoutingQuotaExceededError:
         raise_api_error(
@@ -139,6 +144,7 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
         if ride.ride_time and ride.ride_time >= now
     ]
     selection_counts = db.get_ride_selection_counts()
+    rating_summaries = ratings_db.get_summaries([ride.user_id for ride in all_rides])
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
     reserved_times = db.get_passenger_reserved_times(user.id)
     try:
@@ -150,6 +156,7 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
             selected_ride_ids=selected_ride_ids,
             reserved_times=reserved_times,
             ladies_only=body.ladies_only,
+            rating_summaries=rating_summaries,
         )
         geometry = routing_service.get_route_geometry(
             (body.origin_lat, body.origin_lon),

@@ -99,6 +99,20 @@ export async function fetchTrackings() {
   return (await apiClient.get("/tracking")).data;
 }
 
+export async function rateRide(selectionId, score, comment = "") {
+  return (
+    await apiClient.post(`/tracking/selections/${selectionId}/rating`, { score, comment })
+  ).data;
+}
+
+export async function fetchMyRatings() {
+  return (await apiClient.get("/ratings/me")).data;
+}
+
+export async function fetchUserRatings(userId) {
+  return (await apiClient.get(`/ratings/users/${userId}`)).data;
+}
+
 export async function confirmTrackingStep(selectionId, step) {
   return (await apiClient.post(`/tracking/selections/${selectionId}/steps/${step}`)).data;
 }

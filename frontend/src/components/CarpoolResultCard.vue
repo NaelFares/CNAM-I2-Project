@@ -10,6 +10,15 @@
         <span class="text-sm font-semibold text-slate-700">
           {{ match.driver_name }} ({{ genderLabel(match.driver_gender) }})
         </span>
+        <!-- Reputation du conducteur : c'est lui qu'on choisit -->
+        <StarRating
+          v-if="match.driver_rating_count"
+          :value="match.driver_rating_average"
+          readonly
+          show-value
+          size="sm"
+        />
+        <span v-else class="text-xs text-slate-400">Pas encore noté</span>
         <ArrowRight class="h-4 w-4 shrink-0 text-slate-400" />
         <Avatar :name="match.passenger_name" :photo-url="match.passenger_photo_url" size="sm" />
         <span class="text-sm font-semibold text-slate-700">
@@ -77,7 +86,7 @@ import { computed, ref } from "vue";
 import { ArrowRight, X } from "lucide-vue-next";
 
 import RouteMap from "./RouteMap.vue";
-import { Avatar, Badge } from "./ui";
+import { Avatar, Badge, StarRating } from "./ui";
 import { genderLabel } from "../lib/gender";
 import { tripPreferenceBadges } from "../lib/preferences";
 

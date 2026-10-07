@@ -34,14 +34,61 @@
       </Button>
       <p v-else class="text-sm text-slate-500">{{ waitingMessage(tracking) }}</p>
     </div>
+
+    <!-- Note deja donnee : definitive, donc affichee en lecture seule -->
+    <div v-else-if="tracking.my_rating" class="border-t border-slate-100 pt-3">
+      <p class="flex items-center gap-2 text-sm text-slate-600">
+        Votre note&nbsp;:
+        <StarRating :value="tracking.my_rating" readonly />
+      </p>
+    </div>
+
+    <!-- Formulaire de notation, une fois la course terminee -->
+    <div v-else-if="tracking.can_rate" class="space-y-3 border-t border-slate-100 pt-3">
+      <div>
+        <p class="text-sm font-semibold text-slate-800">
+          Comment s'est passée la course avec {{ tracking.counterpart_name }}&nbsp;?
+        </p>
+        <p class="text-xs text-slate-500">Votre note est définitive et ne pourra pas être modifiée.</p>
+      </div>
+
+      <StarRating v-model="score" />
+
+      <textarea
+        v-model="comment"
+        rows="2"
+        :maxlength="MAX_COMMENT_LENGTH"
+        placeholder="Un commentaire ? (facultatif)"
+        class="input resize-none text-sm"
+      ></textarea>
+
+      <!-- Confirmation explicite : la note etant irreversible, un clic seul
+           ne doit pas suffire. -->
+      <div v-if="confirming" class="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3">
+        <p class="text-sm text-amber-900">
+          Confirmer {{ score }} étoile{{ score > 1 ? "s" : "" }}&nbsp;? C'est définitif.
+        </p>
+        <Button class="ml-auto" :disabled="store.loading" @click="onRate">
+          <Check class="h-4 w-4" />
+          Confirmer
+        </Button>
+        <Button variant="secondary" :disabled="store.loading" @click="confirming = false">
+          Annuler
+        </Button>
+      </div>
+      <Button v-else :disabled="!score || store.loading" @click="confirming = true">
+        <Star class="h-4 w-4" />
+        Envoyer ma note
+      </Button>
+    </div>
   </Card>
 </template>
 
 <script setup>
-import { computed } from "vue";
-import { Check, Circle, CircleCheck } from "lucide-vue-next";
+import { computed, ref } from "vue";
+import { Check, Circle, CircleCheck, Star } from "lucide-vue-next";
 
-import { Avatar, Badge, Button, Card } from "./ui";
+import { Avatar, Badge, Button, Card, StarRating } from "./ui";
 import {
   confirmationSteps,
   isFinished,
@@ -57,6 +104,23 @@ const props = defineProps({
 });
 
 const store = useTrackingStore();
+
+// Limite alignee sur MAX_COMMENT_LENGTH cote backend.
+const MAX_COMMENT_LENGTH = 500;
+
+const score = ref(0);
+const comment = ref("");
+const confirming = ref(false);
+
+async function onRate() {
+  if (!score.value) return;
+  const ok = await store.rate(props.tracking.id, score.value, comment.value);
+  confirming.value = false;
+  if (ok) {
+    score.value = 0;
+    comment.value = "";
+  }
+}
 
 const roleLabel = computed(() =>
   props.tracking.my_role === "driver" ? "Votre passager" : "Votre conducteur"

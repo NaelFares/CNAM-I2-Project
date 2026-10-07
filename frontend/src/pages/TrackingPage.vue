@@ -7,6 +7,22 @@
       </p>
     </header>
 
+    <!-- Reputation : visible en haut, c'est le resultat des notes recues -->
+    <Card v-if="store.loaded" class="flex flex-wrap items-center gap-4">
+      <div>
+        <p class="text-sm font-bold uppercase tracking-wide text-slate-500">Ma réputation</p>
+        <div class="mt-1 flex items-center gap-2">
+          <StarRating :value="summary.average || 0" readonly show-value />
+          <span class="text-sm text-slate-500">
+            {{ summary.count }} note{{ summary.count > 1 ? "s" : "" }}
+          </span>
+        </div>
+      </div>
+      <Badge class="ml-auto" :variant="summary.tier_key === 'expert' ? 'success' : 'info'">
+        {{ summary.tier_label }}
+      </Badge>
+    </Card>
+
     <div v-if="!store.loaded && store.loading" class="text-sm text-slate-500">
       Chargement de vos courses…
     </div>
@@ -33,12 +49,18 @@
 </template>
 
 <script setup>
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 
 import TrackingCard from "../components/TrackingCard.vue";
+import { Badge, Card, StarRating } from "../components/ui";
 import { useTrackingStore } from "../stores/tracking";
 
 const store = useTrackingStore();
 
-onMounted(() => store.load());
+const summary = computed(() => store.myRatings.summary);
+
+onMounted(() => {
+  store.load();
+  store.loadMyRatings();
+});
 </script>

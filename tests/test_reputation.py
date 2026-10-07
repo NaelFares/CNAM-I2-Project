@@ -33,3 +33,22 @@ class ReputationTierTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TierFromRatingsTests(unittest.TestCase):
+    """Le palier s'alimente desormais des notes reellement recues."""
+
+    def test_newcomer_until_enough_rated_rides(self):
+        # 4 courses notees 5 etoiles : pas encore assez pour "Confirme".
+        self.assertEqual(compute_tier(4, 5.0).key, "newcomer")
+
+    def test_confirmed_at_five_good_ratings(self):
+        self.assertEqual(compute_tier(5, 4.2).key, "confirmed")
+
+    def test_expert_needs_both_volume_and_quality(self):
+        self.assertEqual(compute_tier(20, 4.6).key, "expert")
+        self.assertEqual(compute_tier(20, 4.0).key, "confirmed")
+
+    def test_many_rides_but_poor_average_stays_newcomer(self):
+        """Le volume seul ne protege pas d'une mauvaise reputation."""
+        self.assertEqual(compute_tier(50, 2.5).key, "newcomer")
