@@ -112,41 +112,17 @@
     </template>
 
     <template v-else>
-      <Card class="space-y-3">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-bold text-slate-900">Mes demandes de trajet</h2>
-            <p class="text-sm text-slate-600">Suivez la réponse du conducteur à vos demandes.</p>
-          </div>
-          <CircleCheckBig class="h-6 w-6 shrink-0 text-blue-700" aria-hidden="true" />
-        </div>
-
-        <p v-if="app.ridesViewLoading" class="text-sm font-semibold text-slate-500">Chargement...</p>
-        <p v-else-if="!app.mySelections.length" class="text-sm text-slate-500">Vous n'avez encore demandé aucun trajet.</p>
-        <div v-else class="grid gap-2 md:grid-cols-2">
-          <div
-            v-for="ride in app.mySelections"
-            :key="ride.selection_id"
-            class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
-          >
-            <div class="min-w-0">
-              <p class="truncate text-sm font-bold text-slate-900">Avec {{ ride.driver_name }}</p>
-              <p class="mt-0.5 text-xs text-slate-600">{{ directionLabel(ride.ride_type) }} · {{ formatRideTime(ride.ride_time) }}</p>
-              <p class="mt-1 text-xs font-semibold" :class="ride.selection_status === 'accepted' ? 'text-emerald-700' : ride.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'">
-                {{ selectionStatusLabel(ride.selection_status) }}
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              :disabled="String(app.selectionLoadingRideId) === String(ride.ride_id)"
-              @click="app.cancelRideSelection(ride.ride_id)"
-            >
-              <X class="h-4 w-4" aria-hidden="true" />
-              Annuler
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <!-- Les demandes et leur suivi vivent desormais sur la page Mes courses -->
+      <RouterLink
+        to="/tracking"
+        class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+      >
+        <span class="flex items-center gap-2">
+          <CircleCheckBig class="h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
+          Vos demandes de trajet et leur suivi sont dans « Mes courses »
+        </span>
+        <ChevronRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+      </RouterLink>
 
       <div class="flex flex-wrap gap-2">
         <Button :variant="activeTab === 'quick' ? 'primary' : 'secondary'" @click="activeTab = 'quick'">
@@ -250,7 +226,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { CarFront, Check, ChevronLeft, ChevronRight, CircleCheckBig, UserRoundCheck, UsersRound, Venus, X } from "lucide-vue-next";
 
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
@@ -284,7 +260,6 @@ const driverOffersForWeek = computed(() => ridesForWeek(app.driverOffers, driver
 
 onMounted(() => {
   if (isDriver.value) app.loadDriverOffers();
-  else app.loadMySelections();
 });
 
 async function runQuickSearch(payload) {

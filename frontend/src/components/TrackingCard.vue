@@ -33,6 +33,19 @@
         {{ stepLabel(tracking.next_step) }}
       </Button>
       <p v-else class="text-sm text-slate-500">{{ waitingMessage(tracking) }}</p>
+
+      <!-- Annulation possible seulement avant toute confirmation : l'annulation
+           supprime la reservation, et avec elle le suivi deja commence. -->
+      <Button
+        v-if="canCancel"
+        variant="secondary"
+        class="ml-auto"
+        :disabled="store.loading || String(app.selectionLoadingRideId) === String(tracking.ride_id)"
+        @click="onCancel"
+      >
+        <X class="h-4 w-4" />
+        Annuler
+      </Button>
     </div>
 
     <!-- Note deja donnee : definitive, donc affichee en lecture seule -->
@@ -86,7 +99,7 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { Check, Circle, CircleCheck, Star } from "lucide-vue-next";
+import { Check, Circle, CircleCheck, Star, X } from "lucide-vue-next";
 
 import { Avatar, Badge, Button, Card, StarRating } from "./ui";
 import {
@@ -97,6 +110,7 @@ import {
   stepLabel,
   waitingMessage,
 } from "../lib/tracking";
+import { useAppStore } from "../stores/app";
 import { useTrackingStore } from "../stores/tracking";
 
 const props = defineProps({
@@ -104,6 +118,18 @@ const props = defineProps({
 });
 
 const store = useTrackingStore();
+const app = useAppStore();
+
+// Le passager peut renoncer a une course confirmee tant que personne n'a
+// confirme la prise en charge (statut de suivi "pending").
+const canCancel = computed(
+  () => props.tracking.my_role === "passenger" && props.tracking.status === "pending"
+);
+
+async function onCancel() {
+  const ok = await app.cancelRideSelection(props.tracking.ride_id);
+  if (ok) await store.load();
+}
 
 // Limite alignee sur MAX_COMMENT_LENGTH cote backend.
 const MAX_COMMENT_LENGTH = 500;

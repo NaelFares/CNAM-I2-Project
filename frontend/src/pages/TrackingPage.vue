@@ -54,6 +54,52 @@
     </div>
 
     <template v-else>
+      <!-- Demandes de trajet (passagers) : seules celles qui n'ont pas encore
+           de suivi sont listees ici. Une demande confirmee bascule dans
+           "En cours", ou commence le suivi de la course. -->
+      <section v-if="isPassenger" class="space-y-4">
+        <div>
+          <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Mes demandes de trajet</h2>
+          <p class="text-xs text-slate-500">
+            Une fois confirmée par le conducteur, la course apparaît dans « En cours ».
+          </p>
+        </div>
+
+        <p v-if="app.ridesViewLoading && !app.mySelections.length" class="text-sm text-slate-500">
+          Chargement de vos demandes…
+        </p>
+        <div v-else-if="openRequests.length" class="grid gap-2 md:grid-cols-2">
+          <div
+            v-for="request in openRequests"
+            :key="request.selection_id"
+            class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
+          >
+            <div class="min-w-0">
+              <p class="truncate text-sm font-bold text-slate-900">Avec {{ request.driver_name }}</p>
+              <p class="mt-0.5 text-xs text-slate-600">
+                {{ request.ride_type === "to_campus" ? "Vers le campus" : "Depuis le campus" }}
+                · {{ formatRideTime(request.ride_time) }}
+              </p>
+              <p
+                class="mt-1 text-xs font-semibold"
+                :class="request.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'"
+              >
+                {{ request.selection_status === "rejected" ? "Refusé" : "En attente du conducteur" }}
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              :disabled="String(app.selectionLoadingRideId) === String(request.ride_id)"
+              @click="app.cancelRideSelection(request.ride_id)"
+            >
+              <X class="h-4 w-4" aria-hidden="true" />
+              {{ request.selection_status === "rejected" ? "Retirer" : "Annuler" }}
+            </Button>
+          </div>
+        </div>
+        <p v-else class="text-sm text-slate-500">Aucune demande en attente.</p>
+      </section>
+
       <section class="space-y-4">
         <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">En cours</h2>
         <div v-if="store.active.length" class="grid gap-4 lg:grid-cols-2">
@@ -76,14 +122,40 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { ChevronRight } from "lucide-vue-next";
+import { ChevronRight, X } from "lucide-vue-next";
 
 import RatingList from "../components/RatingList.vue";
 import TrackingCard from "../components/TrackingCard.vue";
-import { Card, StarRating, TierBadge } from "../components/ui";
+import { Button, Card, StarRating, TierBadge } from "../components/ui";
+import { useAppStore } from "../stores/app";
+import { useAuthStore } from "../stores/auth";
 import { useTrackingStore } from "../stores/tracking";
 
 const store = useTrackingStore();
+const app = useAppStore();
+const auth = useAuthStore();
+
+// Seuls les passagers font des demandes (l'API les reserve a ce role).
+const isPassenger = computed(() => auth.user?.role === "passenger");
+
+// Les demandes confirmees ne sont pas repetees ici : elles ont leur carte de
+// suivi dans "En cours". Restent les demandes en attente et refusees.
+const openRequests = computed(() =>
+  app.mySelections.filter((request) => request.selection_status !== "accepted")
+);
+
+function formatRideTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Horaire non défini"
+    : date.toLocaleString("fr-FR", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+}
 
 const summary = computed(() => store.myRatings.summary);
 const receivedRatings = computed(() => store.myRatings.ratings || []);
@@ -99,5 +171,6 @@ const showRatings = ref(false);
 onMounted(() => {
   store.load();
   store.loadMyRatings();
+  if (isPassenger.value) app.loadMySelections();
 });
 </script>
