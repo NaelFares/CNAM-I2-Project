@@ -130,6 +130,23 @@ ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_status_check
 CREATE INDEX IF NOT EXISTS idx_ride_selections_passenger
     ON ride_selections(passenger_id);
 
+-- Realignement des bases creees par une premiere version de la branche de
+-- suivi : leur ride_selections avait ete creee sans ON DELETE CASCADE, et le
+-- CREATE TABLE IF NOT EXISTS ci-dessus ne corrige pas une table existante.
+-- Sans cela, supprimer un trajet ou un utilisateur reserve echoue (ex. reset
+-- du seed au demarrage). Inoffensif sur une base neuve.
+ALTER TABLE ride_selections DROP CONSTRAINT IF EXISTS ride_selections_ride_id_fkey;
+ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_ride_id_fkey
+    FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE;
+ALTER TABLE ride_selections DROP CONSTRAINT IF EXISTS ride_selections_passenger_id_fkey;
+ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_passenger_id_fkey
+    FOREIGN KEY (passenger_id) REFERENCES users(id) ON DELETE CASCADE;
+-- Colonnes d'annulation de cette meme premiere version, remplacees depuis par
+-- status = 'rejected'. cancelled_by portait une cle etrangere vers users qui
+-- bloquerait elle aussi la suppression d'un compte.
+ALTER TABLE ride_selections DROP COLUMN IF EXISTS cancelled_by;
+ALTER TABLE ride_selections DROP COLUMN IF EXISTS cancelled_at;
+
 -- ROUTING CACHE
 -- Resultats techniques reutilisables des calculs d'itineraires externes.
 CREATE TABLE IF NOT EXISTS routing_cache (
