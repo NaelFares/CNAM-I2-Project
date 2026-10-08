@@ -59,6 +59,8 @@ erDiagram
         TEXT status
         TIMESTAMPTZ archived_at
         BOOLEAN is_offer
+        TEXT start_address
+        TEXT end_address
     }
 
     ride_selections {
@@ -147,6 +149,8 @@ leurs reservations restent valides.
 | `end_lat`, `end_lon` | DOUBLE PRECISION | NOT NULL | Destination |
 | `status` | TEXT | NOT NULL, CHECK | `active` ou `archived` |
 | `archived_at` | TIMESTAMPTZ | NULL | Date d'archivage |
+| `is_offer` | BOOLEAN | NOT NULL, DEFAULT FALSE | Offre (je prends ma voiture) ou recherche |
+| `start_address`, `end_address` | TEXT | NOT NULL, DEFAULT '' | Adresses lisibles ; vides pour un trajet issu du planning |
 
 Les trajets termines restent dans cette table. Ils passent de `active` a
 `archived` et sont exclus du matching. Aucun transfert vers une seconde table
@@ -200,6 +204,8 @@ parametres de routing produit une nouvelle `cache_key`.
 ## Regles d'integrite principales
 
 - Seul un trajet `is_offer` peut recevoir des demandes de places.
+- Un trajet sans `event_id` a ete propose a la main, hors emploi du temps :
+  il survit a un reimport du planning, qui ne regenere que les trajets de cours.
 - Proposer un trajet exige une capacite, comprise entre 1 et 4.
 - Un utilisateur n'est jamais conducteur et passager a la meme minute : on ne
   propose pas un creneau ou l'on a une demande, et inversement.

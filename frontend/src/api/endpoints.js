@@ -82,6 +82,16 @@ export async function getMyRideOffers() {
   return (await apiClient.get("/rides/my-offers")).data;
 }
 
+// Proposer un trajet independamment de l'emploi du temps.
+export async function createOffer(payload) {
+  return (await apiClient.post("/rides/offers", payload)).data;
+}
+
+// Annuler un trajet propose (supprime s'il a ete cree a la main).
+export async function withdrawOffer(rideId) {
+  return (await apiClient.delete(`/rides/${rideId}/offer`)).data;
+}
+
 // Interrupteur "Je prends ma voiture" sur un de mes trajets.
 export async function setRideOffer(rideId, isOffer) {
   return (await apiClient.put(`/rides/${rideId}/offer`, { is_offer: isOffer })).data;

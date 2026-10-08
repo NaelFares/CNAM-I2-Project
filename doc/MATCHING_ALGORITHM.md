@@ -61,8 +61,12 @@ is_offer = FALSE  -> recherche : je cherche une place (par defaut)
 is_offer = TRUE   -> offre : je prends ma voiture
 ```
 
-L'utilisateur bascule un trajet avec l'interrupteur « Je prends ma voiture »
-(`PUT /rides/{id}/offer`). Proposer exige un nombre de places au profil
+Un trajet devient une offre de deux facons : depuis l'emploi du temps, avec le
+bouton « Proposer » sur un trajet de cours (`PUT /rides/{id}/offer`) ; ou a la
+main, hors emploi du temps, avec le formulaire « Proposer un trajet »
+(`POST /rides/offers`). « Annuler ce trajet » (`DELETE /rides/{id}/offer`)
+supprime un trajet cree a la main et rend sa nature de recherche a un trajet
+de cours. Proposer exige un nombre de places au profil
 (`car_seats`, 1 a 4) ; retirer une offre est refuse tant qu'elle a des
 demandes en attente ou des passagers acceptes.
 

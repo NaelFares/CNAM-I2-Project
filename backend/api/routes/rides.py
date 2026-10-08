@@ -16,6 +16,8 @@ from backend.api.schemas import (
     DriverOffersResponse,
     PassengerSelectionDTO,
     PassengerSelectionsResponse,
+    OfferCreateRequest,
+    OfferCreateResponse,
     RideDTO,
     RideOfferRequest,
     RideOfferResponse,
@@ -118,6 +120,56 @@ def get_ride_history(user: User = Depends(require_current_user)):
             for ride in db.get_passenger_selections(user.id, archived=True)
         ],
     }
+
+
+@router.post("/offers", response_model=OfferCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_offer(payload: OfferCreateRequest, user: User = Depends(require_current_user)):
+    """Proposer un trajet independamment de l'emploi du temps."""
+    # Comparaison a ~100 m pres : au-dela de la precision d'une adresse saisie.
+    if (
+        abs(payload.start_lat - payload.end_lat) < 0.001
+        and abs(payload.start_lon - payload.end_lon) < 0.001
+    ):
+        raise_api_error("RIDE_OFFER_SAME_PLACE")
+
+    result = db.create_offer(Ride(
+        user_id=user.id,
+        event_id=None,
+        ride_type=payload.ride_type,
+        # Heure arrondie a la minute : c'est l'unite des controles de conflit.
+        ride_time=payload.ride_time.replace(second=0, microsecond=0, tzinfo=None),
+        start_lat=payload.start_lat,
+        start_lon=payload.start_lon,
+        end_lat=payload.end_lat,
+        end_lon=payload.end_lon,
+        is_offer=True,
+        start_address=payload.start_address.strip(),
+        end_address=payload.end_address.strip(),
+    ))
+    outcome = result["status"]
+    if outcome == "no_car":
+        raise_api_error("RIDE_OFFER_NO_CAR", http_status=status.HTTP_409_CONFLICT)
+    if outcome == "past":
+        raise_api_error("RIDE_OFFER_PAST")
+    if outcome == "time_conflict":
+        raise_api_error("RIDE_OFFER_SAME_TIME", http_status=status.HTTP_409_CONFLICT)
+
+    return OfferCreateResponse(ride_id=result["ride_id"], feedback=make_feedback("RIDE_OFFER_CREATED"))
+
+
+@router.delete("/{ride_id}/offer", response_model=RideOfferResponse)
+def withdraw_offer(ride_id: int, user: User = Depends(require_current_user)):
+    """Annuler un trajet propose (supprime s'il a ete cree a la main)."""
+    result = db.withdraw_offer(ride_id, user.id)
+    if result["status"] == "not_found":
+        raise_api_error("RIDE_NOT_FOUND", http_status=status.HTTP_404_NOT_FOUND)
+    if result["status"] == "has_passengers":
+        raise_api_error("RIDE_OFFER_HAS_PASSENGERS", http_status=status.HTTP_409_CONFLICT)
+    return RideOfferResponse(
+        ride_id=ride_id,
+        is_offer=False,
+        feedback=make_feedback("RIDE_OFFER_WITHDRAWN"),
+    )
 
 
 @router.put("/{ride_id}/offer", response_model=RideOfferResponse)

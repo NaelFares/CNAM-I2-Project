@@ -4,6 +4,7 @@ import { extractApiError } from "../api/api";
 import {
   cancelRideSelection,
   confirmSchedule,
+  createOffer,
   dashboardSummary,
   decideRidePassenger,
   deleteProfilePhoto,
@@ -19,6 +20,7 @@ import {
   selectRide,
   updateProfile,
   uploadProfilePhoto,
+  withdrawOffer,
 } from "../api/endpoints";
 import { useAuthStore } from "./auth";
 import { useFeedbackStore } from "./feedback";
@@ -44,6 +46,7 @@ export const useAppStore = defineStore("app", {
     searchResults: [],
     searchRouteGeometry: [],
     mySelections: [],
+    offerSaving: false,
     driverOffers: [],
     pendingRide: loadPendingRide(),
     ridesViewLoading: false,
@@ -228,6 +231,36 @@ export const useAppStore = defineStore("app", {
         return false;
       } finally {
         this.ridesViewLoading = false;
+      }
+    },
+    async createOffer(payload) {
+      const feedback = useFeedbackStore();
+      this.offerSaving = true;
+      try {
+        const data = await createOffer(payload);
+        await this.loadDriverOffers();
+        feedback.showSuccess(data.feedback.message);
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.offerSaving = false;
+      }
+    },
+    async withdrawOffer(rideId) {
+      const feedback = useFeedbackStore();
+      this.selectionLoadingRideId = rideId;
+      try {
+        const data = await withdrawOffer(rideId);
+        await this.loadDriverOffers();
+        feedback.showSuccess(data.feedback.message);
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.selectionLoadingRideId = null;
       }
     },
     async toggleRideOffer(rideId, isOffer) {

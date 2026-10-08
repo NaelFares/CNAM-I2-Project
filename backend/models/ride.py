@@ -25,6 +25,9 @@ class Ride:
     # Offre (le proprietaire prend sa voiture) ou recherche (il cherche une
     # voiture). Recherche par defaut : c'est l'usage le plus courant.
     is_offer: bool = False
+    # Adresses lisibles ; vides pour un trajet issu du planning.
+    start_address: str = ""
+    end_address: str = ""
 
     @staticmethod
     def normalize_ride_type(ride_type: str) -> str:
@@ -49,6 +52,8 @@ class Ride:
             "end_lon": self.end_lon,
             "status": self.status,
             "is_offer": self.is_offer,
+            "start_address": self.start_address,
+            "end_address": self.end_address,
             "archived_at": self.archived_at.isoformat() if self.archived_at else None,
         }
 
@@ -73,6 +78,8 @@ class Ride:
             end_lon=data.get("end_lon", 0.0),
             status=data.get("status", "active"),
             is_offer=bool(data.get("is_offer", False)),
+            start_address=data.get("start_address") or "",
+            end_address=data.get("end_address") or "",
             archived_at=(
                 datetime.fromisoformat(data["archived_at"])
                 if isinstance(data.get("archived_at"), str)

@@ -143,6 +143,8 @@ class RideDTO(BaseModel):
     status: Literal["active", "archived"] = "active"
     archived_at: datetime | None = None
     is_offer: bool = False
+    start_address: str = ""
+    end_address: str = ""
 
 
 class RidesGenerateResponse(BaseModel):
@@ -354,6 +356,10 @@ class DriverOfferDTO(BaseModel):
     status: Literal["active", "archived"]
     archived_at: datetime | None = None
     is_offer: bool = False
+    # None pour un trajet cree a la main, hors emploi du temps.
+    event_id: int | None = None
+    start_address: str = ""
+    end_address: str = ""
     car_seats: int
     occupied_seats: int
     available_seats: int
@@ -382,6 +388,24 @@ class PassengerSelectionDTO(BaseModel):
 
 class PassengerSelectionsResponse(BaseModel):
     rides: list[PassengerSelectionDTO]
+
+
+class OfferCreateRequest(BaseModel):
+    """Trajet propose a la main, independamment de l'emploi du temps."""
+
+    ride_type: Literal["to_campus", "from_campus"]
+    ride_time: datetime
+    start_address: str = Field(default="", max_length=300)
+    start_lat: float
+    start_lon: float
+    end_address: str = Field(default="", max_length=300)
+    end_lat: float
+    end_lon: float
+
+
+class OfferCreateResponse(BaseModel):
+    ride_id: int
+    feedback: ApiMessage
 
 
 class RideOfferRequest(BaseModel):

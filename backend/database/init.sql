@@ -101,6 +101,14 @@ CREATE INDEX IF NOT EXISTS idx_rides_status_time ON rides(status, ride_time);
 -- mercredi. Un trajet issu du planning est une recherche par defaut.
 ALTER TABLE rides ADD COLUMN IF NOT EXISTS is_offer BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Adresses lisibles du depart et de l'arrivee. Utiles surtout aux trajets
+-- proposes a la main (hors emploi du temps), dont le depart et l'arrivee sont
+-- libres ; vides pour les trajets generes depuis le planning, qui vont du
+-- domicile a l'ecole du profil. Un trajet sans event_id est un trajet cree a
+-- la main : il ne disparait pas quand on reimporte son emploi du temps.
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS start_address TEXT NOT NULL DEFAULT '';
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS end_address   TEXT NOT NULL DEFAULT '';
+
 -- Fin des roles exclusifs (migration unique). Tant que la colonne role
 -- existe, les trajets des conducteurs deviennent des offres -- leurs
 -- reservations restent ainsi valides -- puis la colonne est supprimee.
