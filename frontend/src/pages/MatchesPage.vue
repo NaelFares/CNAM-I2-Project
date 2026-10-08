@@ -28,6 +28,12 @@
     </div>
 
     <template v-if="mode === 'drive'">
+      <!-- Mode d'emploi : d'ou viennent les trajets et comment les proposer -->
+      <div class="advice-banner">
+        Vos trajets sont créés à partir de votre <RouterLink to="/schedule" class="font-semibold underline">planning</RouterLink> :
+        un aller et un retour pour chaque cours. Activez « Je prends ma voiture » sur ceux où vous
+        conduisez : les autres pourront alors vous demander une place.
+      </div>
       <!-- Sans voiture renseignee, on peut voir ses trajets mais pas les proposer -->
       <div v-if="!hasCar" class="advice-banner">
         Pour proposer un trajet, indiquez d'abord le nombre de places de votre voiture dans
@@ -42,7 +48,8 @@
         <div>
           <h2 class="text-lg font-bold text-slate-900">Aucun trajet pour le moment</h2>
           <p class="mt-1 text-sm text-slate-600">
-            Importez d'abord votre planning, puis générez les trajets associés.
+            Importez d'abord votre <RouterLink to="/schedule" class="font-semibold underline">planning</RouterLink>,
+            puis générez les trajets associés.
           </p>
         </div>
         <Button :disabled="app.loading" @click="generateDriverOffers">
@@ -65,8 +72,12 @@
           </button>
         </div>
 
-        <Card v-if="!driverOffersForWeek.length" class="text-sm font-semibold text-slate-600">
-          Aucun trajet cette semaine. Utilisez les flèches pour voir une autre semaine.
+        <Card v-if="!driverOffersForWeek.length" class="space-y-3">
+          <p class="text-sm font-semibold text-slate-600">Aucun trajet cette semaine.</p>
+          <Button v-if="nextWeekWithRides" variant="secondary" @click="driverWeekStart = nextWeekWithRides">
+            <ChevronRight class="h-4 w-4" aria-hidden="true" />
+            Voir la semaine du {{ formatWeekLabel(nextWeekWithRides) }}
+          </Button>
         </Card>
 
         <div v-else class="grid gap-4 lg:grid-cols-2">
@@ -319,10 +330,32 @@ onMounted(() => {
   if (!app.profile) app.loadProfile();
 });
 
+// Lundi de la premiere semaine, a partir de la semaine affichee, qui contient
+// des trajets. Les trajets passes sont archives par le backend : on regarde
+// donc vers l'avant.
+const nextWeekWithRides = computed(() => {
+  const mondays = app.driverOffers
+    .map((ride) => mondayIso(String(ride.ride_time || "").slice(0, 10)))
+    .filter((monday) => monday && monday > driverWeekStart.value)
+    .sort();
+  return mondays[0] || null;
+});
+
+function formatWeekLabel(monday) {
+  const date = new Date(`${monday}T12:00:00`);
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
 // "Mes trajets" se charge a la premiere ouverture de l'onglet, puis a chaque
-// retour : un passager a pu faire une demande entre-temps.
-watch(mode, (value) => {
-  if (value === "drive") app.loadDriverOffers();
+// retour : un passager a pu faire une demande entre-temps. Si la semaine en
+// cours est vide (cas courant en fin de semaine, ses cours etant passes), on
+// ouvre directement la prochaine semaine qui a des trajets.
+watch(mode, async (value) => {
+  if (value !== "drive") return;
+  await app.loadDriverOffers();
+  if (!driverOffersForWeek.value.length && nextWeekWithRides.value) {
+    driverWeekStart.value = nextWeekWithRides.value;
+  }
 });
 
 async function runQuickSearch(payload) {
