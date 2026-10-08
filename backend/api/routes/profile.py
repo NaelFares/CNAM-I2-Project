@@ -36,36 +36,26 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
     if payload.time_tolerance_min < MIN_TIME_TOLERANCE or payload.time_tolerance_min > MAX_TIME_TOLERANCE:
         raise_api_error("VALIDATION_TIME_TOLERANCE_INVALID")
 
-    if payload.role == "driver" and not (
-        payload.car_seats is not None
-        and MIN_CAR_SEATS <= payload.car_seats <= MAX_CAR_SEATS
-    ):
+    car_seats = payload.car_seats
+    if car_seats is not None and not MIN_CAR_SEATS <= car_seats <= MAX_CAR_SEATS:
         raise_api_error("VALIDATION_CAR_SEATS_INVALID")
 
+    # Les places conditionnent les trajets deja proposes : on ne descend pas
+    # sous le nombre de passagers deja acceptes...
     max_occupancy = db.get_max_active_occupancy_for_driver(user.id)
-    if max_occupancy and (
-        payload.role != "driver" or payload.car_seats < max_occupancy
-    ):
+    if max_occupancy and (car_seats is None or car_seats < max_occupancy):
         raise_api_error(
             "VALIDATION_CAR_SEATS_OCCUPIED",
             http_status=status.HTTP_409_CONFLICT,
             count=max_occupancy,
         )
-
-    if (
-        user.is_passenger()
-        and payload.role == "driver"
-        and any(
-            ride["selection_status"] in ("pending", "accepted")
-            for ride in db.get_passenger_selections(user.id)
-        )
-    ):
+    # ... et on ne retire pas sa voiture tant que des trajets sont proposes,
+    # sans quoi ils resteraient visibles avec zero place.
+    if car_seats is None and db.count_active_offers(user.id):
         raise_api_error(
-            "VALIDATION_ROLE_ACTIVE_SELECTIONS",
+            "VALIDATION_CAR_SEATS_ACTIVE_OFFERS",
             http_status=status.HTTP_409_CONFLICT,
         )
-
-    car_seats = payload.car_seats if payload.role == "driver" else None
 
     same_email = str(payload.email).strip().lower() == user.email.lower()
     if not same_email:
@@ -77,7 +67,6 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
         id=user.id,
         name=payload.name.strip(),
         email=str(payload.email).strip().lower(),
-        role=payload.role,
         car_seats=car_seats,
         gender=payload.gender,
         # La photo n'est pas transportee par ce formulaire : on reporte celle

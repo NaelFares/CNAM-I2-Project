@@ -6,13 +6,14 @@ Code source : `backend/services/matching.py` pour le moteur,
 
 ## Principe
 
-La recherche est reservee aux utilisateurs ayant le role `passenger`.
-L'application compare un trajet du passager avec les trajets proposes par des
-utilisateurs ayant le role `driver`, puis classe les correspondances selon les
-horaires et le detour reel.
+Tout utilisateur peut chercher une place. L'application compare ses trajets de
+recherche avec les trajets proposes par les autres (`rides.is_offer`), puis
+classe les correspondances selon les horaires et le detour reel. Un trajet que
+l'utilisateur propose lui-meme ne cherche pas de conducteur.
 
-Un conducteur ne recherche pas de covoiturage. Il consulte ses trajets
-proposes, leurs places restantes et les passagers inscrits.
+Dans l'onglet « Mes trajets », chacun voit tous ses trajets : il choisit ceux
+ou il prend sa voiture, et pour ceux-la consulte les places restantes et
+accepte ou refuse les passagers.
 
 La recherche ponctuelle compare un trajet saisi a la main. Dans l'onglet
 « Tout mon planning », le passager choisit une semaine de cours (lundi a
@@ -51,24 +52,24 @@ flowchart TD
     P -- oui --> Q[Retourner trajet, score et places restantes]
 ```
 
-## 1. Roles
+## 1. Offres et recherches
 
-Les roles sont exclusifs :
-
-```text
-driver
-passenger
-```
-
-Le role `both` n'existe plus. Le backend refuse l'acces aux endpoints de
-recherche et de selection lorsqu'un conducteur les appelle.
-
-La capacite est stockee sur le profil conducteur :
+Il n'y a plus de role exclusif. Chaque trajet porte sa nature :
 
 ```text
-driver    -> car_seats entre 1 et 4
-passenger -> car_seats = NULL
+is_offer = FALSE  -> recherche : je cherche une place (par defaut)
+is_offer = TRUE   -> offre : je prends ma voiture
 ```
+
+L'utilisateur bascule un trajet avec l'interrupteur « Je prends ma voiture »
+(`PUT /rides/{id}/offer`). Proposer exige un nombre de places au profil
+(`car_seats`, 1 a 4) ; retirer une offre est refuse tant qu'elle a des
+demandes en attente ou des passagers acceptes.
+
+Un utilisateur n'est jamais conducteur et passager a la meme minute : il ne
+peut pas proposer un creneau ou il a une demande, ni demander une place sur un
+creneau ou il propose sa voiture. Les creneaux qu'il propose sont donc exclus
+de sa recherche.
 
 ## 2. Archivage avant la recherche
 
@@ -107,8 +108,8 @@ Il reste visible au conducteur afin qu'il puisse consulter tous ses passagers.
 Pour chaque paire `(trajet_passager, trajet_conducteur)`, le backend applique
 les controles suivants dans cet ordre :
 
-1. Le compte courant doit etre un passager.
-2. L'autre utilisateur doit etre un conducteur avec une capacite valide.
+1. Le trajet courant doit etre une recherche (un trajet propose ne cherche pas).
+2. L'autre trajet doit etre une offre, d'un utilisateur ayant une capacite valide.
 3. Le trajet conducteur doit etre `active` et futur.
 4. Il doit rester au moins une place.
 5. Le passager ne doit pas avoir deja selectionne ce trajet conducteur.
@@ -180,8 +181,9 @@ restantes. Aucune donnee n'est inseree avant la validation finale.
 Le passager connecte demande une place sur un trajet conducteur. Le backend :
 
 1. verrouille la ligne du passager, puis celle du trajet avec `SELECT ... FOR UPDATE` ;
-2. verifie le role, l'etat du trajet et l'identite du conducteur ;
-3. refuse une demande deja presente pour ce trajet ou cette meme minute ;
+2. verifie que le trajet est une offre active et qu'il n'appartient pas au demandeur ;
+3. refuse une demande deja presente pour ce trajet ou cette meme minute, ainsi
+   qu'un creneau ou le demandeur propose lui-meme sa voiture ;
 4. recompte les demandes acceptees et refuse le trajet s'il est complet ;
 5. insere une demande `pending`, sans occuper de place.
 
@@ -201,7 +203,7 @@ Les itineraires directs et avec point de passage sont enregistres dans
 
 Pour chaque trajet du passager, trois conducteurs au maximum sont evalues. Sans
 cache, cela represente au plus trois routes directes et trois detours. Les
-filtres de role, d'etat, de places, d'horaire et de distance ont tous lieu
+filtres d'offre, d'etat, de places, d'horaire et de distance ont tous lieu
 avant ces appels.
 
 ## Option « ladies only »

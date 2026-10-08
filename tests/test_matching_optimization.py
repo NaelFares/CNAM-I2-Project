@@ -16,7 +16,6 @@ class MatchingOptimizationTests(unittest.TestCase):
         self.passenger = User(
             id=1,
             name="Passager",
-            role="passenger",
             time_tolerance_min=15,
         )
         self.passenger_ride = Ride(
@@ -35,7 +34,6 @@ class MatchingOptimizationTests(unittest.TestCase):
         user = User(
             id=10 + index,
             name=f"Conducteur {index}",
-            role="driver",
             car_seats=4,
             time_tolerance_min=15,
         )
@@ -49,6 +47,8 @@ class MatchingOptimizationTests(unittest.TestCase):
             start_lon=1.4400,
             end_lat=43.6100,
             end_lon=1.4500,
+            # C'est le trajet qui porte l'offre, plus le role de son auteur.
+            is_offer=True,
         )
         return user, ride
 
@@ -211,21 +211,56 @@ class MatchingOptimizationTests(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["ride_id"], ride.id)
 
-    def test_driver_cannot_use_passenger_matching(self):
+    def test_own_offer_does_not_search(self):
+        """Un trajet que je propose n'a pas a trouver de conducteur.
+
+        Remplace l'ancienne regle "un conducteur ne cherche pas" : il n'y a
+        plus de role, c'est le trajet lui-meme qui cherche ou propose.
+        """
         driver, ride = self._driver_and_ride(1)
 
         with (
-            patch("backend.services.matching.db.get_all_users") as users,
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
             patch("backend.services.matching.routing_service.get_route_details") as details,
             patch("backend.services.matching.routing_service.get_route_via_waypoint") as via,
         ):
             matches = MatchingService.find_matches(driver, [ride], [self.passenger_ride])
 
         self.assertEqual(matches, [])
-        users.assert_not_called()
         details.assert_not_called()
         via.assert_not_called()
 
+    def test_search_ride_of_someone_else_is_not_a_candidate(self):
+        """Le trajet d'un autre qui cherche aussi une voiture n'est pas une offre."""
+        driver, ride = self._driver_and_ride(1)
+        ride.is_offer = False
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details") as details,
+            patch("backend.services.matching.routing_service.get_route_via_waypoint") as via,
+        ):
+            matches = MatchingService.find_matches(self.passenger, [self.passenger_ride], [ride])
+
+        self.assertEqual(matches, [])
+        details.assert_not_called()
+        via.assert_not_called()
+
+    def test_everyone_can_search_even_with_a_car(self):
+        """Avoir une voiture n'empeche pas de chercher sur un autre trajet."""
+        driver, ride = self._driver_and_ride(1)
+        self.passenger.car_seats = 3
+        direct = {"geometry": [], "distance_m": 1000, "duration_s": 600}
+        detour = {"geometry": [(43.60, 1.44)], "distance_m": 1200, "duration_s": 660}
+
+        with (
+            patch("backend.services.matching.db.get_all_users", return_value=[driver]),
+            patch("backend.services.matching.routing_service.get_route_details", return_value=direct),
+            patch("backend.services.matching.routing_service.get_route_via_waypoint", return_value=detour),
+        ):
+            matches = MatchingService.find_matches(self.passenger, [self.passenger_ride], [ride])
+
+        self.assertEqual(len(matches), 1)
 
 if __name__ == "__main__":
     unittest.main()

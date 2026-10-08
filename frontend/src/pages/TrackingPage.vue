@@ -54,10 +54,10 @@
     </div>
 
     <template v-else>
-      <!-- Demandes de trajet (passagers) : seules celles qui n'ont pas encore
+      <!-- Demandes de trajet : seules celles qui n'ont pas encore
            de suivi sont listees ici. Une demande confirmee bascule dans
            "En cours", ou commence le suivi de la course. -->
-      <section v-if="isPassenger" class="space-y-4">
+      <section class="space-y-4">
         <div>
           <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Mes demandes de trajet</h2>
           <p class="text-xs text-slate-500">
@@ -128,15 +128,11 @@ import RatingList from "../components/RatingList.vue";
 import TrackingCard from "../components/TrackingCard.vue";
 import { Button, Card, StarRating, TierBadge } from "../components/ui";
 import { useAppStore } from "../stores/app";
-import { useAuthStore } from "../stores/auth";
 import { useTrackingStore } from "../stores/tracking";
 
 const store = useTrackingStore();
 const app = useAppStore();
-const auth = useAuthStore();
 
-// Seuls les passagers font des demandes (l'API les reserve a ce role).
-const isPassenger = computed(() => auth.user?.role === "passenger");
 
 // Les demandes confirmees ne sont pas repetees ici : elles ont leur carte de
 // suivi dans "En cours". Restent les demandes en attente et refusees.
@@ -171,6 +167,6 @@ const showRatings = ref(false);
 onMounted(() => {
   store.load();
   store.loadMyRatings();
-  if (isPassenger.value) app.loadMySelections();
+  app.loadMySelections();
 });
 </script>

@@ -47,13 +47,6 @@
             <Input v-model="form.email" type="email" required />
           </div>
           <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Rôle</label>
-            <select v-model="form.role" class="input">
-              <option value="driver">Conducteur</option>
-              <option value="passenger">Passager</option>
-            </select>
-          </div>
-          <div>
             <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tolérance horaire (minutes)</label>
             <Input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
           </div>
@@ -65,10 +58,23 @@
               </option>
             </select>
           </div>
-          <div v-if="form.role === 'driver'" class="md:col-span-2">
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Places disponibles dans la voiture</label>
-            <Input v-model.number="form.car_seats" type="number" min="1" max="4" required />
-            <p class="mt-1 text-xs text-slate-500">Indiquez entre 1 et 4 places passagers. Le conducteur n'est pas compté.</p>
+          <!-- Facultatif : sans voiture, on cherche des trajets sans en proposer -->
+          <div class="md:col-span-2">
+            <label class="mb-1.5 block text-sm font-semibold text-slate-700">
+              Places dans ma voiture
+              <span class="ml-1 font-normal text-slate-400">(facultatif)</span>
+            </label>
+            <Input
+              v-model="form.car_seats"
+              type="number"
+              min="1"
+              max="4"
+              placeholder="Je n'ai pas de voiture"
+            />
+            <p class="mt-1 text-xs text-slate-500">
+              De 1 à 4 places passagers, conducteur non compté. Nécessaire pour proposer un trajet ;
+              laissez vide si vous n'avez pas de voiture.
+            </p>
           </div>
         </div>
       </Card>
@@ -295,12 +301,10 @@ const showSchoolMap = ref(false);
 const form = reactive({
   name: "",
   email: "",
-  role: "both",
   gender: "autre",
   music_preference: "peu_importe",
   music_genres: [],
   smoking_preference: "peu_importe",
-  role: "passenger",
   car_seats: null,
   start_address: "",
   start_lat: 46.603354,
@@ -367,12 +371,11 @@ onMounted(async () => {
   if (!source) return;
   form.name = source.name;
   form.email = source.email;
-  form.role = source.role;
   form.gender = source.gender || "autre";
   form.music_preference = source.music_preference || "peu_importe";
   form.music_genres = [...(source.music_genres || [])];
   form.smoking_preference = source.smoking_preference || "peu_importe";
-  form.car_seats = source.role === "driver" ? source.car_seats || 1 : null;
+  form.car_seats = source.car_seats ?? null;
   form.start_address = source.start_address;
   form.start_lat = source.start_lat || form.start_lat;
   form.start_lon = source.start_lon || form.start_lon;
@@ -400,14 +403,14 @@ async function onSubmit() {
   await app.saveProfile({
     name: form.name,
     email: form.email,
-    role: form.role,
     gender: form.gender,
     music_preference: form.music_preference,
     // Le backend vide aussi cette liste, mais l'envoyer deja vide evite que
     // la reponse contredise ce que l'utilisateur vient de voir a l'ecran.
     music_genres: showMusicGenres.value ? form.music_genres : [],
     smoking_preference: form.smoking_preference,
-    car_seats: form.role === "driver" ? Number(form.car_seats) : null,
+    // Champ vide = pas de voiture (null), sinon le nombre saisi.
+    car_seats: form.car_seats === "" || form.car_seats === null ? null : Number(form.car_seats),
     start_address: form.start_address,
     start_lat: form.start_lat,
     start_lon: form.start_lon,

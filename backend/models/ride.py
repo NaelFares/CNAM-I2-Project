@@ -22,6 +22,9 @@ class Ride:
     end_lon: float = 0.0
     status: str = "active"
     archived_at: Optional[datetime] = None
+    # Offre (le proprietaire prend sa voiture) ou recherche (il cherche une
+    # voiture). Recherche par defaut : c'est l'usage le plus courant.
+    is_offer: bool = False
 
     @staticmethod
     def normalize_ride_type(ride_type: str) -> str:
@@ -45,6 +48,7 @@ class Ride:
             "end_lat": self.end_lat,
             "end_lon": self.end_lon,
             "status": self.status,
+            "is_offer": self.is_offer,
             "archived_at": self.archived_at.isoformat() if self.archived_at else None,
         }
 
@@ -68,6 +72,7 @@ class Ride:
             end_lat=data.get("end_lat", 0.0),
             end_lon=data.get("end_lon", 0.0),
             status=data.get("status", "active"),
+            is_offer=bool(data.get("is_offer", False)),
             archived_at=(
                 datetime.fromisoformat(data["archived_at"])
                 if isinstance(data.get("archived_at"), str)

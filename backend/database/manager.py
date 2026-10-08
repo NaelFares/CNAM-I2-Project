@@ -37,19 +37,18 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO users (name, email, hashed_password, role, car_seats,
+            INSERT INTO users (name, email, hashed_password, car_seats,
                                gender, photo_filename, music_preference, music_genres,
                                smoking_preference,
                                start_address, start_lat, start_lon, time_tolerance_min,
                                school_address, school_lat, school_lon)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
                 user.name,
                 user.email,
                 user.hashed_password,
-                user.role,
                 user.car_seats,
                 user.gender,
                 user.photo_filename,
@@ -122,7 +121,7 @@ class Database:
         cursor.execute(
             """
             UPDATE users
-            SET name = %s, email = %s, role = %s, car_seats = %s,
+            SET name = %s, email = %s, car_seats = %s,
                 gender = %s, music_preference = %s, music_genres = %s, smoking_preference = %s,
                 start_address = %s, start_lat = %s, start_lon = %s,
                 time_tolerance_min = %s, school_address = %s, school_lat = %s, school_lon = %s
@@ -131,7 +130,6 @@ class Database:
             (
                 user.name,
                 user.email,
-                user.role,
                 user.car_seats,
                 user.gender,
                 user.music_preference,
@@ -212,8 +210,8 @@ class Database:
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO rides (user_id, event_id, ride_type, ride_time, start_lat, start_lon, end_lat, end_lon, status, archived_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO rides (user_id, event_id, ride_type, ride_time, start_lat, start_lon, end_lat, end_lon, status, archived_at, is_offer)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -227,6 +225,7 @@ class Database:
                 ride.end_lon,
                 ride.status,
                 ride.archived_at,
+                ride.is_offer,
             ),
         )
         ride_id = cursor.fetchone()[0]
@@ -394,6 +393,111 @@ class Database:
         conn.close()
         return reserved_times
 
+    def get_offer_times(self, user_id: int) -> set:
+        """Creneaux ou l'utilisateur propose deja sa voiture, a la minute.
+
+        Pendant de get_passenger_reserved_times : sur ces creneaux, il ne peut
+        pas chercher de place chez quelqu'un d'autre.
+        """
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT date_trunc('minute', ride_time)
+            FROM rides
+            WHERE user_id = %s AND is_offer AND status = 'active'
+            """,
+            (user_id,),
+        )
+        times = {row[0] for row in cursor.fetchall()}
+        conn.close()
+        return times
+
+    def count_active_offers(self, user_id: int) -> int:
+        """Trajets actuellement proposes par l'utilisateur."""
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM rides WHERE user_id = %s AND is_offer AND status = 'active'",
+            (user_id,),
+        )
+        value = int(cursor.fetchone()[0])
+        conn.close()
+        return value
+
+    def set_ride_offer(self, ride_id: int, user_id: int, is_offer: bool) -> dict:
+        """Bascule un trajet entre offre (je prends ma voiture) et recherche.
+
+        Verdicts : updated, not_found, unavailable, no_car (pas de places
+        renseignees), time_conflict (une reservation comme passager sur le
+        meme creneau), has_passengers (impossible de retirer une offre qui a
+        des demandes en cours ou des passagers acceptes).
+        """
+        self.archive_expired_rides()
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            # Meme ordre de verrouillage que select_ride : le compte d'abord.
+            # Sans cela, proposer ce trajet et reserver une place au meme
+            # creneau dans un autre onglet pourraient passer tous les deux.
+            cursor.execute("SELECT id, car_seats FROM users WHERE id = %s FOR UPDATE", (user_id,))
+            owner = cursor.fetchone()
+            cursor.execute(
+                """
+                SELECT id, status, ride_time, is_offer,
+                       ride_time <= LOCALTIMESTAMP AS is_past
+                FROM rides
+                WHERE id = %s AND user_id = %s
+                FOR UPDATE
+                """,
+                (ride_id, user_id),
+            )
+            ride = cursor.fetchone()
+            if not ride or not owner:
+                return {"status": "not_found"}
+            if ride["status"] != "active" or ride["is_past"]:
+                return {"status": "unavailable"}
+            if bool(ride["is_offer"]) == bool(is_offer):
+                return {"status": "updated"}
+
+            if is_offer:
+                if not owner["car_seats"]:
+                    return {"status": "no_car"}
+                cursor.execute(
+                    """
+                    SELECT 1
+                    FROM ride_selections rs
+                    JOIN rides reserved ON reserved.id = rs.ride_id
+                    WHERE rs.passenger_id = %s
+                      AND reserved.status = 'active'
+                      AND rs.status IN ('pending', 'accepted')
+                      AND date_trunc('minute', reserved.ride_time) = date_trunc('minute', %s::timestamp)
+                    LIMIT 1
+                    """,
+                    (user_id, ride["ride_time"]),
+                )
+                if cursor.fetchone():
+                    return {"status": "time_conflict"}
+            else:
+                cursor.execute(
+                    """
+                    SELECT 1 FROM ride_selections
+                    WHERE ride_id = %s AND status IN ('pending', 'accepted')
+                    LIMIT 1
+                    """,
+                    (ride_id,),
+                )
+                if cursor.fetchone():
+                    return {"status": "has_passengers"}
+
+            cursor.execute("UPDATE rides SET is_offer = %s WHERE id = %s", (bool(is_offer), ride_id))
+            conn.commit()
+            return {"status": "updated"}
+        finally:
+            conn.close()
+
     def get_max_active_occupancy_for_driver(self, user_id: int) -> int:
         self.archive_expired_rides()
         conn = self.get_connection()
@@ -432,7 +536,7 @@ class Database:
                     r.user_id,
                     r.status,
                     r.ride_time,
-                    u.role AS owner_role,
+                    r.is_offer,
                     u.car_seats,
                     r.ride_time <= LOCALTIMESTAMP AS is_past
                 FROM rides r
@@ -449,7 +553,7 @@ class Database:
                 return {"status": "own_ride"}
             if (
                 ride["status"] != "active"
-                or ride["owner_role"] != "driver"
+                or not ride["is_offer"]
                 or ride["is_past"]
             ):
                 return {"status": "unavailable"}
@@ -470,6 +574,20 @@ class Database:
                   AND reserved.status = 'active'
                   AND rs.status IN ('pending', 'accepted')
                   AND date_trunc('minute', reserved.ride_time) = date_trunc('minute', %s::timestamp)
+                LIMIT 1
+                """,
+                (passenger_id, ride["ride_time"]),
+            )
+            if cursor.fetchone():
+                return {"status": "time_conflict"}
+
+            # Pas de reservation sur un creneau ou l'on propose deja sa
+            # voiture : on ne peut pas etre conducteur et passager a la fois.
+            cursor.execute(
+                """
+                SELECT 1 FROM rides
+                WHERE user_id = %s AND is_offer AND status = 'active'
+                  AND date_trunc('minute', ride_time) = date_trunc('minute', %s::timestamp)
                 LIMIT 1
                 """,
                 (passenger_id, ride["ride_time"]),
@@ -666,6 +784,7 @@ class Database:
                     "end_lon": row["end_lon"],
                     "status": row["status"],
                     "archived_at": row["archived_at"],
+                    "is_offer": bool(row["is_offer"]),
                     "car_seats": capacity,
                     "occupied_seats": occupied,
                     "available_seats": max(0, capacity - occupied),

@@ -175,8 +175,11 @@ def _create_seed_users() -> int:
         name = unique_names[i - 1]
         # Le compte 01 reste passager et le compte 07 conducteur afin de
         # conserver le scenario de demonstration utilise pour le matching.
-        role = "driver" if i % 2 == 0 or i == 7 else "passenger"
-        car_seats = rng.randint(1, 4) if role == "driver" else None
+        # Plus de role exclusif : la moitie des comptes ont une voiture et
+        # proposent leurs trajets, les autres cherchent. Le compte 01 cherche
+        # et le compte 07 conduit, pour garder le scenario de demonstration.
+        has_car = i % 2 == 0 or i == 7
+        car_seats = rng.randint(1, 4) if has_car else None
         # Repartition deterministe des sexes, pour qu'une recherche "ladies
         # only" ait de quoi renvoyer des resultats en demo.
         gender = ["homme", "femme", "autre"][i % 3]
@@ -198,7 +201,6 @@ def _create_seed_users() -> int:
             name=name,
             email=f"etudiant{i:02d}@{SEED_EMAIL_DOMAIN}",
             hashed_password=hashed,
-            role=role,
             car_seats=car_seats,
             gender=gender,
             music_preference=music_preference,
@@ -227,7 +229,7 @@ def _write_accounts_file() -> None:
         "Comptes de test Stud'Ride (generes par backend/database/populate.py)",
         f"Mot de passe commun a tous les comptes : {SEED_PASSWORD}",
         "",
-        f"{'email':<28} {'nom':<20} {'role':<10} {'places':<8} {'sexe':<8} "
+        f"{'email':<28} {'nom':<20} {'places':<8} {'sexe':<8} "
         f"{'adresse de depart':<48} {'adresse ecole':<48} ecole",
         "-" * 215,
     ]
@@ -239,7 +241,7 @@ def _write_accounts_file() -> None:
         school_name = TOULOUSE_SCHOOLS[i % len(TOULOUSE_SCHOOLS)][0]
         car_seats = str(user.car_seats) if user.car_seats is not None else "-"
         lines.append(
-            f"{user.email:<28} {user.name:<20} {user.role:<10} {car_seats:<8} {user.gender:<8} "
+            f"{user.email:<28} {user.name:<20} {car_seats:<8} {user.gender:<8} "
             f"{user.start_address:<48} {user.school_address:<48} {school_name}"
         )
 
@@ -355,6 +357,8 @@ def _ensure_seed_rides(user: User, school_name: str, now: Optional[datetime] = N
                 start_lon=start[1],
                 end_lat=end[0],
                 end_lon=end[1],
+                # Les comptes de test avec voiture proposent leurs trajets.
+                is_offer=user.can_drive(),
             ))
             existing.add((event.id, ride_type))
             created += 1
@@ -375,14 +379,15 @@ def _ensure_seed_selections() -> int:
     ]
     users = [user for user in users if user]
     rides_by_user = {user.id: db.get_rides_by_user(user.id) for user in users}
-    drivers = [user for user in users if user.is_driver() and user.car_seats]
+    drivers = [user for user in users if user.can_drive()]
     counts = db.get_ride_request_counts()
     accepted_counts = db.get_ride_selection_counts()
     now = datetime.now()
     created = 0
 
     for passenger in users:
-        if not passenger.is_passenger():
+        # Les comptes sans voiture jouent les passagers de la demonstration.
+        if passenger.can_drive():
             continue
         reserved_times = db.get_passenger_reserved_times(passenger.id)
         for passenger_ride in rides_by_user[passenger.id]:
@@ -404,6 +409,7 @@ def _ensure_seed_selections() -> int:
                 for ride in rides_by_user[driver.id]:
                     if (
                         ride.status == "active"
+                        and ride.is_offer
                         and ride.ride_type == passenger_ride.ride_type
                         and ride.ride_time == passenger_ride.ride_time
                     ):

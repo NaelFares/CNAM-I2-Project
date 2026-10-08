@@ -28,13 +28,14 @@ class RideSelectionTests(unittest.TestCase):
                 "id": 25,
                 "user_id": 10,
                 "status": "active",
-                "owner_role": "driver",
+                "is_offer": True,
                 "car_seats": 3,
                 "is_past": False,
                 "ride_time": datetime(2026, 9, 28, 8, 15),
             },
             None,
             None,
+            None,  # pas de trajet propose par le passager a cette minute
             {"count": 1},
         ]
 
@@ -145,13 +146,14 @@ class RideSelectionTests(unittest.TestCase):
                 "id": 25,
                 "user_id": 10,
                 "status": "active",
-                "owner_role": "driver",
+                "is_offer": True,
                 "car_seats": 1,
                 "is_past": False,
                 "ride_time": datetime(2026, 9, 28, 8, 15),
             },
             None,
             None,
+            None,  # pas de trajet propose par le passager a cette minute
             {"count": 1},
         ]
 
@@ -171,7 +173,7 @@ class RideSelectionTests(unittest.TestCase):
                 "id": 25,
                 "user_id": 10,
                 "status": "active",
-                "owner_role": "driver",
+                "is_offer": True,
                 "car_seats": 4,
                 "is_past": False,
                 "ride_time": datetime(2026, 9, 28, 8, 15),
@@ -196,7 +198,7 @@ class RideSelectionTests(unittest.TestCase):
                 "id": 26,
                 "user_id": 11,
                 "status": "active",
-                "owner_role": "driver",
+                "is_offer": True,
                 "car_seats": 4,
                 "is_past": False,
                 "ride_time": ride_time,
@@ -215,6 +217,61 @@ class RideSelectionTests(unittest.TestCase):
         conflict_query, params = self.cursor.execute.call_args_list[3].args
         self.assertIn("date_trunc('minute'", conflict_query)
         self.assertEqual(params, (7, ride_time))
+        self.connection.commit.assert_not_called()
+
+    def test_select_ride_refuses_a_slot_where_passenger_offers_his_car(self):
+        """On ne peut pas etre conducteur et passager sur le meme creneau."""
+        ride_time = datetime(2026, 9, 28, 8, 15)
+        self.cursor.fetchone.side_effect = [
+            {"id": 7},
+            {
+                "id": 26,
+                "user_id": 11,
+                "status": "active",
+                "is_offer": True,
+                "car_seats": 4,
+                "is_past": False,
+                "ride_time": ride_time,
+            },
+            None,
+            None,
+            {"exists": 1},
+        ]
+
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.select_ride(ride_id=26, passenger_id=7)
+
+        self.assertEqual(result, {"status": "time_conflict"})
+        offer_query, params = self.cursor.execute.call_args_list[4].args
+        self.assertIn("is_offer", offer_query)
+        self.assertEqual(params, (7, ride_time))
+        self.connection.commit.assert_not_called()
+
+    def test_select_ride_refuses_a_ride_that_is_not_offered(self):
+        """Un trajet de recherche n'a pas de places a reserver."""
+        self.cursor.fetchone.side_effect = [
+            {"id": 7},
+            {
+                "id": 27,
+                "user_id": 11,
+                "status": "active",
+                "is_offer": False,
+                "car_seats": 4,
+                "is_past": False,
+                "ride_time": datetime(2026, 9, 28, 8, 15),
+            },
+        ]
+
+        with (
+            patch.object(self.database, "archive_expired_rides", return_value=0),
+            self._patch_connection(),
+        ):
+            result = self.database.select_ride(ride_id=27, passenger_id=7)
+
+        self.assertEqual(result, {"status": "unavailable"})
         self.connection.commit.assert_not_called()
 
     def test_cancel_only_removes_the_connected_passenger_selection(self):

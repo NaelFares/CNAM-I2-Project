@@ -13,8 +13,10 @@ class User:
     name: str = ""
     email: str = ""
     hashed_password: str = ""  # Stockage du mot de passe haché pour la sécurité
-    role: str = "passenger"  # "driver" ou "passenger"
-    car_seats: Optional[int] = None  # Places proposees ; None pour un passager
+    # Places proposees aux passagers ; None tant qu'aucune voiture n'est
+    # renseignee. Tout utilisateur peut chercher un trajet, seul celui qui a
+    # des places peut en proposer un (cf. can_drive).
+    car_seats: Optional[int] = None
     gender: str = "autre"  # "homme", "femme", "autre"
     photo_filename: str = ""  # Nom de fichier seul, jamais un chemin (cf. init.sql)
     music_preference: str = "peu_importe"  # "peu_importe", "avec", "sans"
@@ -31,13 +33,13 @@ class User:
     school_lat: float = 0.0
     school_lon: float = 0.0
 
-    def is_driver(self) -> bool:
-        """Vérifie si l'utilisateur est conducteur"""
-        return self.role == "driver"
+    def can_drive(self) -> bool:
+        """Peut proposer un trajet : il faut avoir renseigne ses places.
 
-    def is_passenger(self) -> bool:
-        """Vérifie si l'utilisateur est passager"""
-        return self.role == "passenger"
+        Il n'y a plus de role exclusif : chacun est passager quand il
+        cherche, et conducteur sur les trajets ou il prend sa voiture.
+        """
+        return bool(self.car_seats)
 
     def is_woman(self) -> bool:
         """Seules les femmes peuvent activer le filtre "ladies only" et y
@@ -63,7 +65,6 @@ class User:
             "name": self.name,
             "email": self.email,
             "hashed_password": self.hashed_password,
-            "role": self.role,
             "car_seats": self.car_seats,
             "gender": self.gender,
             "photo_filename": self.photo_filename,
@@ -87,7 +88,6 @@ class User:
             name=data.get("name", ""),
             email=data.get("email", ""),
             hashed_password=data.get("hashed_password", ""),
-            role=data.get("role", "passenger"),
             car_seats=data.get("car_seats"),
             gender=data.get("gender") or "autre",
             photo_filename=data.get("photo_filename") or "",

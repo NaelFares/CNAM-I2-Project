@@ -1,22 +1,46 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <h1 class="page-title">{{ isDriver ? "Mes trajets proposés" : "Covoiturage" }}</h1>
+      <h1 class="page-title">Covoiturage</h1>
       <p class="page-subtitle">
-        {{ isDriver
-          ? "Acceptez ou refusez les demandes de passagers pour vos trajets."
-          : "Trouvez un trajet compatible et demandez une place au conducteur." }}
+        Cherchez une place dans la voiture de quelqu'un, ou proposez la vôtre sur vos trajets.
       </p>
     </header>
 
-    <template v-if="isDriver">
+    <!-- Plus de role exclusif : chacun cherche ET propose, selon le trajet -->
+    <div class="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+      <button
+        type="button"
+        :class="['flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition', mode === 'search' ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-100']"
+        @click="mode = 'search'"
+      >
+        <UsersRound class="h-4 w-4" aria-hidden="true" />
+        Chercher un trajet
+      </button>
+      <button
+        type="button"
+        :class="['flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition', mode === 'drive' ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-100']"
+        @click="mode = 'drive'"
+      >
+        <CarFront class="h-4 w-4" aria-hidden="true" />
+        Mes trajets
+      </button>
+    </div>
+
+    <template v-if="mode === 'drive'">
+      <!-- Sans voiture renseignee, on peut voir ses trajets mais pas les proposer -->
+      <div v-if="!hasCar" class="advice-banner">
+        Pour proposer un trajet, indiquez d'abord le nombre de places de votre voiture dans
+        <RouterLink to="/profile" class="font-semibold underline">votre profil</RouterLink>.
+      </div>
+
       <Card v-if="app.ridesViewLoading" class="text-sm font-semibold text-slate-600">
-        Chargement de vos trajets proposés...
+        Chargement de vos trajets...
       </Card>
 
       <Card v-else-if="!app.driverOffers.length" class="space-y-4">
         <div>
-          <h2 class="text-lg font-bold text-slate-900">Aucun trajet proposé</h2>
+          <h2 class="text-lg font-bold text-slate-900">Aucun trajet pour le moment</h2>
           <p class="mt-1 text-sm text-slate-600">
             Importez d'abord votre planning, puis générez les trajets associés.
           </p>
@@ -33,7 +57,7 @@
             <ChevronLeft class="h-5 w-5" aria-hidden="true" />
           </button>
           <div class="min-w-0 flex-1 text-center">
-            <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Mes trajets proposés</p>
+            <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Mes trajets</p>
             <h2 class="text-sm font-bold text-slate-900 sm:text-base">Du {{ driverWeekDays[0]?.label }} au {{ driverWeekDays[6]?.label }}</h2>
           </div>
           <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 text-blue-700 hover:bg-blue-50" aria-label="Semaine suivante" @click="changeDriverWeek(1)">
@@ -42,7 +66,7 @@
         </div>
 
         <Card v-if="!driverOffersForWeek.length" class="text-sm font-semibold text-slate-600">
-          Aucun trajet proposé pour cette semaine. Utilisez les flèches pour voir une autre semaine.
+          Aucun trajet cette semaine. Utilisez les flèches pour voir une autre semaine.
         </Card>
 
         <div v-else class="grid gap-4 lg:grid-cols-2">
@@ -53,13 +77,38 @@
               <h2 class="mt-1 text-base font-bold text-slate-900">{{ formatRideTime(ride.ride_time) }}</h2>
             </div>
             <span
+              v-if="ride.is_offer"
               class="rounded-full px-3 py-1 text-xs font-bold"
               :class="ride.available_seats ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
             >
               {{ ride.available_seats ? seatsLabel(ride.available_seats) : "Complet" }}
             </span>
+            <span v-else class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+              Je cherche une voiture
+            </span>
           </div>
 
+          <!-- Interrupteur : proposer ce trajet, ou revenir a une recherche -->
+          <label
+            class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+            :class="!hasCar && !ride.is_offer ? 'opacity-60' : ''"
+          >
+            <span class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <CarFront class="h-4 w-4 text-blue-700" aria-hidden="true" />
+              Je prends ma voiture
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              class="h-5 w-5 accent-blue-700"
+              :checked="ride.is_offer"
+              :disabled="String(app.selectionLoadingRideId) === String(ride.id) || (!hasCar && !ride.is_offer) || (ride.is_offer && hasActivePassengers(ride))"
+              :title="ride.is_offer && hasActivePassengers(ride) ? 'Refusez d’abord les demandes et passagers de ce trajet' : ''"
+              @change="app.toggleRideOffer(ride.id, $event.target.checked)"
+            />
+          </label>
+
+          <template v-if="ride.is_offer">
           <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
             <UsersRound class="h-4 w-4 text-blue-700" aria-hidden="true" />
             {{ ride.occupied_seats }} / {{ ride.car_seats }} place{{ ride.car_seats > 1 ? "s" : "" }} réservée{{ ride.occupied_seats > 1 ? "s" : "" }}
@@ -106,6 +155,7 @@
             </div>
           </div>
           <p v-else class="border-t border-slate-200 pt-3 text-sm text-slate-500">Aucune demande pour le moment.</p>
+          </template>
         </Card>
         </div>
       </div>
@@ -225,7 +275,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { CarFront, Check, ChevronLeft, ChevronRight, CircleCheckBig, UserRoundCheck, UsersRound, Venus, X } from "lucide-vue-next";
 
@@ -253,13 +303,26 @@ const searchedDays = computed(() => schoolWeekDays(searchedWeekStart.value));
 const activeDayIndex = ref(0);
 const activeDay = computed(() => searchedDays.value[activeDayIndex.value]);
 const dayMatches = computed(() => matchesForDay(app.matches, activeDay.value?.iso));
-const isDriver = computed(() => auth.user?.role === "driver");
+// "search" : chercher une place ; "drive" : mes trajets, a proposer ou non.
+const mode = ref("search");
+// Le profil fait foi apres une sauvegarde ; auth.user sert de repli.
+const hasCar = computed(() => Boolean((app.profile ?? auth.user)?.car_seats));
+
+function hasActivePassengers(ride) {
+  return ride.passengers.some((passenger) => passenger.selection_status !== "rejected");
+}
 const driverWeekStart = ref(mondayIso(localDateIso()));
 const driverWeekDays = computed(() => calendarWeekDays(driverWeekStart.value));
 const driverOffersForWeek = computed(() => ridesForWeek(app.driverOffers, driverWeekStart.value));
 
 onMounted(() => {
-  if (isDriver.value) app.loadDriverOffers();
+  if (!app.profile) app.loadProfile();
+});
+
+// "Mes trajets" se charge a la premiere ouverture de l'onglet, puis a chaque
+// retour : un passager a pu faire une demande entre-temps.
+watch(mode, (value) => {
+  if (value === "drive") app.loadDriverOffers();
 });
 
 async function runQuickSearch(payload) {

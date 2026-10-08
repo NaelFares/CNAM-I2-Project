@@ -13,7 +13,6 @@ class PopulateRidesTests(unittest.TestCase):
     def test_creates_missing_future_rides_without_duplicating_existing_ones(self):
         user = User(
             id=7,
-            role="driver",
             car_seats=4,
             start_lat=43.6,
             start_lon=1.4,
@@ -47,6 +46,7 @@ class PopulateRidesTests(unittest.TestCase):
             self.assertEqual(len(events), 2)
             self.assertEqual(len(rides), 4)
             self.assertEqual({ride.ride_type for ride in rides}, {"to_campus", "from_campus"})
+            self.assertTrue(all(ride.is_offer for ride in rides))
             self.assertEqual({ride.ride_time.date().isoformat() for ride in rides}, {"2026-09-28", "2026-09-30"})
 
             rides.pop()
@@ -66,17 +66,17 @@ class PopulateRidesTests(unittest.TestCase):
 
     def test_seeds_passenger_selection_once_and_leaves_a_free_seat(self):
         ride_time = datetime.now() + timedelta(days=2)
-        passenger = User(id=1, role="passenger", start_lat=43.60, start_lon=1.40,
+        passenger = User(id=1, start_lat=43.60, start_lon=1.40,
                          school_lat=43.61, school_lon=1.41)
-        other_passenger = User(id=3, role="passenger", start_lat=43.60, start_lon=1.40,
+        other_passenger = User(id=3, start_lat=43.60, start_lon=1.40,
                                school_lat=43.61, school_lon=1.41)
-        driver = User(id=7, role="driver", car_seats=3, start_lat=43.60, start_lon=1.40,
+        driver = User(id=7, car_seats=3, start_lat=43.60, start_lon=1.40,
                       school_lat=43.61, school_lon=1.41)
         users = {1: passenger, 3: other_passenger, 7: driver}
         rides = {
             1: [Ride(id=11, user_id=1, ride_time=ride_time)],
             3: [Ride(id=13, user_id=3, ride_time=ride_time)],
-            7: [Ride(id=17, user_id=7, ride_time=ride_time)],
+            7: [Ride(id=17, user_id=7, ride_time=ride_time, is_offer=True)],
         }
         selections = set()
         accepted = set()

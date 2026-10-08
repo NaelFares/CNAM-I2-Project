@@ -198,8 +198,9 @@ class MatchingService:
         avec ORS. Cette limite fonctionne de la même manière que l'utilisateur
         soit conducteur ou passager.
         """
-        if not current_user.is_passenger():
-            return []
+        # Seules mes recherches cherchent : un trajet que je propose n'a pas a
+        # trouver de conducteur.
+        my_rides = [ride for ride in my_rides if not ride.is_offer]
 
         selection_counts = selection_counts or {}
         selected_ride_ids = selected_ride_ids or set()
@@ -223,8 +224,12 @@ class MatchingService:
                 if other_ride.ride_time.replace(second=0, microsecond=0) in reserved_times:
                     continue
 
+                # Seuls les trajets proposes sont des candidats : c'est le trajet
+                # qui dit "je prends ma voiture", plus le role de son auteur.
+                if not other_ride.is_offer:
+                    continue
                 other_user = users_by_id.get(other_ride.user_id)
-                if not other_user or not other_user.is_driver():
+                if not other_user or not other_user.can_drive():
                     continue
 
                 # "Ladies only" : filtre applique avant tout calcul, pour ne

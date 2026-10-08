@@ -15,12 +15,16 @@ for name, attributes in (
     ("psycopg2.extensions", {"connection": object}),
     ("requests", {}),
 ):
-    if name.split(".")[0] not in sys.modules:
-        try:
-            __import__(name)
-            continue
-        except ModuleNotFoundError:
-            pass
+    # On tente toujours le vrai module d'abord, sous-modules compris : ne
+    # stubber que ce qui est reellement absent. L'ancienne version sautait
+    # cet essai des que le paquet parent etait charge, et remplacait alors
+    # le vrai psycopg2.extras par un faux -- ce qui cassait les tests
+    # suivants dans un environnement ou psycopg2 est installe (Docker).
+    try:
+        __import__(name)
+        continue
+    except ModuleNotFoundError:
+        pass
     if name not in sys.modules:
         module = types.ModuleType(name)
         module.__dict__.update(attributes)
@@ -34,14 +38,13 @@ from backend.models.user import User
 from backend.services.matching import MatchingService
 
 
-def _user(user_id: int, gender: str, role: str = "driver") -> User:
-    """Conducteur par defaut : seul un conducteur peut etre propose en match."""
+def _user(user_id: int, gender: str, has_car: bool = True) -> User:
+    """Avec voiture par defaut : seul un trajet propose peut etre un match."""
     return User(
         id=user_id,
         name=f"User {user_id}",
         gender=gender,
-        role=role,
-        car_seats=4 if role == "driver" else None,
+        car_seats=4 if has_car else None,
     )
 
 
@@ -78,9 +81,11 @@ class LadiesOnlyFilterTests(unittest.TestCase):
     """Le filtre doit ecarter les non-femmes avant tout appel de routing."""
 
     def setUp(self):
-        self.searcher = _user(1, "femme", role="passenger")
+        self.searcher = _user(1, "femme", has_car=False)
         self.others = {2: _user(2, "femme"), 3: _user(3, "homme"), 4: _user(4, "autre")}
         self.all_rides = [_ride(uid) for uid in self.others]
+        for ride in self.all_rides:
+            ride.is_offer = True
 
     def _run(self, ladies_only: bool) -> set:
         """Renvoie les ids des utilisateurs evalues apres le filtre bon marche.

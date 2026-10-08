@@ -82,6 +82,11 @@ export async function getMyRideOffers() {
   return (await apiClient.get("/rides/my-offers")).data;
 }
 
+// Interrupteur "Je prends ma voiture" sur un de mes trajets.
+export async function setRideOffer(rideId, isOffer) {
+  return (await apiClient.put(`/rides/${rideId}/offer`, { is_offer: isOffer })).data;
+}
+
 export async function selectRide(rideId) {
   return (await apiClient.post(`/rides/${rideId}/select`)).data;
 }

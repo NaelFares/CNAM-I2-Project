@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     name                TEXT NOT NULL,
     email               TEXT UNIQUE NOT NULL,
     hashed_password     TEXT NOT NULL DEFAULT '',
-    role                TEXT NOT NULL DEFAULT 'passenger',
+    -- Places proposees aux passagers. NULL tant que l'utilisateur n'a pas
+    -- renseigne de voiture : il peut alors chercher, mais pas proposer.
     car_seats           INTEGER,
     gender              TEXT NOT NULL DEFAULT 'autre',
     photo_filename      TEXT NOT NULL DEFAULT '',
@@ -31,26 +32,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lat      DOUBLE PRECISION DEFA
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lon      DOUBLE PRECISION DEFAULT 0.0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS car_seats       INTEGER;
 
--- Migration vers deux roles exclusifs. Les anciens profils mixtes deviennent
--- passagers ; les conducteurs existants recoivent la capacite maximale.
-UPDATE users SET role = 'passenger' WHERE role NOT IN ('driver', 'passenger');
-UPDATE users SET car_seats = 4 WHERE role = 'driver' AND car_seats IS NULL;
-UPDATE users SET car_seats = NULL WHERE role = 'passenger';
--- Conserve le scenario de demonstration historique : etudiant01 recherche
--- et etudiant07 propose le meme trajet.
-UPDATE users
-SET role = 'driver', car_seats = 4
-WHERE email = 'etudiant07@studride-test.fr';
-ALTER TABLE users ALTER COLUMN role SET DEFAULT 'passenger';
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check
-    CHECK (role IN ('driver', 'passenger'));
+-- Places : 1 a 4, ou NULL quand l'utilisateur n'a pas de voiture. Le role
+-- exclusif conducteur/passager a ete supprime : tout compte peut chercher un
+-- trajet ET en proposer un. La migration des donnees se fait apres la
+-- creation de la table rides (cf. "Fin des roles exclusifs" plus bas).
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_car_seats_check;
 ALTER TABLE users ADD CONSTRAINT users_car_seats_check
-    CHECK (
-        (role = 'passenger' AND car_seats IS NULL)
-        OR (role = 'driver' AND car_seats BETWEEN 1 AND 4)
-    );
+    CHECK (car_seats IS NULL OR car_seats BETWEEN 1 AND 4);
 
 -- Sexe : les comptes anterieurs prennent le repli neutre 'autre'.
 -- Le filtre "ladies only" n'est pas stocke ici : c'est une option ponctuelle
@@ -106,6 +94,30 @@ ALTER TABLE rides DROP CONSTRAINT IF EXISTS rides_status_check;
 ALTER TABLE rides ADD CONSTRAINT rides_status_check
     CHECK (status IN ('active', 'archived'));
 CREATE INDEX IF NOT EXISTS idx_rides_status_time ON rides(status, ride_time);
+
+-- Nature du trajet : offre (je prends ma voiture) ou recherche (je cherche
+-- une voiture). Porte par le trajet lui-meme et non plus par un role
+-- d'utilisateur : la meme personne peut conduire le lundi et chercher le
+-- mercredi. Un trajet issu du planning est une recherche par defaut.
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS is_offer BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Fin des roles exclusifs (migration unique). Tant que la colonne role
+-- existe, les trajets des conducteurs deviennent des offres -- leurs
+-- reservations restent ainsi valides -- puis la colonne est supprimee.
+-- Le bloc ne s'execute plus ensuite, et jamais sur une base neuve.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'role'
+    ) THEN
+        UPDATE rides r SET is_offer = TRUE
+        FROM users u
+        WHERE u.id = r.user_id AND u.role = 'driver';
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+        ALTER TABLE users DROP COLUMN role;
+    END IF;
+END $$;
 
 -- Migration data : normalisation ride_type (no-op si deja applique)
 UPDATE rides SET ride_type = 'to_campus'   WHERE ride_type = 'aller';

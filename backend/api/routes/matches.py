@@ -19,7 +19,7 @@ from backend.services.routing import (
     routing_service,
 )
 
-from backend.api.deps import require_passenger
+from backend.api.deps import require_current_user
 from backend.api.feedback import make_feedback, raise_api_error
 from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, MatchSearchResponse, PlanningMatchRequest
 
@@ -37,8 +37,9 @@ def _check_ladies_only_allowed(user: User, ladies_only: bool):
 @router.post("/find", response_model=MatchesResponse)
 def find_matches(
     body: PlanningMatchRequest,
+    user: User = Depends(require_current_user),
+    # Apres `user` : l'ordre (body, user) est celui des appels existants.
     ladies_only: bool = False,
-    user: User = Depends(require_passenger),
 ):
     _check_ladies_only_allowed(user, ladies_only)
 
@@ -63,7 +64,9 @@ def find_matches(
         [ride.user_id for ride in all_rides]
     )
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
-    reserved_times = db.get_passenger_reserved_times(user.id)
+    # Creneaux indisponibles : deja reserves comme passager, ou proposes
+    # comme conducteur -- on ne peut pas etre des deux cotes a la fois.
+    reserved_times = db.get_passenger_reserved_times(user.id) | db.get_offer_times(user.id)
     try:
         matches = matching_service.find_matches(
             current_user=user,
@@ -130,7 +133,7 @@ def _ensure_week_rides(user: User, start: datetime, end: datetime, now: datetime
 
 
 @router.post("/search", response_model=MatchSearchResponse)
-def search_matches(body: MatchSearchRequest, user: User = Depends(require_passenger)):
+def search_matches(body: MatchSearchRequest, user: User = Depends(require_current_user)):
     _check_ladies_only_allowed(user, body.ladies_only)
 
     transient_ride = Ride(
@@ -154,7 +157,9 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
         [ride.user_id for ride in all_rides]
     )
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
-    reserved_times = db.get_passenger_reserved_times(user.id)
+    # Creneaux indisponibles : deja reserves comme passager, ou proposes
+    # comme conducteur -- on ne peut pas etre des deux cotes a la fois.
+    reserved_times = db.get_passenger_reserved_times(user.id) | db.get_offer_times(user.id)
     try:
         matches = matching_service.find_matches(
             current_user=user,

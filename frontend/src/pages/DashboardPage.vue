@@ -48,7 +48,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold text-slate-900">Completer mon profil</h2>
-            <p class="mt-1 text-sm text-slate-600">Adresse, role et tolerance horaire.</p>
+            <p class="mt-1 text-sm text-slate-600">Adresse, voiture et tolérance horaire.</p>
           </div>
           <ArrowRight class="h-5 w-5 text-blue-700 transition group-hover:translate-x-1" />
         </div>
@@ -58,10 +58,10 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold text-slate-900">
-              {{ isDriver ? "Voir mes trajets proposés" : "Trouver un covoiturage" }}
+              Covoiturage
             </h2>
             <p class="mt-1 text-sm text-slate-600">
-              {{ isDriver ? "Consultez les passagers inscrits à vos trajets." : "Cherchez des correspondances compatibles." }}
+              Cherchez un trajet ou proposez votre voiture sur les vôtres.
             </p>
           </div>
           <ArrowRight class="h-5 w-5 text-blue-700 transition group-hover:translate-x-1" />
@@ -82,7 +82,6 @@ import { useAuthStore } from "../stores/auth";
 const app = useAppStore();
 const auth = useAuthStore();
 const displayName = computed(() => auth.user?.name || "etudiant");
-const isDriver = computed(() => auth.user?.role === "driver");
 
 onMounted(async () => {
   await app.loadSummary();

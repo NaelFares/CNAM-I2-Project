@@ -28,8 +28,6 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8)
-    role: Literal["driver", "passenger"] = "passenger"
-    car_seats: int | None = Field(default=None, ge=1, le=4)
     gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
@@ -55,7 +53,7 @@ class UserDTO(BaseModel):
     id: int
     name: str
     email: EmailStr
-    role: Literal["driver", "passenger"]
+    # Places dans la voiture ; None tant qu'aucune n'est renseignee.
     car_seats: int | None = None
     gender: Gender = "autre"
     # URL publique reconstruite par l'API depuis photo_filename ; vide si
@@ -81,7 +79,7 @@ class SessionResponse(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    role: Literal["driver", "passenger"]
+    # Facultatif : sans places, on peut chercher un trajet mais pas en proposer.
     car_seats: int | None = Field(default=None, ge=1, le=4)
     gender: Gender
     music_preference: MusicPreference = "peu_importe"
@@ -144,6 +142,7 @@ class RideDTO(BaseModel):
     end_lon: float
     status: Literal["active", "archived"] = "active"
     archived_at: datetime | None = None
+    is_offer: bool = False
 
 
 class RidesGenerateResponse(BaseModel):
@@ -339,6 +338,12 @@ class SelectedPassengerDTO(BaseModel):
 
 
 class DriverOfferDTO(BaseModel):
+    """Un trajet de l'utilisateur, tel qu'affiche dans "Mes trajets".
+
+    Les recherches y figurent aussi (is_offer = False) : c'est la que
+    l'utilisateur decide, trajet par trajet, s'il prend sa voiture.
+    """
+
     id: int
     ride_type: Literal["to_campus", "from_campus"]
     ride_time: datetime
@@ -348,6 +353,7 @@ class DriverOfferDTO(BaseModel):
     end_lon: float
     status: Literal["active", "archived"]
     archived_at: datetime | None = None
+    is_offer: bool = False
     car_seats: int
     occupied_seats: int
     available_seats: int
@@ -376,6 +382,16 @@ class PassengerSelectionDTO(BaseModel):
 
 class PassengerSelectionsResponse(BaseModel):
     rides: list[PassengerSelectionDTO]
+
+
+class RideOfferRequest(BaseModel):
+    is_offer: bool
+
+
+class RideOfferResponse(BaseModel):
+    ride_id: int
+    is_offer: bool
+    feedback: ApiMessage
 
 
 class RideSelectionResponse(BaseModel):

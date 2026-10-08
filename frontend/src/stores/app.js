@@ -15,6 +15,7 @@ import {
   getScheduleEvents,
   previewSchedule,
   searchCarpoolMatches,
+  setRideOffer,
   selectRide,
   updateProfile,
   uploadProfilePhoto,
@@ -227,6 +228,23 @@ export const useAppStore = defineStore("app", {
         return false;
       } finally {
         this.ridesViewLoading = false;
+      }
+    },
+    async toggleRideOffer(rideId, isOffer) {
+      const feedback = useFeedbackStore();
+      this.selectionLoadingRideId = rideId;
+      try {
+        const data = await setRideOffer(rideId, isOffer);
+        // Mise a jour locale immediate, sans recharger toute la semaine.
+        const ride = this.driverOffers.find((item) => item.id === rideId);
+        if (ride) ride.is_offer = data.is_offer;
+        feedback.showSuccess(data.feedback.message);
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.selectionLoadingRideId = null;
       }
     },
     async decidePassenger(rideId, passengerId, decision) {

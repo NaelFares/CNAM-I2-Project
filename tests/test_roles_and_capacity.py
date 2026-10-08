@@ -1,53 +1,59 @@
-"""Tests ciblés pour les rôles exclusifs et la capacité conducteur."""
+"""Tests cibles : plus de role exclusif, capacite de la voiture facultative.
+
+Tout compte peut chercher un trajet et en proposer un. Seul le nombre de
+places, renseigne au profil, conditionne la possibilite de proposer.
+"""
 
 import unittest
 
 from pydantic import ValidationError
 
-from backend.api.schemas import RegisterRequest
+from backend.api.schemas import ProfileUpdateRequest, RegisterRequest
 from backend.models.user import User
 
 
-class RolesAndCapacityTests(unittest.TestCase):
-    def test_roles_are_exclusive_in_user_helpers(self):
-        driver = User(role="driver", car_seats=4)
-        passenger = User(role="passenger")
+def _profile(**overrides) -> ProfileUpdateRequest:
+    data = {"name": "Etudiant", "email": "etu@example.com", "gender": "autre"}
+    data.update(overrides)
+    return ProfileUpdateRequest(**data)
 
-        self.assertTrue(driver.is_driver())
-        self.assertFalse(driver.is_passenger())
-        self.assertTrue(passenger.is_passenger())
-        self.assertFalse(passenger.is_driver())
 
-    def test_legacy_both_role_is_rejected_by_api_schema(self):
+class DrivingCapabilityTests(unittest.TestCase):
+    def test_user_with_seats_can_drive(self):
+        self.assertTrue(User(car_seats=3).can_drive())
+
+    def test_user_without_car_cannot_drive(self):
+        """Il peut tout de meme chercher : seul proposer lui est ferme."""
+        self.assertFalse(User(car_seats=None).can_drive())
+
+    def test_user_model_has_no_role_anymore(self):
+        self.assertFalse(hasattr(User(), "role"))
+
+
+class RegistrationTests(unittest.TestCase):
+    def test_registration_asks_neither_role_nor_seats(self):
+        """Le nombre de places se renseigne ensuite, au profil."""
+        self.assertNotIn("role", RegisterRequest.model_fields)
+        self.assertNotIn("car_seats", RegisterRequest.model_fields)
+
+    def test_registration_still_requires_gender(self):
         with self.assertRaises(ValidationError):
-            RegisterRequest(
-                name="Ancien profil",
-                email="ancien@example.com",
-                password="Test1234!",
-                role="both",
-            )
+            RegisterRequest(name="Sans sexe", email="x@example.com", password="Test1234!")
 
-    def test_driver_capacity_accepts_one_to_four_seats(self):
+
+class CarSeatsTests(unittest.TestCase):
+    def test_seats_are_optional(self):
+        self.assertIsNone(_profile().car_seats)
+
+    def test_seats_accept_one_to_four(self):
         for seats in range(1, 5):
-            payload = RegisterRequest(
-                name="Conducteur",
-                email=f"driver{seats}@example.com",
-                password="Test1234!",
-                role="driver",
-                car_seats=seats,
-            )
-            self.assertEqual(payload.car_seats, seats)
+            with self.subTest(seats=seats):
+                self.assertEqual(_profile(car_seats=seats).car_seats, seats)
 
-    def test_driver_capacity_rejects_values_outside_one_to_four(self):
+    def test_seats_reject_values_outside_one_to_four(self):
         for seats in (0, 5):
             with self.subTest(seats=seats), self.assertRaises(ValidationError):
-                RegisterRequest(
-                    name="Conducteur",
-                    email=f"invalid{seats}@example.com",
-                    password="Test1234!",
-                    role="driver",
-                    car_seats=seats,
-                )
+                _profile(car_seats=seats)
 
 
 if __name__ == "__main__":
