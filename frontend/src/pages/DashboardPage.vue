@@ -35,6 +35,7 @@
 
     <div class="grid gap-4 md:grid-cols-3">
       <RouterLink to="/schedule" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-strong)]">
+        <StepAnimation variant="import" class="mb-4" />
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold text-slate-900">Importer mon planning</h2>
@@ -45,6 +46,7 @@
       </RouterLink>
 
       <RouterLink to="/profile" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-strong)]">
+        <StepAnimation variant="profile" class="mb-4" />
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold text-slate-900">Completer mon profil</h2>
@@ -55,6 +57,7 @@
       </RouterLink>
 
       <RouterLink to="/matches" class="card group p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-strong)]">
+        <StepAnimation variant="carpool" class="mb-4" />
         <div class="flex items-start justify-between gap-3">
           <div>
             <h2 class="text-lg font-bold text-slate-900">
@@ -76,6 +79,7 @@ import { computed, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { ArrowRight, CalendarDays, CircleCheckBig, Route } from "lucide-vue-next";
 
+import StepAnimation from "../components/StepAnimation.vue";
 import { useAppStore } from "../stores/app";
 import { useAuthStore } from "../stores/auth";
 

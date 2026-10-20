@@ -4,17 +4,14 @@
       <div
         class="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-3 py-2 lg:px-6 lg:py-3"
       >
-        <div class="flex items-center gap-3">
+        <div class="flex flex-col items-center gap-0.5">
           <img
             src="/logo.png"
             alt="Stud'Ride"
-            class="rounded-full"
-            :class="display.mobilePreview ? 'h-10 w-10' : 'h-10 w-10 lg:h-16 lg:w-16'"
+            class="w-auto"
+            :class="display.mobilePreview ? 'h-8' : 'h-8 lg:h-11'"
           />
-          <div>
-            <p class="font-display text-base font-bold leading-tight text-slate-900">Stud'Ride</p>
-            <p v-if="!display.mobilePreview" class="hidden text-xs font-semibold text-slate-500 lg:block">Mobilité campus</p>
-          </div>
+          <p v-if="!display.mobilePreview" class="hidden text-[11px] font-semibold leading-none text-slate-500 lg:block">Mobilité campus</p>
         </div>
 
         <nav v-if="!display.mobilePreview" class="hidden items-center gap-1 lg:flex">

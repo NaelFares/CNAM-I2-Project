@@ -13,7 +13,11 @@
       </button>
     </div>
 
-    <section class="single-card-center px-4 py-4 sm:px-6 sm:py-8">
+    <section class="single-card-center flex-col gap-5 px-4 py-4 sm:px-6 sm:py-8">
+      <div class="w-full max-w-[13rem]">
+        <img src="/logo.png" alt="Stud'Ride" class="mx-auto h-14 w-auto" />
+        <RideStripAnimation class="mt-3" />
+      </div>
       <div class="page-card max-w-xl p-5 sm:p-7 md:p-9">
       <div class="flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:text-left">
         <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700">
@@ -58,6 +62,7 @@ import { ref } from "vue";
 import { RouterLink, useRouter } from "vue-router";
 import { LoaderCircle, LogIn, Monitor, Smartphone } from "lucide-vue-next";
 
+import RideStripAnimation from "../components/RideStripAnimation.vue";
 import { useAuthStore } from "../stores/auth";
 import { useDisplayStore } from "../stores/display";
 
