@@ -1,5 +1,9 @@
 name: cnam-i2-project
 
+# Calcul d'itineraires local (OSRM) : voir docker-compose.osrm.yml.
+include:
+  - docker-compose.osrm.yml
+
 services:
   backend:
     container_name: covoiturage-backend

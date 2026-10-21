@@ -48,6 +48,11 @@ def _user(user_id: int, gender: str, has_car: bool = True) -> User:
     )
 
 
+# Itineraire direct simule, commun a tous les conducteurs : il passe pres
+# de chaque depart, pour que seul le filtre teste ecarte des conducteurs.
+DIRECT_ROUTE = {"geometry": [(43.6, 1.44), (43.56, 1.47)], "distance_m": 5000, "duration_s": 600}
+
+
 def _ride(user_id: int) -> Ride:
     return Ride(
         id=user_id * 10,
@@ -104,7 +109,7 @@ class LadiesOnlyFilterTests(unittest.TestCase):
             return None
 
         all_users = list(self.others.values()) + [self.searcher]
-        with patch("backend.services.matching.db.get_all_users", return_value=all_users),              patch("backend.services.matching.routing_service.get_route_details", return_value=None),              patch("backend.services.matching.routing_service.get_route_via_waypoint", side_effect=fake_detour):
+        with patch("backend.services.matching.db.get_all_users", return_value=all_users),              patch("backend.services.matching.routing_service.get_route_details", return_value=DIRECT_ROUTE),              patch("backend.services.matching.routing_service.get_route_via_waypoints", side_effect=fake_detour):
             MatchingService.find_matches(
                 current_user=self.searcher,
                 my_rides=[_ride(1)],

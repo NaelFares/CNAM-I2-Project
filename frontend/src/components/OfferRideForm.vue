@@ -52,7 +52,7 @@
         <input id="offer-date" v-model="date" type="date" :min="today" class="input" />
       </div>
       <div>
-        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="offer-time">Heure de départ</label>
+        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="offer-time">{{ rideType === "to_campus" ? "Heure d'arrivée" : "Heure de départ" }}</label>
         <input id="offer-time" v-model="time" type="time" step="300" class="input" />
       </div>
     </div>
@@ -130,7 +130,7 @@ const time = ref("08:00");
 
 const missing = computed(() => {
   if (!origin.confirmed || !destination.confirmed) return "Choisissez le départ et l'arrivée dans la liste des adresses.";
-  if (!date.value || !time.value) return "Indiquez le jour et l'heure de départ.";
+  if (!date.value || !time.value) return "Indiquez le jour et l'heure.";
   if (new Date(`${date.value}T${time.value}`) <= new Date()) return "Choisissez une date et une heure à venir.";
   return "";
 });

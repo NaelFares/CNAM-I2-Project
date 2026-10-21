@@ -75,6 +75,9 @@
                 >
                   {{ passenger.selection_status === "accepted" ? "Passager confirmé" : "Demande une place" }}
                 </p>
+                <p v-if="stopSummary(ride, passenger)" class="text-xs text-slate-500">
+                  {{ stopSummary(ride, passenger) }}
+                </p>
               </div>
               <Button
                 v-if="passenger.selection_status === 'pending'"
@@ -208,6 +211,19 @@ function busy(ride) {
 // Les demandes refusees n'ont plus d'interet pour le conducteur.
 function visiblePassengers(ride) {
   return ride.passengers.filter((passenger) => passenger.selection_status !== "rejected");
+}
+
+// Ce que le conducteur doit savoir avant d'accepter : ou et quand il passe,
+// et ce que ca lui coute. Vide pour les demandes plus anciennes.
+function stopSummary(ride, passenger) {
+  const parts = [];
+  if (passenger.passage_time) {
+    parts.push(`${ride.ride_type === "to_campus" ? "Dépose" : "Prise en charge"} vers ${passenger.passage_time}`);
+  }
+  if (passenger.pickup_on_the_way) parts.push("monte en chemin");
+  if (passenger.dropoff_on_the_way) parts.push("descend en chemin");
+  if (passenger.detour_min != null) parts.push(`+${Number(passenger.detour_min).toFixed(1)} min de détour`);
+  return parts.join(" · ");
 }
 
 function seatsLabel(ride) {

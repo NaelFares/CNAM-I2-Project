@@ -205,6 +205,18 @@ ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_onboard_at  TIMES
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_completed_at   TIMESTAMPTZ;
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_arrived_at  TIMESTAMPTZ;
 
+-- Ou monte et descend le passager, quand et a quel cout pour le conducteur.
+-- Renseigne a la reservation, a partir de la correspondance calculee : le
+-- conducteur le voit avant d'accepter, et le matching additionne les detours
+-- des passagers deja acceptes. NULL pour les reservations plus anciennes.
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS pickup_lat    DOUBLE PRECISION;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS pickup_lon    DOUBLE PRECISION;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS dropoff_lat   DOUBLE PRECISION;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS dropoff_lon   DOUBLE PRECISION;
+-- Heure de depose (aller) ou de prise en charge (retour), "HH:MM".
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passage_time  TEXT;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS detour_min    REAL;
+
 -- RIDE_RATINGS
 -- Notation d'une course terminee. Une note porte sur une reservation precise
 -- (le couple conducteur/passager d'un trajet donne), pas sur un utilisateur

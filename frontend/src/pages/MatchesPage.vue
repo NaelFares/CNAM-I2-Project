@@ -68,6 +68,7 @@
             v-if="app.searchResults.length"
             :matches="app.searchResults"
             :reference-geometry="app.searchRouteGeometry"
+            :reference-estimated="app.searchRouteEstimated"
             :loading-ride-id="app.selectionLoadingRideId"
             @choose-ride="chooseRide"
           />
@@ -152,7 +153,7 @@ import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
 import DriverPanel from "../components/DriverPanel.vue";
 import RankedMatchesExplorer from "../components/RankedMatchesExplorer.vue";
 import { Button, Card } from "../components/ui";
-import { localDateIso, matchesForDay, mondayIso, schoolWeekDays } from "../lib/week";
+import { localDateIso, matchesForDay, mondayIso, nextUpcomingEvent, schoolWeekDays } from "../lib/week";
 import { useAppStore } from "../stores/app";
 import { canUseLadiesOnly } from "../lib/gender";
 
@@ -174,8 +175,14 @@ const dayMatches = computed(() => matchesForDay(app.matches, activeDay.value?.is
 // "search" : je cherche une place ; "drive" : je propose ma voiture.
 const mode = ref("search");
 
-onMounted(() => {
+onMounted(async () => {
   if (!app.profile) app.loadProfile();
+  // La recherche par semaine s'ouvre sur la semaine du prochain cours : la
+  // semaine en cours est souvent deja passee ou vide (apres un import CSV,
+  // les cours peuvent etre plusieurs semaines plus loin).
+  await app.loadScheduleEvents();
+  const nextEvent = nextUpcomingEvent(app.events);
+  if (nextEvent) selectedWeekDate.value = String(nextEvent.start_time).slice(0, 10);
 });
 
 async function runQuickSearch(payload) {
@@ -187,6 +194,7 @@ function resetQuickSearch() {
   quickSearchPerformed.value = false;
   app.searchResults = [];
   app.searchRouteGeometry = [];
+  app.searchRouteEstimated = false;
 }
 
 async function runPlanningSearch() {

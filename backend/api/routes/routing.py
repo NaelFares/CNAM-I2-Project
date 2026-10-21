@@ -19,11 +19,12 @@ def preview_route(
     end_lon: float,
     _user=Depends(require_current_user),
 ):
+    # Toujours un resultat : itineraire OSRM, ou estimation si OSRM est
+    # indisponible (estimated=True, a signaler sous la carte).
     details = routing_service.get_route_details((start_lat, start_lon), (end_lat, end_lon))
-    if not details:
-        return {"geometry": [], "distance_m": 0.0, "duration_s": 0.0}
     return {
         "geometry": [list(point) for point in details["geometry"]],
         "distance_m": details["distance_m"],
         "duration_s": details["duration_s"],
+        "estimated": details["estimated"],
     }

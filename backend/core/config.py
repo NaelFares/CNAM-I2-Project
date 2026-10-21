@@ -40,26 +40,34 @@ class Config:
         "postgresql://covoit:covoit_password@database:5432/covoiturage",
     )
 
-    # Campus et géographie
-    CAMPUS_NAME = os.getenv("CAMPUS_NAME", "Campus Central")
-    CAMPUS_LAT = float(os.getenv("CAMPUS_LAT", "48.8566"))
-    CAMPUS_LON = float(os.getenv("CAMPUS_LON", "2.3522"))
+    # Campus et géographie. Le campus par defaut sert de destination aux
+    # comptes sans ecole renseignee : il doit rester dans la zone de la carte
+    # OSRM (Toulouse), d'ou l'Universite Toulouse Capitole, en centre-ville.
+    CAMPUS_NAME = os.getenv("CAMPUS_NAME", "Université Toulouse Capitole")
+    CAMPUS_LAT = float(os.getenv("CAMPUS_LAT", "43.606136"))
+    CAMPUS_LON = float(os.getenv("CAMPUS_LON", "1.438197"))
     DEFAULT_ZOOM = int(os.getenv("DEFAULT_ZOOM", "12"))
 
     # Paramètres de matching
     DEFAULT_TIME_TOLERANCE_MIN = int(os.getenv("DEFAULT_TIME_TOLERANCE_MIN", "15"))
-    MAX_DISTANCE_KM = float(os.getenv("MAX_DISTANCE_KM", "10.0"))
-    MIN_MATCH_SCORE = int(os.getenv("MIN_MATCH_SCORE", "60"))
+    # Distance maximale (km) entre la route du conducteur et les points de
+    # prise en charge et de depose du passager : au-dela, pas candidat.
+    MAX_ROUTE_DISTANCE_KM = float(os.getenv("MAX_ROUTE_DISTANCE_KM", "2.0"))
+    # Detour total maximum (minutes) quand plusieurs passagers partagent la
+    # meme voiture : chacun reste sous MAX_DETOUR_MIN, leur somme sous ce seuil.
+    MAX_TOTAL_DETOUR_MIN = float(os.getenv("MAX_TOTAL_DETOUR_MIN", "20.0"))
+    # Deux trajets a moins de cet ecart (minutes) se chevauchent : on ne peut
+    # pas etre engage sur les deux (deux voitures, ou conducteur et passager).
+    SLOT_CONFLICT_MIN = int(os.getenv("SLOT_CONFLICT_MIN", "45"))
     # Temps de detour maximum accepte (minutes) pour aller recuperer le
     # passager par rapport au trajet direct du conducteur (voir matching.py).
     MAX_DETOUR_MIN = float(os.getenv("MAX_DETOUR_MIN", "12.0"))
     # Nombre max de candidats (par trajet de l'utilisateur courant) pour lesquels on calcule
-    # le detour reel via ORS - borne le nombre d'appels au service de routing.
+    # le detour reel via OSRM - borne le nombre de calculs d'itineraire.
     MAX_DETOUR_CANDIDATES = int(os.getenv("MAX_DETOUR_CANDIDATES", "3"))
 
-    # Routing (OpenRouteService)
-    ORS_API_KEY = os.getenv("ORS_API_KEY", "")
-    ORS_MAX_REQUESTS_PER_MINUTE = int(os.getenv("ORS_MAX_REQUESTS_PER_MINUTE", "35"))
+    # Routing : serveur OSRM local (service docker "osrm").
+    OSRM_URL = os.getenv("OSRM_URL", "http://osrm:5000")
 
     # Upload
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "5"))

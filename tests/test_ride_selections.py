@@ -4,6 +4,7 @@ from datetime import datetime
 import unittest
 from unittest.mock import MagicMock, patch
 
+from backend.core.config import config
 from backend.database.manager import Database
 
 
@@ -190,7 +191,7 @@ class RideSelectionTests(unittest.TestCase):
         self.assertEqual(result, {"status": "already_selected"})
         self.connection.commit.assert_not_called()
 
-    def test_select_ride_refuses_another_ride_at_the_same_minute(self):
+    def test_select_ride_refuses_another_ride_in_the_same_slot(self):
         ride_time = datetime(2026, 9, 28, 8, 15)
         self.cursor.fetchone.side_effect = [
             {"id": 7},
@@ -215,8 +216,9 @@ class RideSelectionTests(unittest.TestCase):
 
         self.assertEqual(result, {"status": "time_conflict"})
         conflict_query, params = self.cursor.execute.call_args_list[3].args
-        self.assertIn("date_trunc('minute'", conflict_query)
-        self.assertEqual(params, (7, ride_time))
+        # Fenetre de chevauchement, pas la minute exacte (8h00 et 8h15 se chevauchent).
+        self.assertIn("ABS(EXTRACT(EPOCH FROM", conflict_query)
+        self.assertEqual(params, (7, ride_time, config.SLOT_CONFLICT_MIN))
         self.connection.commit.assert_not_called()
 
     def test_select_ride_refuses_a_slot_where_passenger_offers_his_car(self):
@@ -247,7 +249,7 @@ class RideSelectionTests(unittest.TestCase):
         self.assertEqual(result, {"status": "time_conflict"})
         offer_query, params = self.cursor.execute.call_args_list[4].args
         self.assertIn("is_offer", offer_query)
-        self.assertEqual(params, (7, ride_time))
+        self.assertEqual(params, (7, ride_time, config.SLOT_CONFLICT_MIN))
         self.connection.commit.assert_not_called()
 
     def test_select_ride_refuses_a_ride_that_is_not_offered(self):
@@ -288,6 +290,47 @@ class RideSelectionTests(unittest.TestCase):
         self.assertIn("passenger_id = %s", query)
         self.assertEqual(parameters, (25, 7))
         self.connection.rollback.assert_called_once_with()
+
+    def test_cancel_refuses_a_ride_that_has_started(self):
+        """Une etape de suivi confirmee bloque l'annulation, meme par appel direct."""
+        self.cursor.fetchone.return_value = {
+            "id": 40,
+            "driver_picked_up_at": datetime(2026, 9, 28, 8, 5),
+            "passenger_onboard_at": None,
+            "driver_completed_at": None,
+            "passenger_arrived_at": None,
+        }
+
+        with self._patch_connection():
+            result = self.database.cancel_ride_selection(ride_id=25, passenger_id=7)
+
+        self.assertEqual(result, {"status": "already_started"})
+        query, _ = self.cursor.execute.call_args.args
+        self.assertIn("FOR UPDATE", query)
+        self.assertNotIn("DELETE", query)
+        self.connection.rollback.assert_called_once_with()
+        self.connection.commit.assert_not_called()
+
+    def test_cancel_deletes_a_ride_that_has_not_started(self):
+        self.cursor.fetchone.side_effect = [
+            {
+                "id": 40,
+                "driver_picked_up_at": None,
+                "passenger_onboard_at": None,
+                "driver_completed_at": None,
+                "passenger_arrived_at": None,
+            },
+            {"available_seats": 3},
+        ]
+
+        with self._patch_connection():
+            result = self.database.cancel_ride_selection(ride_id=25, passenger_id=7)
+
+        self.assertEqual(result, {"status": "cancelled", "available_seats": 3})
+        delete_query, params = self.cursor.execute.call_args_list[1].args
+        self.assertIn("DELETE FROM ride_selections", delete_query)
+        self.assertEqual(params, (40,))
+        self.connection.commit.assert_called_once_with()
 
 
 if __name__ == "__main__":

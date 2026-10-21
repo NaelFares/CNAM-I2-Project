@@ -2,7 +2,7 @@
   <article class="card overflow-hidden p-0">
     <div class="p-5">
       <div class="mb-2 flex items-center justify-between gap-3">
-        <h3 class="text-lg font-bold text-slate-900">{{ match.score }}% de compatibilité</h3>
+        <h3 class="text-lg font-bold text-slate-900">Covoiturage compatible</h3>
         <Badge variant="primary">{{ match.ride_type }}</Badge>
       </div>
       <div class="flex items-center gap-2">
@@ -26,7 +26,6 @@
             rides_count: match.driver_rides_count,
             rides_to_next: null,
           }"
-          role-label="conducteur"
         />
         <ArrowRight class="h-4 w-4 shrink-0 text-slate-400" />
         <Avatar :name="match.passenger_name" :photo-url="match.passenger_photo_url" size="sm" />
@@ -40,10 +39,10 @@
       </div>
 
       <div class="mt-2 space-y-1 text-sm text-slate-600">
-        <p>Départ&nbsp;: {{ match.ride_time }}</p>
-        <p>Écart de temps&nbsp;: {{ match.time_diff_min }} min</p>
-        <p>Détour pour récupérer le passager&nbsp;: +{{ match.extra_time_min.toFixed(1) }} min</p>
-        <p>Distance des départs&nbsp;: {{ match.distance_km.toFixed(2) }} km</p>
+        <p>Trajet du conducteur&nbsp;: {{ match.ride_time }}</p>
+        <p v-if="match.passage_time">{{ passageLabel(match) }} (écart de {{ match.time_diff_min }} min)</p>
+        <p>Détour pour prendre et déposer le passager&nbsp;: +{{ match.extra_time_min.toFixed(1) }} min</p>
+        <p>Écart à la route du conducteur&nbsp;: {{ match.distance_km.toFixed(1) }} km</p>
       </div>
 
       <!-- Légende -->
@@ -60,7 +59,9 @@
         :route-geometry="match.route_geometry"
         :my-route-geometry="myRouteGeometry"
         :passenger-coords="match.passenger_coords"
+        :dropoff-coords="match.passenger_dropoff_coords"
         :dest-coords="match.campus_coords"
+        :estimated="Boolean(match.route_estimated)"
       />
     </button>
 
@@ -82,7 +83,9 @@
             :route-geometry="match.route_geometry"
             :my-route-geometry="myRouteGeometry"
             :passenger-coords="match.passenger_coords"
+            :dropoff-coords="match.passenger_dropoff_coords"
             :dest-coords="match.campus_coords"
+            :estimated="Boolean(match.route_estimated)"
           />
         </div>
       </div>
@@ -98,6 +101,7 @@ import RouteMap from "./RouteMap.vue";
 import { Avatar, Badge, StarRating, TierBadge } from "./ui";
 import { genderLabel } from "../lib/gender";
 import { tripPreferenceBadges } from "../lib/preferences";
+import { passageLabel } from "../lib/week";
 
 const props = defineProps({
   match: { type: Object, required: true },

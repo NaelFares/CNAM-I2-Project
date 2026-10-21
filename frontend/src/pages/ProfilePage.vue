@@ -232,7 +232,8 @@
           :route-geometry="previewRoute.geometry"
           :driver-coords="[form.start_lat, form.start_lon]"
           :dest-coords="[form.school_lat, form.school_lon]"
-          :route-label="previewRoute.geometry.length ? `${formattedDuration} · ${previewRoute.distanceKm.toFixed(1)} km` : ''"
+          :route-label="previewRoute.geometry.length ? `${previewRoute.estimated ? '≈ ' : ''}${formattedDuration} · ${previewRoute.distanceKm.toFixed(1)} km` : ''"
+          :estimated="previewRoute.estimated"
         />
         <p class="mt-2 text-xs text-slate-500">
           Recalculé automatiquement à chaque changement d'adresse. Cette valeur n'est pas enregistrée.
@@ -331,7 +332,7 @@ const schoolTarget = reactive({
 const startAuto = useAddressAutocomplete(startTarget);
 const schoolAuto = useAddressAutocomplete(schoolTarget);
 
-const previewRoute = ref({ geometry: [], distanceKm: 0, durationMin: 0 });
+const previewRoute = ref({ geometry: [], distanceKm: 0, durationMin: 0, estimated: false });
 let previewTimer = null;
 
 const formattedDuration = computed(() => {
@@ -356,9 +357,10 @@ function scheduleRoutePreview() {
         geometry: data.geometry,
         distanceKm: data.distance_m / 1000,
         durationMin: data.duration_s / 60,
+        estimated: Boolean(data.estimated),
       };
     } catch {
-      previewRoute.value = { geometry: [], distanceKm: 0, durationMin: 0 };
+      previewRoute.value = { geometry: [], distanceKm: 0, durationMin: 0, estimated: false };
     }
   }, 300);
 }

@@ -18,20 +18,19 @@
           </span>
         </div>
       </div>
-      <!-- Un palier par role : conduire et etre passager se comptent a part -->
-      <div class="ml-auto flex flex-wrap items-center gap-4">
-        <div v-for="role in roles" :key="role.key" class="text-right">
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{{ role.label }}</p>
-          <div class="mt-1 flex items-center justify-end gap-2">
-            <TierBadge :tier="role.tier" :role-label="role.label.toLowerCase()" />
-          </div>
-          <p class="mt-1 text-xs text-slate-500">
-            {{ role.tier.rides_count }} course{{ role.tier.rides_count > 1 ? "s" : "" }}
-            <span v-if="role.tier.rides_to_next">
-              · encore {{ role.tier.rides_to_next }}
-            </span>
-          </p>
+      <!-- Un seul palier : conduire et etre passager comptent tous les deux -->
+      <div class="ml-auto text-right">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Expérience</p>
+        <div class="mt-1 flex items-center justify-end gap-2">
+          <TierBadge :tier="tier" />
         </div>
+        <p class="mt-1 text-xs text-slate-500">
+          {{ tier.rides_count }} course{{ plural(tier.rides_count) }} terminée{{ plural(tier.rides_count) }}
+          <span v-if="tier.rides_to_next">· encore {{ tier.rides_to_next }} avant le palier suivant</span>
+        </p>
+        <p class="text-xs text-slate-400">
+          {{ summary.rides_as_driver || 0 }} comme conducteur · {{ summary.rides_as_passenger || 0 }} comme passager
+        </p>
       </div>
 
       <!-- Avis recus : replies par defaut, pour ne pas noyer la page -->
@@ -156,12 +155,10 @@ function formatRideTime(value) {
 const summary = computed(() => store.myRatings.summary);
 const receivedRatings = computed(() => store.myRatings.ratings || []);
 
-// Les deux paliers sont toujours affiches : voir qu'on repart de zero dans
-// l'autre role est une information utile, pas un manque.
-const roles = computed(() => [
-  { key: "driver", label: "Conducteur", tier: summary.value.driver || {} },
-  { key: "passenger", label: "Passager", tier: summary.value.passenger || {} },
-]);
+// Un seul palier par profil : chaque course terminee compte, que l'on ait
+// conduit ou ete passager. Le detail par role montre d'ou il vient.
+const tier = computed(() => summary.value.tier || {});
+const plural = (count) => (count > 1 ? "s" : "");
 const showRatings = ref(false);
 
 onMounted(() => {

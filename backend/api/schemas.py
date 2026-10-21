@@ -168,7 +168,8 @@ class MatchDTO(BaseModel):
     # Reputation du conducteur : None tant qu'il n'a recu aucune note.
     driver_rating_average: float | None = None
     driver_rating_count: int = 0
-    # Palier d'experience du conducteur, base sur ses courses terminees.
+    # Palier d'experience du conducteur, base sur toutes ses courses terminees
+    # (comme conducteur et comme passager).
     driver_tier_key: str = "beginner"
     driver_tier_label: str = "Débutant"
     driver_rides_count: int = 0
@@ -180,14 +181,21 @@ class MatchDTO(BaseModel):
     ride_time: str
     ride_type: str
     time_diff_min: int
+    # Heure de depose (aller) ou de prise en charge (retour), "HH:MM".
+    passage_time: str | None = None
+    # Plus grand ecart (km) entre la route du conducteur et le passager.
     distance_km: float
     extra_time_min: float = 0.0
     score: int
     driver_coords: tuple[float, float]
     passenger_coords: tuple[float, float]
     campus_coords: tuple[float, float]
+    # Point de depose du passager ; None pour d'anciens clients.
+    passenger_dropoff_coords: tuple[float, float] | None = None
     route_geometry: list[list[float]] = []
     route_distance_km: float = 0.0
+    # True quand OSRM etait indisponible : trace et detour sont estimes.
+    route_estimated: bool = False
     car_seats: int
     available_seats: int
 
@@ -216,6 +224,7 @@ class MatchSearchRequest(BaseModel):
 class MatchSearchResponse(BaseModel):
     matches: list[MatchDTO]
     search_route_geometry: list[list[float]] = []
+    search_route_estimated: bool = False
     feedback: ApiMessage
 
 
@@ -282,9 +291,9 @@ class RideRatingResponse(BaseModel):
 
 
 class ExperienceTierDTO(BaseModel):
-    """Palier d'experience pour un role donne."""
+    """Palier d'experience d'un profil."""
 
-    # Courses terminees dans ce role.
+    # Courses terminees, tous roles confondus.
     rides_count: int = 0
     tier_key: str = "beginner"
     tier_label: str = "Débutant"
@@ -299,10 +308,12 @@ class RatingSummaryDTO(BaseModel):
     # moyenne, ce qui permet d'afficher "pas encore note".
     average: float | None = None
     count: int = 0
-    # Paliers d'experience, comptes separement par role : conduire et etre
-    # passager ne demandent pas les memes competences.
-    driver: ExperienceTierDTO = ExperienceTierDTO()
-    passenger: ExperienceTierDTO = ExperienceTierDTO()
+    # Un seul palier par profil : chaque course terminee compte, que la
+    # personne ait conduit ou ete passagere. Le detail par role est affiche
+    # a titre d'information.
+    tier: ExperienceTierDTO = ExperienceTierDTO()
+    rides_as_driver: int = 0
+    rides_as_passenger: int = 0
 
 
 class ReceivedRatingDTO(BaseModel):
@@ -337,6 +348,12 @@ class SelectedPassengerDTO(BaseModel):
     email: EmailStr
     selected_at: datetime
     selection_status: Literal["pending", "accepted", "rejected"]
+    # Heure de depose (aller) ou de prise en charge (retour), detour, et
+    # arrets en chemin : None pour les reservations plus anciennes.
+    passage_time: str | None = None
+    detour_min: float | None = None
+    pickup_on_the_way: bool | None = None
+    dropoff_on_the_way: bool | None = None
 
 
 class DriverOfferDTO(BaseModel):
@@ -416,6 +433,16 @@ class RideOfferResponse(BaseModel):
     ride_id: int
     is_offer: bool
     feedback: ApiMessage
+
+
+class RideSelectRequest(BaseModel):
+    """Correspondance choisie par le passager, telle que calculee par le
+    matching : elle est enregistree avec la demande."""
+
+    pickup: tuple[float, float] | None = None
+    dropoff: tuple[float, float] | None = None
+    passage_time: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}$")
+    detour_min: float | None = Field(default=None, ge=0, le=120)
 
 
 class RideSelectionResponse(BaseModel):

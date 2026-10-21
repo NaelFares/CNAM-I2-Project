@@ -1,13 +1,13 @@
-"""Paliers d'experience conducteur et passager.
+"""Palier d'experience d'un profil.
 
 Le palier depend uniquement du nombre de courses effectivement realisees,
 c'est-a-dire confirmees comme terminees par les deux parties. La note
 moyenne est affichee a cote mais n'entre pas dans le calcul : elle dit la
 qualite, le palier dit l'experience.
 
-Les deux roles sont comptes separement. Conduire et etre passager ne
-demandent pas les memes competences : quelqu'un de tres experimente comme
-passager qui se met a conduire repart au premier palier cote volant.
+Un seul palier par profil, quel que soit le role : chaque course terminee
+compte pour une, que la personne ait conduit ou ete passagere. Le detail
+par role reste affiche a cote, a titre d'information.
 
 Fonction pure, sans acces base ni dependance au reste : elle ne recoit
 qu'un nombre.

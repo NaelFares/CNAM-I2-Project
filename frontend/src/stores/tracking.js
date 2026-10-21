@@ -11,13 +11,14 @@ export const useTrackingStore = defineStore("tracking", {
     loading: false,
     loaded: false,
     // Reputation du compte courant, rechargee apres chaque note recue.
-    // Structure alignee sur RatingSummaryDTO : un palier par role.
+    // Structure alignee sur RatingSummaryDTO : un seul palier par profil.
     myRatings: {
       summary: {
         average: null,
         count: 0,
-        driver: { rides_count: 0, tier_key: "beginner", tier_label: "Débutant", rides_to_next: 20 },
-        passenger: { rides_count: 0, tier_key: "beginner", tier_label: "Débutant", rides_to_next: 20 },
+        tier: { rides_count: 0, tier_key: "beginner", tier_label: "Débutant", rides_to_next: 20 },
+        rides_as_driver: 0,
+        rides_as_passenger: 0,
       },
       ratings: [],
     },

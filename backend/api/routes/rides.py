@@ -8,6 +8,7 @@ from backend.core.config import config
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
+from backend.services.matching import MatchingService
 
 from backend.api.deps import require_current_user
 from backend.api.feedback import make_feedback, raise_api_error
@@ -20,6 +21,7 @@ from backend.api.schemas import (
     OfferCreateResponse,
     RideDTO,
     RideOfferRequest,
+    RideSelectRequest,
     RideOfferResponse,
     RideSelectionResponse,
     RidesGenerateResponse,
@@ -197,8 +199,13 @@ def set_ride_offer(ride_id: int, payload: RideOfferRequest, user: User = Depends
 
 
 @router.post("/{ride_id}/select", response_model=RideSelectionResponse)
-def select_ride(ride_id: int, user: User = Depends(require_current_user)):
-    result = db.select_ride(ride_id, user.id)
+def select_ride(
+    ride_id: int,
+    body: RideSelectRequest | None = None,
+    user: User = Depends(require_current_user),
+):
+    # Le corps est facultatif : les anciens clients reservent sans detail.
+    result = db.select_ride(ride_id, user.id, body.model_dump() if body else None)
     selection_status = result["status"]
 
     if selection_status == "not_found":
@@ -222,8 +229,14 @@ def select_ride(ride_id: int, user: User = Depends(require_current_user)):
 
 
 @router.post("/{ride_id}/passengers/{passenger_id}/accept", response_model=RideSelectionResponse)
-def accept_passenger(ride_id: int, passenger_id: int, user: User = Depends(require_current_user)):
-    return _decide_passenger(ride_id, passenger_id, user.id, "accept")
+def accept_passenger(
+    ride_id: int,
+    passenger_id: int,
+    force: bool = False,
+    user: User = Depends(require_current_user),
+):
+    # force=true : le conducteur a vu l'avertissement de detour et accepte quand meme.
+    return _decide_passenger(ride_id, passenger_id, user.id, "accept", force=force)
 
 
 @router.post("/{ride_id}/passengers/{passenger_id}/reject", response_model=RideSelectionResponse)
@@ -231,7 +244,17 @@ def reject_passenger(ride_id: int, passenger_id: int, user: User = Depends(requi
     return _decide_passenger(ride_id, passenger_id, user.id, "reject")
 
 
-def _decide_passenger(ride_id: int, passenger_id: int, driver_id: int, decision: str):
+def _decide_passenger(ride_id: int, passenger_id: int, driver_id: int, decision: str, force: bool = False):
+    # Le detour total n'est connu qu'ici : les demandes en attente ont ete
+    # calculees chacune seule, le conducteur choisit qui il accepte. C'est un
+    # avertissement, pas une interdiction : il peut confirmer avec force=true.
+    if decision == "accept" and not force:
+        ride = db.get_ride_by_id(ride_id)
+        stop = db.get_selection_stop(ride_id, passenger_id)
+        if ride and ride.user_id == driver_id and stop:
+            accepted = db.get_accepted_stops([ride_id]).get(ride_id, [])
+            if MatchingService.accept_exceeds_total_detour(ride, stop, accepted):
+                raise_api_error("RIDE_DETOUR_TOO_LONG", http_status=status.HTTP_409_CONFLICT)
     result = db.decide_ride_selection(ride_id, passenger_id, driver_id, decision)
     if result["status"] == "not_found":
         raise_api_error("RIDE_SELECTION_NOT_FOUND", http_status=status.HTTP_404_NOT_FOUND)
@@ -260,6 +283,8 @@ def cancel_ride_selection(ride_id: int, user: User = Depends(require_current_use
             "RIDE_SELECTION_NOT_FOUND",
             http_status=status.HTTP_404_NOT_FOUND,
         )
+    if result["status"] == "already_started":
+        raise_api_error("TRACKING_CANCEL_TOO_LATE", http_status=status.HTTP_409_CONFLICT)
 
     return RideSelectionResponse(
         ride_id=ride_id,

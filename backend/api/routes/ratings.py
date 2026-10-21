@@ -34,19 +34,21 @@ def _tier_dto(rides_count: int) -> ExperienceTierDTO:
 
 
 def _summary_dto(user_id: int) -> RatingSummaryDTO:
-    """Moyenne des notes recues et paliers d'experience par role.
+    """Moyenne des notes recues et palier d'experience du profil.
 
-    Le palier se base sur les courses terminees des deux cotes, pas sur le
-    nombre de notes : quelqu'un de jamais note progresse quand meme, et une
-    course confirmee par les deux participants ne peut pas etre gonflee.
+    Le palier se base sur les courses terminees, pas sur le nombre de
+    notes : quelqu'un de jamais note progresse quand meme, et une course
+    confirmee par les deux participants ne peut pas etre gonflee. Il est
+    unique : conduire et etre passager comptent tous les deux.
     """
     summary = ratings_db.get_summary(user_id)
     counts = selections_db.count_completed_rides(user_id)
     return RatingSummaryDTO(
         average=summary.average,
         count=summary.count,
-        driver=_tier_dto(counts["driver"]),
-        passenger=_tier_dto(counts["passenger"]),
+        tier=_tier_dto(counts["driver"] + counts["passenger"]),
+        rides_as_driver=counts["driver"],
+        rides_as_passenger=counts["passenger"],
     )
 
 

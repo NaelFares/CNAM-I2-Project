@@ -1,0 +1,3 @@
+# Les scripts shell tournent dans des conteneurs Linux : une fin de ligne
+# Windows (CRLF) les casserait, quel que soit le poste qui fait le checkout.
+*.sh text eol=lf

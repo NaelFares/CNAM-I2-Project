@@ -13,6 +13,7 @@ dist/
 
 # Environment
 .env
+.env old
 
 # Database
 *.db

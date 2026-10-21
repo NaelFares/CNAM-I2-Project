@@ -12,6 +12,8 @@
 - Ajuster les ports, la base de données et les modèles si nécessaire.
 
 Le fournisseur IA n'est pas configuré dans `.env` : il est choisi explicitement par le script de démarrage.
+
+Les itinéraires sont calculés en local (OSRM) : aucune clé à renseigner. Au **premier** démarrage, la carte de Toulouse est téléchargée (~65 Mo) puis préparée, ce qui prend 1 à 2 minutes. Pendant ce temps, l'application fonctionne déjà, avec des itinéraires estimés.
 Chaque script demande aussi si les 40 comptes de test doivent être régénérés avant de lancer la stack.
 
 ## 2. Choisir le mode IA
@@ -52,6 +54,23 @@ Pour démarrer sans suivre les logs, ajouter `-NoLogs`. Pour Groq sans reconstru
 - API : `http://localhost:${BACKEND_PORT}` — port 8000 par défaut
 - Health : `http://localhost:${BACKEND_PORT}/health`
 - Ollama, uniquement avec les scripts Ollama : `http://localhost:${OLLAMA_PORT}` — port 11434 par défaut
+
+## 4. Données de démonstration
+
+40 comptes de test (`etudiant01` à `etudiant40@studride-test.fr`, mot de passe `Test1234!`), listés dans `backend/database/seed_accounts.txt`. Répondre « oui » à la question de régénération du script de démarrage les recrée.
+
+Tout est regroupé sur **la semaine de cours qui suit le démarrage** (lundi à vendredi) : 6 écoles toulousaines avec chacune son emploi du temps, des domiciles répartis sur la métropole, des trajets proposés et des demandes de place. Seul l'historique (courses terminées, avis) est dans le passé, et une course en cours est placée le jour même.
+
+Comptes utiles pour tester :
+
+| Compte | Profil | À tester |
+|---|---|---|
+| `etudiant01` | Léa, passagère, INSA (Ramonville) | Recherche rapide et par semaine (aucune réservation, tout est libre), dépose en chemin par quelqu'un d'une autre école (Camille, qui va à la N7 : aller lundi 8h, retour mercredi 12h), « ladies only », course en cours (fin du suivi, annulation refusée), courses passées à noter |
+| `etudiant05`, `etudiant20`, `etudiant21` | Chloé (N7), Théo (Capitole), Alice (Jean Jaurès) | Autres comptes passagers libres : recherche et réservation depuis d'autres écoles et quartiers |
+| `etudiant02` | Thomas, conducteur, INSA | Palier « Expérimenté » |
+| `etudiant04`, `etudiant06` | Hugo (N7), Inès (IUT) | Palier « Intermédiaire » |
+| `etudiant30` | Julie, conductrice, N7 | Demandes à accepter (jeudi et vendredi), avec l'heure de passage, les arrêts en chemin et le détour de chaque passager |
+| `etudiant13` | Jade, passagère, INSA (Blagnac) | Aucune correspondance : tout détour dépasse 12 min |
 
 ## Commandes utiles
 

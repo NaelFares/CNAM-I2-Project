@@ -57,7 +57,7 @@ class WeeklyMatchingTests(unittest.TestCase):
             patch.object(matches_route, "selections_db") as selections,
         ):
             ratings.get_summaries.return_value = {}
-            selections.count_completed_rides_as_driver.return_value = {}
+            selections.count_completed_rides_total.return_value = {}
             database.get_events_by_user.return_value = []
             database.get_active_rides_by_user.return_value = [inside, weekend, before]
             database.get_all_active_rides.return_value = [driver, weekend, before]

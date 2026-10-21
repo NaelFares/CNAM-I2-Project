@@ -14,7 +14,6 @@ import Badge from "./Badge.vue";
 const props = defineProps({
   // ExperienceTierDTO : { rides_count, tier_key, tier_label, rides_to_next }
   tier: { type: Object, required: true },
-  roleLabel: { type: String, default: "" },
 });
 
 const variant = computed(
@@ -27,8 +26,8 @@ const icon = computed(
 
 const title = computed(() => {
   const count = props.tier.rides_count;
-  const role = props.roleLabel ? ` comme ${props.roleLabel}` : "";
-  const base = `${count} course${count > 1 ? "s" : ""} terminée${count > 1 ? "s" : ""}${role}`;
+  // Palier unique : les courses comptent quel que soit le role tenu.
+  const base = `${count} course${count > 1 ? "s" : ""} terminée${count > 1 ? "s" : ""}`;
   // Au dernier palier il n'y a plus rien a atteindre : on n'affiche rien.
   return props.tier.rides_to_next
     ? `${base} — encore ${props.tier.rides_to_next} avant le palier suivant`

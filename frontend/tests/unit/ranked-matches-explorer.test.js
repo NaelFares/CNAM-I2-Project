@@ -63,7 +63,7 @@ describe("RankedMatchesExplorer", () => {
       },
     });
 
-    expect(wrapper.find(".matches-explorer__gold-group small").text()).toContain("2 trajets à 96 %");
+    expect(wrapper.find(".matches-explorer__gold-group small").text()).toContain("2 trajets en tête");
     expect(wrapper.findAll(".ranked-match-card")).toHaveLength(3);
     expect(wrapper.findAll(".ranked-match-card")[0].attributes("aria-current")).toBe("true");
 
