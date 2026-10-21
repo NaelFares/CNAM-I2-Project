@@ -18,6 +18,11 @@ class GroqProvider:
         from groq import Groq  # lazy : package requis seulement si AI_IMPORT_PROVIDER=groq
         client = Groq(api_key=config.GROQ_API_KEY)
         started = time.perf_counter()
+        # Les modeles gpt-oss "raisonnent" avant de repondre et ces tokens comptent
+        # dans max_tokens : avec une limite trop basse, le JSON etait tronque.
+        extra: dict[str, Any] = {}
+        if config.AI_IMPORT_MODEL.startswith("openai/gpt-oss"):
+            extra["reasoning_effort"] = "low"
         response = client.chat.completions.create(
             model=config.AI_IMPORT_MODEL,
             messages=[
@@ -33,7 +38,8 @@ class GroqProvider:
                 },
             },
             temperature=0,
-            max_tokens=768,
+            max_tokens=4096,
+            **extra,
         )
         logger.info("Groq call success: elapsed=%.2fs", time.perf_counter() - started)
         return parse_json_response(response.choices[0].message.content or "")
