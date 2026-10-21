@@ -18,8 +18,12 @@ export const useAuthStore = defineStore("auth", {
         const data = await fetchSession();
         this.isLoggedIn = data.authenticated;
         this.user = data.user;
-      } finally {
         this.initialized = true;
+      } catch {
+        // API injoignable (serveur qui redemarre) : sans ce repli, la
+        // navigation echoue et la page reste blanche. On renvoie vers la
+        // connexion, et la prochaine navigation retentera la session.
+        this.isLoggedIn = false;
       }
     },
     async loginWithEmail(email, password) {

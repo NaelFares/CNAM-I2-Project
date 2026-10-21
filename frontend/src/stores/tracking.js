@@ -5,6 +5,19 @@ import { confirmTrackingStep, fetchMyRatings, fetchTrackings, rateRide } from ".
 import { isFinished } from "../lib/tracking";
 import { useFeedbackStore } from "./feedback";
 
+function byRideTime(a, b) {
+  return String(a.ride_time).localeCompare(String(b.ride_time));
+}
+
+// Vrai si la course a lieu un jour posterieur a aujourd'hui (heure locale).
+function isAfterToday(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  return date > endOfToday;
+}
+
 export const useTrackingStore = defineStore("tracking", {
   state: () => ({
     trackings: [],
@@ -24,10 +37,20 @@ export const useTrackingStore = defineStore("tracking", {
     },
   }),
   getters: {
-    // Les courses en cours sont ce qui interesse l'utilisateur maintenant ;
-    // l'historique reste consultable mais passe au second plan.
-    active: (state) => state.trackings.filter((t) => !isFinished(t.status)),
-    finished: (state) => state.trackings.filter((t) => isFinished(t.status)),
+    // En cours : deja commencees, ou prevues aujourd'hui (ou passees sans
+    // avoir ete cloturees). C'est la qu'on confirme les etapes du suivi.
+    active: (state) =>
+      state.trackings
+        .filter((t) => !isFinished(t.status) && (t.status !== "pending" || !isAfterToday(t.ride_time)))
+        .sort(byRideTime),
+    // A venir : confirmees par le conducteur, mais pas avant un autre jour.
+    upcoming: (state) =>
+      state.trackings
+        .filter((t) => t.status === "pending" && isAfterToday(t.ride_time))
+        .sort(byRideTime),
+    // Historique : la plus recente d'abord.
+    finished: (state) =>
+      state.trackings.filter((t) => isFinished(t.status)).sort((a, b) => byRideTime(b, a)),
   },
   actions: {
     async load() {

@@ -26,6 +26,9 @@ export default {
           strong: "var(--color-primary-strong)"
         },
         success: { DEFAULT: "var(--color-success)", soft: "var(--color-success-soft)" },
+        warning: { DEFAULT: "var(--color-warning)", soft: "var(--color-warning-soft)" },
+        outbound: { DEFAULT: "var(--color-outbound)", soft: "var(--color-outbound-soft)" },
+        return: { DEFAULT: "var(--color-return)", soft: "var(--color-return-soft)" },
         danger: { DEFAULT: "var(--color-danger)", soft: "var(--color-danger-soft)" },
         info: { DEFAULT: "var(--color-info)", soft: "var(--color-info-soft)" }
       },

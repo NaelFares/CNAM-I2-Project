@@ -2,124 +2,171 @@
   <section class="page-shell">
     <header class="page-header">
       <h1 class="page-title">Mon profil</h1>
-      <p class="page-subtitle">Ces informations servent à calculer vos trajets et vos correspondances.</p>
+      <p class="page-subtitle">Ces informations servent à trouver les trajets qui vous correspondent.</p>
     </header>
 
-    <form class="space-y-5" @submit.prevent="onSubmit">
-      <!-- Infos de base -->
-      <Card>
-        <h2 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-          <Info class="h-4 w-4" />
-          Informations générales
-        </h2>
-        <!-- Photo de profil : hors du formulaire, elle a son propre endpoint -->
-        <div class="mb-6 flex flex-wrap items-center gap-5">
-          <Avatar :name="form.name" :photo-url="photoUrl" size="xl" />
-          <div class="space-y-2">
-            <div class="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" :disabled="app.loading" @click="photoInput?.click()">
-                <ImagePlus class="h-4 w-4" />
-                {{ photoUrl ? "Changer la photo" : "Ajouter une photo" }}
-              </Button>
-              <Button v-if="photoUrl" type="button" variant="secondary" :disabled="app.loading" @click="onPhotoRemove">
-                <Trash2 class="h-4 w-4" />
-                Retirer
-              </Button>
-            </div>
-            <p class="text-xs text-slate-500">JPEG, PNG ou WebP — 2 Mo maximum.</p>
-          </div>
-          <input
-            ref="photoInput"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            class="hidden"
-            @change="onPhotoSelected"
-          />
-        </div>
+    <!-- Identite et reputation -->
+    <Card class="flex flex-wrap items-center gap-5">
+      <!-- Photo de profil : hors du formulaire, elle a son propre endpoint -->
+      <div class="relative">
+        <Avatar :name="form.name" :photo-url="photoUrl" size="xl" />
+        <button
+          type="button"
+          class="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-primary text-white shadow"
+          :aria-label="photoUrl ? 'Changer la photo' : 'Ajouter une photo'"
+          :title="photoUrl ? 'Changer la photo' : 'Ajouter une photo'"
+          :disabled="app.loading"
+          @click="photoInput?.click()"
+        >
+          <Camera class="h-4 w-4" aria-hidden="true" />
+        </button>
+        <input ref="photoInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onPhotoSelected" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-xl font-bold text-slate-900">{{ form.name || "—" }}</p>
+        <p class="muted truncate">{{ form.email }}</p>
+        <button v-if="photoUrl" type="button" class="btn-ghost btn-sm -ml-3 mt-1" :disabled="app.loading" @click="onPhotoRemove">
+          <Trash2 class="h-4 w-4" aria-hidden="true" />
+          Retirer la photo
+        </button>
+      </div>
+    </Card>
 
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="md:col-span-2">
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Nom complet</label>
-            <Input v-model="form.name" required />
+    <section class="space-y-3">
+      <SectionHeader title="Réputation" />
+      <ReputationCard />
+    </section>
+
+    <form class="space-y-8" @submit.prevent="onSubmit">
+      <!-- Trajet domicile <-> ecole -->
+      <section class="space-y-3">
+        <SectionHeader title="Mon trajet" subtitle="Domicile et école servent de départ et d'arrivée par défaut." />
+        <Card class="space-y-5">
+          <div class="grid gap-4 md:grid-cols-2">
+            <AddressField :target="startTarget" label="Domicile" :icon="House" placeholder="Numéro, rue, ville…" />
+            <AddressField :target="schoolTarget" label="École" :icon="School" placeholder="Nom ou adresse de l'établissement…" />
           </div>
-          <div class="md:col-span-2">
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Email</label>
-            <Input v-model="form.email" type="email" required />
-          </div>
-          <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tolérance horaire (minutes)</label>
-            <Input v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
-          </div>
-          <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Sexe</label>
-            <select v-model="form.gender" required class="input">
-              <option v-for="option in GENDER_OPTIONS" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </div>
-          <!-- Facultatif : sans voiture, on cherche des trajets sans en proposer -->
-          <div class="md:col-span-2">
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">
-              Places dans ma voiture
-              <span class="ml-1 font-normal text-slate-400">(facultatif)</span>
-            </label>
-            <Input
-              v-model="form.car_seats"
-              type="number"
-              min="1"
-              max="4"
-              placeholder="Je n'ai pas de voiture"
+
+          <div class="overflow-hidden rounded-xl border border-slate-200">
+            <MapPicker
+              v-if="adjusting"
+              :lat="adjusting === 'start' ? form.start_lat : form.school_lat"
+              :lon="adjusting === 'start' ? form.start_lon : form.school_lon"
+              @moved="onMapMoved"
             />
-            <p class="mt-1 text-xs text-slate-500">
-              De 1 à 4 places passagers, conducteur non compté. Nécessaire pour proposer un trajet ;
-              laissez vide si vous n'avez pas de voiture.
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Préférences de trajet -->
-      <Card>
-        <h2 class="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-          <Car class="h-4 w-4" />
-          Préférences de trajet
-        </h2>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Tabac</label>
-            <select v-model="form.smoking_preference" class="input">
-              <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+            <RouteMap
+              v-else
+              :route-geometry="previewRoute.geometry"
+              :driver-coords="[form.start_lat, form.start_lon]"
+              :dest-coords="[form.school_lat, form.school_lon]"
+              :route-label="previewRoute.geometry.length ? `${previewRoute.estimated ? '≈ ' : ''}${formattedDuration} · ${formattedDistance}` : ''"
+              :estimated="previewRoute.estimated"
+            />
           </div>
 
-          <div>
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">Musique</label>
-            <select v-model="form.music_preference" class="input">
-              <option v-for="option in MUSIC_OPTIONS" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="muted mr-auto">
+              {{ adjusting ? "Cliquez ou faites glisser le marqueur pour affiner la position." : "Aperçu recalculé à chaque changement d'adresse." }}
+            </span>
+            <template v-if="!adjusting">
+              <Button size="sm" variant="secondary" @click="adjusting = 'start'">
+                <Crosshair class="h-4 w-4" aria-hidden="true" />
+                Ajuster le domicile
+              </Button>
+              <Button size="sm" variant="secondary" @click="adjusting = 'school'">
+                <Crosshair class="h-4 w-4" aria-hidden="true" />
+                Ajuster l'école
+              </Button>
+            </template>
+            <Button v-else size="sm" @click="adjusting = null">
+              <Check class="h-4 w-4" aria-hidden="true" />
+              Terminé
+            </Button>
           </div>
 
-          <!-- Styles : uniquement si la musique est acceptée -->
-          <div v-if="showMusicGenres" class="md:col-span-2">
-            <label class="mb-1.5 block text-sm font-semibold text-slate-700">
+          <div class="max-w-xs">
+            <label for="tolerance" class="mb-1.5 block text-sm font-medium text-slate-700">Tolérance horaire</label>
+            <div class="relative">
+              <Input id="tolerance" v-model.number="form.time_tolerance_min" type="number" min="5" max="60" />
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">min</span>
+            </div>
+            <p class="muted mt-1">Avance à l'aller, attente au retour : ce que vous acceptez.</p>
+          </div>
+        </Card>
+      </section>
+
+      <!-- Voiture -->
+      <section class="space-y-3">
+        <SectionHeader title="Ma voiture" subtitle="Facultatif : nécessaire seulement pour proposer des trajets." />
+        <Card>
+          <div class="segmented" role="radiogroup" aria-label="Places proposées">
+            <button type="button" role="radio" :aria-checked="!form.car_seats" :aria-pressed="!form.car_seats" @click="form.car_seats = null">
+              Pas de voiture
+            </button>
+            <button
+              v-for="count in [1, 2, 3, 4]"
+              :key="count"
+              type="button"
+              role="radio"
+              :aria-checked="Number(form.car_seats) === count"
+              :aria-pressed="Number(form.car_seats) === count"
+              @click="form.car_seats = count"
+            >
+              {{ count }} place{{ count > 1 ? "s" : "" }}
+            </button>
+          </div>
+          <p class="muted mt-2">Places passagers, conducteur non compté.</p>
+        </Card>
+      </section>
+
+      <!-- Informations et preferences -->
+      <section class="space-y-3">
+        <SectionHeader title="Informations et préférences" />
+        <Card class="space-y-5">
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <label for="name" class="mb-1.5 block text-sm font-medium text-slate-700">Nom complet</label>
+              <Input id="name" v-model="form.name" required />
+            </div>
+            <div>
+              <label for="email" class="mb-1.5 block text-sm font-medium text-slate-700">Email</label>
+              <Input id="email" v-model="form.email" type="email" required />
+            </div>
+            <div>
+              <label for="gender" class="mb-1.5 block text-sm font-medium text-slate-700">Sexe</label>
+              <select id="gender" v-model="form.gender" required class="input">
+                <option v-for="option in GENDER_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+            </div>
+            <div>
+              <label for="smoking" class="mb-1.5 block text-sm font-medium text-slate-700">Tabac</label>
+              <select id="smoking" v-model="form.smoking_preference" class="input">
+                <option v-for="option in SMOKING_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+            </div>
+            <div>
+              <label for="music" class="mb-1.5 block text-sm font-medium text-slate-700">Musique</label>
+              <select id="music" v-model="form.music_preference" class="input">
+                <option v-for="option in MUSIC_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Styles : uniquement si la musique est acceptee -->
+          <div v-if="showMusicGenres">
+            <p class="mb-1.5 text-sm font-medium text-slate-700">
               Styles de musique
-              <span class="ml-1 font-normal text-slate-400">
-                ({{ form.music_genres.length }}/{{ MAX_MUSIC_GENRES }})
-              </span>
-            </label>
+              <span class="font-normal text-slate-400">({{ form.music_genres.length }}/{{ MAX_MUSIC_GENRES }}, facultatif)</span>
+            </p>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="option in MUSIC_GENRE_OPTIONS"
                 :key="option.value"
                 type="button"
                 :disabled="isGenreDisabled(option.value)"
+                :aria-pressed="form.music_genres.includes(option.value)"
                 :class="[
-                  'rounded-full border px-3 py-1.5 text-sm font-semibold transition',
+                  'rounded-full border px-3 py-1 text-sm font-medium transition',
                   form.music_genres.includes(option.value)
                     ? 'border-primary bg-primary-soft text-primary'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
@@ -130,121 +177,15 @@
                 {{ option.label }}
               </button>
             </div>
-            <p class="mt-1.5 text-xs text-slate-500">
-              Facultatif — {{ MAX_MUSIC_GENRES }} styles maximum.
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Deux cards adresses côte à côte -->
-      <div class="grid gap-5 lg:grid-cols-2">
-
-        <!-- Card Domicile -->
-        <Card class="space-y-4">
-          <h2 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-            <MapPin class="h-4 w-4 text-primary" />
-            Adresse de départ (domicile)
-          </h2>
-
-          <Input v-model="startTarget.address" placeholder="Numéro, rue, ville…" @input="startAuto.onInput">
-            <template #icon><MapPin class="h-4 w-4" /></template>
-          </Input>
-
-          <ul v-if="startAuto.suggestions.value.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-            <li v-for="item in startAuto.suggestions.value" :key="`${item.display_name}-${item.lat}`">
-              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-primary-soft" @click="startAuto.select(item)">
-                <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
-                <div class="text-xs text-slate-500">{{ item.place_label }}</div>
-              </button>
-            </li>
-          </ul>
-
-          <div class="flex flex-wrap items-center gap-3">
-            <Button variant="secondary" @click="startAuto.locate">
-              <LocateFixed class="h-4 w-4" />
-              Localiser automatiquement
-            </Button>
-            <Badge v-if="startPlaceLabel" variant="primary">
-              <MapPinned class="h-3.5 w-3.5" />
-              {{ startPlaceLabel }}
-            </Badge>
-          </div>
-
-          <button type="button" class="text-sm font-semibold text-primary" @click="showStartMap = !showStartMap">
-            {{ showStartMap ? "Masquer la carte" : "Ajuster sur la carte" }}
-          </button>
-          <div v-if="showStartMap" class="space-y-2">
-            <MapPicker :lat="form.start_lat" :lon="form.start_lon" @moved="startAuto.onMapMoved" />
-            <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
           </div>
         </Card>
+      </section>
 
-        <!-- Card École -->
-        <Card class="space-y-4">
-          <h2 class="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-            <School class="h-4 w-4 text-success" />
-            Adresse de l'école
-            <span class="ml-1 text-xs font-normal normal-case text-slate-400">(destination par défaut)</span>
-          </h2>
-
-          <Input v-model="schoolTarget.address" placeholder="Nom ou adresse de l'établissement…" @input="schoolAuto.onInput">
-            <template #icon><School class="h-4 w-4" /></template>
-          </Input>
-
-          <ul v-if="schoolAuto.suggestions.value.length" class="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-            <li v-for="item in schoolAuto.suggestions.value" :key="`${item.display_name}-${item.lat}`">
-              <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-success-soft" @click="schoolAuto.select(item)">
-                <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
-                <div class="text-xs text-slate-500">{{ item.place_label }}</div>
-              </button>
-            </li>
-          </ul>
-
-          <div class="flex flex-wrap items-center gap-3">
-            <Button variant="secondary" @click="schoolAuto.locate">
-              <LocateFixed class="h-4 w-4" />
-              Localiser automatiquement
-            </Button>
-            <Badge v-if="schoolPlaceLabel" variant="success">
-              <MapPinned class="h-3.5 w-3.5" />
-              {{ schoolPlaceLabel }}
-            </Badge>
-          </div>
-
-          <button type="button" class="text-sm font-semibold text-primary" @click="showSchoolMap = !showSchoolMap">
-            {{ showSchoolMap ? "Masquer la carte" : "Ajuster sur la carte" }}
-          </button>
-          <div v-if="showSchoolMap" class="space-y-2">
-            <MapPicker :lat="form.school_lat || 46.603354" :lon="form.school_lon || 1.888334" @moved="schoolAuto.onMapMoved" />
-            <p class="text-xs text-slate-500">Cliquez ou faites glisser le marqueur pour affiner la position.</p>
-          </div>
-        </Card>
-      </div>
-
-      <!-- Aperçu du trajet domicile <-> école -->
-      <Card padding="responsive">
-        <h2 class="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500">
-          <Route class="h-4 w-4 text-primary" />
-          Aperçu du trajet domicile ↔ école
-        </h2>
-        <RouteMap
-          :route-geometry="previewRoute.geometry"
-          :driver-coords="[form.start_lat, form.start_lon]"
-          :dest-coords="[form.school_lat, form.school_lon]"
-          :route-label="previewRoute.geometry.length ? `${previewRoute.estimated ? '≈ ' : ''}${formattedDuration} · ${previewRoute.distanceKm.toFixed(1)} km` : ''"
-          :estimated="previewRoute.estimated"
-        />
-        <p class="mt-2 text-xs text-slate-500">
-          Recalculé automatiquement à chaque changement d'adresse. Cette valeur n'est pas enregistrée.
-        </p>
-      </Card>
-
-      <!-- Bouton de sauvegarde -->
-      <div class="flex justify-end">
+      <!-- Enregistrement : toujours a portee de main -->
+      <div class="profile-save-bar">
         <Button type="submit" :disabled="app.loading">
-          <Save class="h-4 w-4" />
-          Sauvegarder le profil
+          <Save class="h-4 w-4" aria-hidden="true" />
+          Enregistrer
         </Button>
       </div>
     </form>
@@ -253,11 +194,13 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { Car, ImagePlus, Info, LocateFixed, MapPin, MapPinned, Route, Save, School, Trash2 } from "lucide-vue-next";
+import { Camera, Check, Crosshair, House, Save, School, Trash2 } from "lucide-vue-next";
 
+import AddressField from "../components/AddressField.vue";
 import MapPicker from "../components/MapPicker.vue";
+import ReputationCard from "../components/ReputationCard.vue";
 import RouteMap from "../components/RouteMap.vue";
-import { Avatar, Badge, Button, Card, Input } from "../components/ui";
+import { Avatar, Button, Card, Input, SectionHeader } from "../components/ui";
 import { getRoutePreview } from "../api/endpoints";
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
 import { GENDER_OPTIONS } from "../lib/gender";
@@ -296,8 +239,11 @@ function toggleGenre(value) {
 
 const startPlaceLabel = ref("");
 const schoolPlaceLabel = ref("");
-const showStartMap = ref(false);
-const showSchoolMap = ref(false);
+// Adresse en cours d'ajustement sur la carte : "start", "school" ou null.
+const adjusting = ref(null);
+// Sans adresse connue, la carte s'ouvre sur Toulouse (zone couverte par l'appli).
+const DEFAULT_LAT = 43.6045;
+const DEFAULT_LON = 1.444;
 
 const form = reactive({
   name: "",
@@ -308,12 +254,12 @@ const form = reactive({
   smoking_preference: "peu_importe",
   car_seats: null,
   start_address: "",
-  start_lat: 46.603354,
-  start_lon: 1.888334,
+  start_lat: DEFAULT_LAT,
+  start_lon: DEFAULT_LON,
   time_tolerance_min: 15,
   school_address: "",
-  school_lat: 0,
-  school_lon: 0,
+  school_lat: DEFAULT_LAT,
+  school_lon: DEFAULT_LON,
 });
 
 const startTarget = reactive({
@@ -321,12 +267,14 @@ const startTarget = reactive({
   lat: computed({ get: () => form.start_lat, set: (v) => (form.start_lat = v) }),
   lon: computed({ get: () => form.start_lon, set: (v) => (form.start_lon = v) }),
   placeLabel: startPlaceLabel,
+  confirmed: true,
 });
 const schoolTarget = reactive({
   address: computed({ get: () => form.school_address, set: (v) => (form.school_address = v) }),
   lat: computed({ get: () => form.school_lat, set: (v) => (form.school_lat = v) }),
   lon: computed({ get: () => form.school_lon, set: (v) => (form.school_lon = v) }),
   placeLabel: schoolPlaceLabel,
+  confirmed: true,
 });
 
 const startAuto = useAddressAutocomplete(startTarget);
@@ -342,6 +290,14 @@ const formattedDuration = computed(() => {
   const rest = String(minutes % 60).padStart(2, "0");
   return `${hours} h ${rest}`;
 });
+
+const formattedDistance = computed(() =>
+  `${previewRoute.value.distanceKm.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} km`,
+);
+
+function onMapMoved(lat, lon) {
+  (adjusting.value === "start" ? startAuto : schoolAuto).onMapMoved(lat, lon);
+}
 
 function scheduleRoutePreview() {
   clearTimeout(previewTimer);
@@ -383,8 +339,8 @@ onMounted(async () => {
   form.start_lon = source.start_lon || form.start_lon;
   form.time_tolerance_min = source.time_tolerance_min;
   form.school_address = source.school_address || "";
-  form.school_lat = source.school_lat || 0;
-  form.school_lon = source.school_lon || 0;
+  form.school_lat = source.school_lat || DEFAULT_LAT;
+  form.school_lon = source.school_lon || DEFAULT_LON;
 });
 
 // --- Photo de profil ---

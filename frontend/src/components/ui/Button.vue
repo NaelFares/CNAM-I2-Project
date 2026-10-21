@@ -8,14 +8,16 @@
 import { computed } from "vue";
 
 const props = defineProps({
-  variant: { type: String, default: "primary" }, // 'primary' | 'secondary'
+  variant: { type: String, default: "primary" }, // 'primary' | 'secondary' | 'ghost' | 'danger'
+  size: { type: String, default: "md" }, // 'md' | 'sm'
   type: { type: String, default: "button" },
   disabled: { type: Boolean, default: false },
   block: { type: Boolean, default: false },
 });
 
 const classes = computed(() => [
-  props.variant === "secondary" ? "btn-secondary" : "btn-primary",
+  `btn-${["secondary", "ghost", "danger"].includes(props.variant) ? props.variant : "primary"}`,
+  props.size === "sm" ? "btn-sm" : "",
   props.block ? "w-full" : "",
 ]);
 </script>

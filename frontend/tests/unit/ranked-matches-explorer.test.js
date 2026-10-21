@@ -49,7 +49,7 @@ const matches = [
 ];
 
 describe("RankedMatchesExplorer", () => {
-  it("regroupe les ex aequo en or et synchronise la sélection avec la carte", async () => {
+  it("donne le meme rang aux ex aequo et synchronise la sélection avec la carte", async () => {
     const wrapper = mount(RankedMatchesExplorer, {
       props: { matches },
       global: {
@@ -63,13 +63,13 @@ describe("RankedMatchesExplorer", () => {
       },
     });
 
-    expect(wrapper.find(".matches-explorer__gold-group small").text()).toContain("2 trajets en tête");
-    expect(wrapper.findAll(".ranked-match-card")).toHaveLength(3);
-    expect(wrapper.findAll(".ranked-match-card")[0].attributes("aria-current")).toBe("true");
+    const ranks = wrapper.findAll(".match-card__rank").map((rank) => rank.text());
+    expect(ranks).toEqual(["1", "1", "2"]);
+    expect(wrapper.findAll(".match-card")[0].attributes("aria-current")).toBe("true");
 
     await wrapper.get('[data-test="map-route"]').trigger("click");
 
-    expect(wrapper.findAll(".ranked-match-card")[2].attributes("aria-current")).toBe("true");
+    expect(wrapper.findAll(".match-card")[2].attributes("aria-current")).toBe("true");
   });
 
   it("emet le trajet conducteur quand le passager le selectionne", async () => {
@@ -78,7 +78,7 @@ describe("RankedMatchesExplorer", () => {
       global: { stubs: { RouteMap: true } },
     });
 
-    await wrapper.findAll(".ranked-match-card__choose")[0].trigger("click");
+    await wrapper.findAll(".match-card button")[0].trigger("click");
 
     expect(wrapper.emitted("choose-ride")?.[0]?.[0].ride_id).toBe(101);
   });
@@ -94,7 +94,7 @@ describe("RankedMatchesExplorer", () => {
       global: { stubs: { RouteMap: true } },
     });
 
-    expect(wrapper.findAll(".ranked-match-card")).toHaveLength(3);
+    expect(wrapper.findAll(".match-card")).toHaveLength(3);
     expect(wrapper.text()).not.toContain("91 %");
   });
 });

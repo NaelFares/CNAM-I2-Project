@@ -14,6 +14,7 @@ import {
   getMyRideSelections,
   getProfile,
   getScheduleEvents,
+  cancelPreview,
   previewSchedule,
   searchCarpoolMatches,
   setRideOffer,
@@ -96,12 +97,12 @@ export const useAppStore = defineStore("app", {
     },
     async saveProfile(payload) {
       const feedback = useFeedbackStore();
-      this.startLoading("Sauvegarde du profil...", "Mise a jour de vos informations.");
+      this.startLoading("Sauvegarde du profil...", "Mise à jour de vos informations.");
       try {
         this.profile = await updateProfile(payload);
         const auth = useAuthStore();
         auth.user = { ...(auth.user || {}), ...this.profile };
-        feedback.showSuccess("Profil sauvegarde avec succes.");
+        feedback.showSuccess("Profil enregistré.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -112,10 +113,10 @@ export const useAppStore = defineStore("app", {
     },
     async savePhoto(file) {
       const feedback = useFeedbackStore();
-      this.startLoading("Envoi de la photo...", "Televersement de votre photo de profil.");
+      this.startLoading("Envoi de la photo...", "Téléversement de votre photo de profil.");
       try {
         this.profile = await uploadProfilePhoto(file);
-        feedback.showSuccess("Photo de profil mise a jour.");
+        feedback.showSuccess("Photo de profil mise à jour.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -129,7 +130,7 @@ export const useAppStore = defineStore("app", {
       this.startLoading("Suppression de la photo...", "Retrait de votre photo de profil.");
       try {
         this.profile = await deleteProfilePhoto();
-        feedback.showSuccess("Photo de profil supprimee.");
+        feedback.showSuccess("Photo de profil supprimée.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -156,15 +157,15 @@ export const useAppStore = defineStore("app", {
     async previewSchedule(file, privacyMode = false) {
       const feedback = useFeedbackStore();
       const detail = privacyMode
-        ? "Privacy mode : le modele analyse uniquement les en-tetes."
-        : "Le modele identifie les colonnes et horaires a partir d'un echantillon.";
+        ? "Mode confidentialité : le modèle analyse uniquement les en-têtes."
+        : "Le modèle identifie les colonnes et les horaires à partir d'un échantillon.";
       this.startLoading("Analyse du planning...", detail);
       try {
         const data = await previewSchedule(file, privacyMode);
         this.previewEvents = data.events;
         if (data.requires_user_review) {
           const score = typeof data.confidence_score === "number" ? ` (${Math.round(data.confidence_score * 100)}%)` : "";
-          feedback.showInfo(`Verification recommandee: confiance IA faible${score}.`);
+          feedback.showInfo(`Vérification recommandée : confiance de l'IA faible${score}.`);
         } else {
           feedback.showSuccess(data.feedback.message);
         }
@@ -176,9 +177,18 @@ export const useAppStore = defineStore("app", {
         this.stopLoading();
       }
     },
+    // Abandon de la previsualisation : le backend oublie le fichier analyse.
+    async cancelSchedulePreview() {
+      try {
+        await cancelPreview();
+      } catch {
+        // Rien a annuler cote serveur : on vide quand meme l'apercu local.
+      }
+      this.previewEvents = [];
+    },
     async confirmSchedule() {
       const feedback = useFeedbackStore();
-      this.startLoading("Confirmation et enregistrement...", "Enregistrement des cours importes.");
+      this.startLoading("Confirmation et enregistrement...", "Enregistrement des cours importés.");
       try {
         const data = await confirmSchedule();
         this.events = data.events;
@@ -192,7 +202,7 @@ export const useAppStore = defineStore("app", {
     },
     async generateRides() {
       const feedback = useFeedbackStore();
-      this.startLoading("Generation des trajets...", "Calcul des trajets aller/retour campus.");
+      this.startLoading("Génération des trajets...", "Calcul des trajets aller/retour campus.");
       try {
         const data = await generateRides();
         this.rides = data.rides;
@@ -315,7 +325,7 @@ export const useAppStore = defineStore("app", {
     async selectRide(rideId) {
       const feedback = useFeedbackStore();
       if (!rideId) {
-        feedback.showError("Ce trajet ne peut pas etre selectionne.");
+        feedback.showError("Ce trajet ne peut pas être sélectionné.");
         return false;
       }
 
@@ -336,7 +346,7 @@ export const useAppStore = defineStore("app", {
         this.matches = this.matches.filter(stillAvailable);
         this.clearPendingRide();
         await this.loadMySelections();
-        feedback.showSuccess(data.feedback?.message || "Trajet selectionne.");
+        feedback.showSuccess(data.feedback?.message || "Demande envoyée.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -351,7 +361,7 @@ export const useAppStore = defineStore("app", {
       try {
         const data = await cancelRideSelection(rideId);
         this.mySelections = this.mySelections.filter((ride) => ride.ride_id !== rideId);
-        feedback.showSuccess(data.feedback?.message || "Selection annulee.");
+        feedback.showSuccess(data.feedback?.message || "Demande annulée.");
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -362,11 +372,11 @@ export const useAppStore = defineStore("app", {
     },
     async findMatches(weekStart, ladiesOnly = false) {
       const feedback = useFeedbackStore();
-      this.startLoading("Recherche des correspondances...", "Comparaison des trajets disponibles.");
+      this.startLoading("Recherche sur votre semaine...", "Comparaison des trajets disponibles.");
       try {
         const data = await findMatches(weekStart, ladiesOnly);
         this.matches = data.matches;
-        feedback.showSuccess(data.feedback.message);
+        // Les resultats (ou l'etat vide) s'affichent dans la page : pas de toast.
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);
@@ -391,7 +401,7 @@ export const useAppStore = defineStore("app", {
         this.searchResults = data.matches;
         this.searchRouteGeometry = data.search_route_geometry;
         this.searchRouteEstimated = Boolean(data.search_route_estimated);
-        feedback.showSuccess(data.feedback.message);
+        // Les resultats (ou l'etat vide) s'affichent dans la page : pas de toast.
         return true;
       } catch (err) {
         feedback.showError(extractApiError(err).message);

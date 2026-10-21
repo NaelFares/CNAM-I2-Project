@@ -11,8 +11,8 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 const props = defineProps({
-  lat: { type: Number, default: 46.603354 },
-  lon: { type: Number, default: 1.888334 },
+  lat: { type: Number, default: 43.6045 },
+  lon: { type: Number, default: 1.444 },
 });
 
 const emit = defineEmits(["moved"]);
@@ -30,13 +30,13 @@ L.Icon.Default.mergeOptions({
 
 onMounted(() => {
   if (!mapEl.value) return;
-  map = L.map(mapEl.value).setView([props.lat || 46.603354, props.lon || 1.888334], props.lat && props.lon ? 15 : 5);
+  map = L.map(mapEl.value).setView([props.lat || 43.6045, props.lon || 1.444], props.lat && props.lon ? 15 : 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
 
-  marker = L.marker([props.lat || 46.603354, props.lon || 1.888334], { draggable: true }).addTo(map);
+  marker = L.marker([props.lat || 43.6045, props.lon || 1.444], { draggable: true }).addTo(map);
   marker.on("dragend", () => {
     const next = marker?.getLatLng();
     if (!next) return;

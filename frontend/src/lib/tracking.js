@@ -68,9 +68,9 @@ export function waitingMessage(tracking) {
  */
 export function confirmationSteps(tracking) {
   return [
-    { label: "Conducteur : passager récupéré", at: tracking.driver_picked_up_at },
-    { label: "Passager : à bord", at: tracking.passenger_onboard_at },
-    { label: "Conducteur : course terminée", at: tracking.driver_completed_at },
-    { label: "Passager : arrivé à destination", at: tracking.passenger_arrived_at },
+    { label: "Prise en charge", at: tracking.driver_picked_up_at },
+    { label: "À bord", at: tracking.passenger_onboard_at },
+    { label: "Course terminée", at: tracking.driver_completed_at },
+    { label: "Arrivée", at: tracking.passenger_arrived_at },
   ];
 }

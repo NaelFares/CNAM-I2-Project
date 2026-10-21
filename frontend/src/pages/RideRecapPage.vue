@@ -1,144 +1,89 @@
 <template>
-  <section class="page-shell">
+  <section v-if="ride" class="page-shell">
     <header class="page-header">
-      <Button variant="secondary" @click="goBack">
+      <RouterLink to="/matches" class="btn-ghost -ml-3 mb-2" @click="app.clearPendingRide()">
         <ArrowLeft class="h-4 w-4" aria-hidden="true" />
-        Retour aux trajets
-      </Button>
-      <div class="mt-4">
-        <h1 class="page-title">Récapitulatif du trajet</h1>
-        <p class="page-subtitle">Vérifiez les informations avant d'envoyer votre demande au conducteur.</p>
+        Résultats
+      </RouterLink>
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="page-title">Confirmer la demande</h1>
+        <DirectionBadge :ride-type="ride.ride_type" />
       </div>
+      <p class="page-subtitle">Votre place n'est réservée qu'une fois la demande acceptée par le conducteur.</p>
     </header>
 
-    <Card v-if="!ride" class="space-y-4">
-      <div>
-        <h2 class="text-lg font-bold text-slate-900">Trajet introuvable</h2>
-        <p class="mt-1 text-sm text-slate-600">
-          Ce récapitulatif n'est plus disponible. Revenez aux résultats et choisissez de nouveau un trajet.
-        </p>
-      </div>
-      <Button @click="goBack">Retour aux trajets proposés</Button>
-    </Card>
+    <div class="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
+      <Card padding="none" class="overflow-hidden">
+        <RouteMap
+          :route-geometry="ride.route_geometry || []"
+          :passenger-coords="ride.passenger_coords || null"
+          :dropoff-coords="ride.passenger_dropoff_coords || null"
+          :dest-coords="ride.campus_coords || null"
+          height="420px"
+          route-label="Trajet sélectionné"
+          :estimated="Boolean(ride.route_estimated)"
+        />
+      </Card>
 
-    <template v-else>
-      <div class="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
-        <Card class="space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Itinéraire proposé</p>
-              <h2 class="mt-1 text-lg font-bold text-slate-900">{{ directionLabel }}</h2>
+      <Card class="flex flex-col gap-5">
+        <div class="flex items-center gap-3">
+          <Avatar :name="ride.driver_name" :photo-url="ride.driver_photo_url" size="lg" />
+          <div class="min-w-0">
+            <p class="muted">Conducteur</p>
+            <p class="card-title truncate">{{ ride.driver_name }}</p>
+            <div class="mt-1 flex flex-wrap items-center gap-2">
+              <StarRating v-if="ride.driver_rating_count" :value="Number(ride.driver_rating_average)" readonly show-value size="sm" />
+              <TierBadge :tier="{ tier_key: ride.driver_tier_key, tier_label: ride.driver_tier_label }" />
             </div>
           </div>
-
-          <RouteMap
-            :route-geometry="ride.route_geometry || []"
-            :passenger-coords="ride.passenger_coords || null"
-            :dropoff-coords="ride.passenger_dropoff_coords || null"
-            :dest-coords="ride.campus_coords || null"
-            height="430px"
-            route-label="Trajet sélectionné"
-            :estimated="Boolean(ride.route_estimated)"
-          />
-
-          <div class="grid gap-3 sm:grid-cols-3">
-            <div class="rounded-xl bg-slate-50 p-3">
-              <Clock3 class="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">{{ driverTimeLabel }}</p>
-              <p class="mt-1 text-sm font-bold text-slate-900">{{ formattedRideTime }}</p>
-            </div>
-            <div class="rounded-xl bg-slate-50 p-3">
-              <RouteIcon class="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">Détour conducteur</p>
-              <p class="mt-1 text-sm font-bold text-slate-900">+{{ formattedDetour }} min</p>
-            </div>
-            <div class="rounded-xl bg-slate-50 p-3">
-              <MapPin class="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">Passage du conducteur</p>
-              <p class="mt-1 text-sm font-bold text-slate-900">{{ passageLabel(ride) || "—" }}</p>
-            </div>
-          </div>
-        </Card>
-
-        <div class="space-y-5">
-          <Card class="space-y-4">
-            <div class="flex items-center gap-2">
-              <UsersRound class="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <h2 class="text-lg font-bold text-slate-900">Personnes du trajet</h2>
-            </div>
-
-            <div class="space-y-3">
-              <div class="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-bold text-blue-800">
-                  {{ initials(ride.driver_name) }}
-                </span>
-                <div class="min-w-0">
-                  <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Conducteur</p>
-                  <p class="truncate font-bold text-slate-900">{{ ride.driver_name }}</p>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-orange-100 text-sm font-bold text-orange-800">
-                  {{ initials(ride.passenger_name) }}
-                </span>
-                <div class="min-w-0">
-                  <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Passager</p>
-                  <p class="truncate font-bold text-slate-900">{{ ride.passenger_name }}</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-2 border-t border-slate-200 pt-4 text-sm font-semibold text-slate-700">
-              <CarFront class="h-5 w-5 text-emerald-700" aria-hidden="true" />
-              {{ seatsLabel }} actuellement
-            </div>
-          </Card>
-
-          <Card class="space-y-4 border-blue-200 bg-blue-50/60">
-            <div class="flex items-start gap-3">
-              <ShieldCheck class="mt-0.5 h-6 w-6 shrink-0 text-blue-700" aria-hidden="true" />
-              <div>
-                <h2 class="font-bold text-slate-900">Accord du conducteur nécessaire</h2>
-                <p class="mt-1 text-sm text-slate-600">
-                  Votre demande sera envoyée au conducteur. Votre place ne sera réservée que s'il l'accepte.
-                </p>
-              </div>
-            </div>
-
-            <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="secondary" :disabled="isConfirming" @click="goBack">Annuler</Button>
-              <Button :disabled="isConfirming" @click="confirmRide">
-                <LoaderCircle v-if="isConfirming" class="h-4 w-4 animate-spin" aria-hidden="true" />
-                <CircleCheckBig v-else class="h-4 w-4" aria-hidden="true" />
-                {{ isConfirming ? "Envoi..." : "Demander une place" }}
-              </Button>
-            </div>
-          </Card>
         </div>
-      </div>
-    </template>
+
+        <dl class="divide-y divide-slate-100 border-y border-slate-100 text-sm">
+          <div class="flex items-center justify-between gap-3 py-2.5">
+            <dt class="flex items-center gap-2 text-slate-500"><CalendarDays class="h-4 w-4" aria-hidden="true" /> {{ timeLabel }}</dt>
+            <dd class="font-semibold text-slate-900">{{ formattedRideTime }}</dd>
+          </div>
+          <div v-if="ride.passage_time" class="flex items-center justify-between gap-3 py-2.5">
+            <dt class="flex items-center gap-2 text-slate-500"><MapPin class="h-4 w-4" aria-hidden="true" /> {{ outbound ? "Dépose" : "Prise en charge" }}</dt>
+            <dd class="font-semibold text-slate-900">vers {{ ride.passage_time }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-3 py-2.5">
+            <dt class="flex items-center gap-2 text-slate-500"><RouteIcon class="h-4 w-4" aria-hidden="true" /> Détour du conducteur</dt>
+            <dd class="font-semibold text-slate-900">+{{ formatMinutes(ride.extra_time_min) }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-3 py-2.5">
+            <dt class="flex items-center gap-2 text-slate-500"><UsersRound class="h-4 w-4" aria-hidden="true" /> Places libres</dt>
+            <dd class="font-semibold text-slate-900">{{ availableSeats }}</dd>
+          </div>
+        </dl>
+
+        <Button block class="mt-auto" :disabled="isConfirming" @click="confirmRide">
+          <LoaderCircle v-if="isConfirming" class="h-4 w-4 animate-spin" aria-hidden="true" />
+          <Send v-else class="h-4 w-4" aria-hidden="true" />
+          {{ isConfirming ? "Envoi..." : "Envoyer la demande" }}
+        </Button>
+      </Card>
+    </div>
   </section>
 </template>
 
 <script setup>
-import { computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onMounted } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import {
   ArrowLeft,
-  CarFront,
-  CircleCheckBig,
-  Clock3,
+  CalendarDays,
   LoaderCircle,
   MapPin,
   Route as RouteIcon,
-  ShieldCheck,
+  Send,
   UsersRound,
 } from "lucide-vue-next";
 
 import RouteMap from "../components/RouteMap.vue";
-import { Button, Card } from "../components/ui";
-import { passageLabel } from "../lib/week";
+import { Avatar, Button, Card, DirectionBadge, StarRating, TierBadge } from "../components/ui";
+import { isOutbound } from "../lib/direction";
+import { formatMinutes, formatShortDateTime } from "../lib/format";
 import { useAppStore } from "../stores/app";
 
 const app = useAppStore();
@@ -150,45 +95,27 @@ const ride = computed(() => {
   return pending && String(pending.ride_id) === String(route.params.rideId) ? pending : null;
 });
 
+// Recap perime (onglet rouvert, lien partage) : retour aux resultats.
+onMounted(() => {
+  if (!ride.value) router.replace("/matches");
+});
+
 const isConfirming = computed(
   () => ride.value && String(app.selectionLoadingRideId) === String(ride.value.ride_id),
 );
+const outbound = computed(() => isOutbound(ride.value?.ride_type));
 // L'heure du conducteur est son arrivee a l'aller, son depart au retour.
-const driverTimeLabel = computed(() => (String(ride.value?.ride_type || "").startsWith("Vers") ? "Arrivée du conducteur" : "Départ du conducteur"));
-
-const directionLabel = computed(() => {
-  const value = String(ride.value?.ride_type || "");
-  if (value === "to_campus") return "Aller vers le campus";
-  if (value === "from_campus") return "Retour depuis le campus";
-  return value || "Trajet proposé";
-});
-const formattedRideTime = computed(() => ride.value?.ride_time || "Horaire non défini");
-const formattedDetour = computed(() => Number(ride.value?.extra_time_min || 0).toFixed(1));
+const timeLabel = computed(() => (outbound.value ? "Arrivée" : "Départ"));
+const formattedRideTime = computed(() => formatShortDateTime(String(ride.value?.ride_time || "").replace(" ", "T")));
 const availableSeats = computed(() => {
   const value = Number(ride.value?.available_seats ?? ride.value?.car_seats);
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 });
-const seatsLabel = computed(
-  () => `${availableSeats.value} place${availableSeats.value > 1 ? "s" : ""} restante${availableSeats.value > 1 ? "s" : ""}`,
-);
-
-function initials(name) {
-  return String(name || "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
-function goBack() {
-  app.clearPendingRide();
-  router.push("/matches");
-}
 
 async function confirmRide() {
   if (!ride.value || isConfirming.value) return;
   const selected = await app.selectRide(ride.value.ride_id);
-  if (selected) router.replace("/matches");
+  // La demande apparait dans "Mes courses", ou l'on suit la reponse du conducteur.
+  if (selected) router.replace("/tracking");
 }
 </script>

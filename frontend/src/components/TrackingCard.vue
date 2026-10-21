@@ -1,33 +1,31 @@
 <template>
-  <Card class="space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <Avatar :name="tracking.counterpart_name" :photo-url="tracking.counterpart_photo_url" size="md" />
-        <div>
-          <p class="font-semibold text-slate-900">{{ tracking.counterpart_name }}</p>
-          <p class="text-xs text-slate-500">
-            {{ roleLabel }} · {{ directionLabel }} · {{ formattedTime }}
-          </p>
+  <Card padding="p-5" class="space-y-4">
+    <div class="flex items-start gap-3">
+      <Avatar :name="tracking.counterpart_name" :photo-url="tracking.counterpart_photo_url" size="md" />
+      <div class="min-w-0 flex-1">
+        <p class="card-title truncate">{{ tracking.counterpart_name }}</p>
+        <div class="mt-1 flex flex-wrap items-center gap-2 text-[0.8125rem] text-slate-600">
+          <RoleBadge :role="tracking.my_role" />
+          <DirectionBadge :ride-type="tracking.ride_type" />
+          <span>{{ formattedTime }}</span>
         </div>
       </div>
       <Badge :variant="statusVariant(tracking.status)">{{ statusLabel(tracking.status) }}</Badge>
     </div>
 
-    <!-- Progression des quatre confirmations -->
-    <ol class="space-y-1.5">
-      <li
-        v-for="step in confirmationSteps(tracking)"
-        :key="step.label"
-        class="flex items-center gap-2 text-sm"
-      >
-        <CircleCheck v-if="step.at" class="h-4 w-4 shrink-0 text-success" />
-        <Circle v-else class="h-4 w-4 shrink-0 text-slate-300" />
-        <span :class="step.at ? 'text-slate-700' : 'text-slate-400'">{{ step.label }}</span>
-        <span v-if="step.at" class="ml-auto text-xs text-slate-400">{{ formatTime(step.at) }}</span>
+    <!-- Progression des quatre confirmations ; masquee dans l'historique,
+         ou seul le resultat compte. -->
+    <ol v-if="!compact" class="tracking-steps" aria-label="Étapes de la course">
+      <li v-for="step in confirmationSteps(tracking)" :key="step.label" :class="{ 'is-done': step.at }">
+        <span class="tracking-steps__dot">
+          <Check v-if="step.at" class="h-3 w-3" aria-hidden="true" />
+        </span>
+        <span class="tracking-steps__label">{{ step.label }}</span>
+        <span v-if="step.at" class="tracking-steps__time">{{ formatTime(step.at) }}</span>
       </li>
     </ol>
 
-    <div v-if="!isFinished(tracking.status)" class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+    <div v-if="!isFinished(tracking.status)" class="flex flex-wrap items-center gap-2">
       <Button v-if="tracking.next_step" :disabled="store.loading" @click="onConfirm">
         <Check class="h-4 w-4" />
         {{ stepLabel(tracking.next_step) }}
@@ -38,7 +36,7 @@
            supprime la reservation, et avec elle le suivi deja commence. -->
       <Button
         v-if="canCancel"
-        variant="secondary"
+        variant="ghost"
         class="ml-auto"
         :disabled="store.loading || String(app.selectionLoadingRideId) === String(tracking.ride_id)"
         @click="onCancel"
@@ -49,7 +47,7 @@
     </div>
 
     <!-- Note deja donnee : definitive, donc affichee en lecture seule -->
-    <div v-else-if="tracking.my_rating" class="border-t border-slate-100 pt-3">
+    <div v-else-if="tracking.my_rating">
       <p class="flex items-center gap-2 text-sm text-slate-600">
         Votre note&nbsp;:
         <StarRating :value="tracking.my_rating" readonly />
@@ -57,6 +55,10 @@
     </div>
 
     <!-- Formulaire de notation, une fois la course terminee -->
+    <Button v-else-if="tracking.can_rate && !ratingOpen" variant="secondary" size="sm" @click="ratingOpen = true">
+      <Star class="h-4 w-4" aria-hidden="true" />
+      Noter la course
+    </Button>
     <div v-else-if="tracking.can_rate" class="space-y-3 border-t border-slate-100 pt-3">
       <div>
         <p class="text-sm font-semibold text-slate-800">
@@ -77,8 +79,8 @@
 
       <!-- Confirmation explicite : la note etant irreversible, un clic seul
            ne doit pas suffire. -->
-      <div v-if="confirming" class="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3">
-        <p class="text-sm text-amber-900">
+      <div v-if="confirming" class="flex flex-wrap items-center gap-2 rounded-xl bg-warning-soft p-3">
+        <p class="text-sm text-warning">
           Confirmer {{ score }} étoile{{ score > 1 ? "s" : "" }}&nbsp;? C'est définitif.
         </p>
         <Button class="ml-auto" :disabled="store.loading" @click="onRate">
@@ -99,9 +101,10 @@
 
 <script setup>
 import { computed, ref } from "vue";
-import { Check, Circle, CircleCheck, Star, X } from "lucide-vue-next";
+import { Check, Star, X } from "lucide-vue-next";
 
-import { Avatar, Badge, Button, Card, StarRating } from "./ui";
+import { Avatar, Badge, Button, Card, DirectionBadge, RoleBadge, StarRating } from "./ui";
+import { formatShortDateTime } from "../lib/format";
 import {
   confirmationSteps,
   isFinished,
@@ -115,6 +118,8 @@ import { useTrackingStore } from "../stores/tracking";
 
 const props = defineProps({
   tracking: { type: Object, required: true },
+  // Historique : sans la progression detaillee.
+  compact: { type: Boolean, default: false },
 });
 
 const store = useTrackingStore();
@@ -137,6 +142,8 @@ const MAX_COMMENT_LENGTH = 500;
 const score = ref(0);
 const comment = ref("");
 const confirming = ref(false);
+// Formulaire replie par defaut : l'historique reste lisible.
+const ratingOpen = ref(false);
 
 async function onRate() {
   if (!score.value) return;
@@ -148,14 +155,6 @@ async function onRate() {
   }
 }
 
-const roleLabel = computed(() =>
-  props.tracking.my_role === "driver" ? "Votre passager" : "Votre conducteur"
-);
-
-const directionLabel = computed(() =>
-  props.tracking.ride_type === "to_campus" ? "Vers le campus" : "Depuis le campus"
-);
-
 function formatTime(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -164,18 +163,7 @@ function formatTime(value) {
     : date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 }
 
-const formattedTime = computed(() => {
-  const date = new Date(props.tracking.ride_time);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleString("fr-FR", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-});
+const formattedTime = computed(() => formatShortDateTime(props.tracking.ride_time));
 
 async function onConfirm() {
   await store.confirm(props.tracking.id, props.tracking.next_step);

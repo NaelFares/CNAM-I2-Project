@@ -1,69 +1,82 @@
 <template>
   <article
-    class="ranked-match-card"
-    :class="[`ranked-match-card--${tone}`, { 'is-selected': selected }]"
+    class="match-card"
+    :class="{ 'is-selected': selected }"
     :aria-current="selected ? 'true' : undefined"
+    @click="$emit('focus')"
   >
-    <div class="ranked-match-card__heading">
-      <span class="ranked-match-card__medal" :aria-label="medalLabel">{{ rank }}</span>
-      <strong>Choix n° {{ rank }}</strong>
-      <button
-        type="button"
-        :class="selected ? 'ranked-match-card__selected' : 'ranked-match-card__action'"
-        :aria-pressed="selected"
-        @click="$emit('focus')"
+    <div class="flex items-start gap-3">
+      <span class="match-card__rank" :class="`match-card__rank--${tone}`" :aria-label="`Choix numéro ${rank}`">{{ rank }}</span>
+      <Avatar :name="match.driver_name" :photo-url="match.driver_photo_url" size="md" />
+      <div class="min-w-0 flex-1">
+        <p class="card-title truncate">{{ match.driver_name }}</p>
+        <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span v-if="match.driver_rating_count" class="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-slate-700">
+            <Star class="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
+            {{ formatRating(match.driver_rating_average) }}
+            <span class="font-normal text-slate-500">({{ match.driver_rating_count }})</span>
+          </span>
+          <TierBadge :tier="{ tier_key: match.driver_tier_key, tier_label: match.driver_tier_label }" />
+        </div>
+      </div>
+      <DirectionBadge :ride-type="match.ride_type" />
+    </div>
+
+    <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[0.8125rem] sm:grid-cols-3">
+      <div class="flex items-center gap-1.5 text-slate-700">
+        <Clock3 class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <dt class="sr-only">{{ timeLabel }}</dt>
+        <dd>{{ timeLabel }} {{ formatTime(rideDate) }}</dd>
+      </div>
+      <div v-if="match.passage_time" class="flex items-center gap-1.5 text-slate-700">
+        <MapPin class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <dt class="sr-only">Passage</dt>
+        <dd>{{ passageLabel(match) }}</dd>
+      </div>
+      <div class="flex items-center gap-1.5 text-slate-700">
+        <Route class="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <dt class="sr-only">Détour</dt>
+        <dd>+{{ formatMinutes(match.extra_time_min) }}</dd>
+      </div>
+    </dl>
+
+    <ul v-if="ambiance.length" class="mt-3 flex flex-wrap gap-1.5" aria-label="Ambiance du trajet">
+      <li v-for="label in ambiance" :key="label" class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+        {{ label }}
+      </li>
+    </ul>
+
+    <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+      <span
+        v-if="availableSeats !== null"
+        class="inline-flex items-center gap-1.5 text-[0.8125rem] font-semibold"
+        :class="availableSeats <= 1 ? 'text-warning' : 'text-success'"
       >
-        {{ selected ? "Affiché sur la carte" : "Voir sur la carte" }}
-      </button>
-    </div>
-
-    <div class="ranked-match-card__people">
-      <div class="ranked-match-card__person">
-        <span class="ranked-match-card__avatar">{{ initials(match.driver_name) }}</span>
-        <span>
-          <small>Conducteur</small>
-          <strong>{{ match.driver_name }}</strong>
-        </span>
-      </div>
-      <ArrowRight class="ranked-match-card__arrow" aria-hidden="true" />
-      <div class="ranked-match-card__person">
-        <span class="ranked-match-card__avatar ranked-match-card__avatar--passenger">{{ initials(match.passenger_name) }}</span>
-        <span>
-          <small>Passager</small>
-          <strong>{{ match.passenger_name }}</strong>
-        </span>
-      </div>
-    </div>
-
-    <div class="ranked-match-card__details">
-      <span><Clock3 aria-hidden="true" /> {{ driverTimeLabel }} {{ formattedDeparture }}</span>
-      <span><Route aria-hidden="true" /> +{{ formattedDetour }} min de détour</span>
-      <span v-if="match.passage_time"><MapPin aria-hidden="true" /> {{ passageLabel(match) }}</span>
-    </div>
-
-    <div class="ranked-match-card__footer">
-      <span v-if="availableSeats !== null" class="ranked-match-card__seats" :class="{ 'is-low': availableSeats === 1 }">
-        <UsersRound aria-hidden="true" />
+        <UsersRound class="h-4 w-4" aria-hidden="true" />
         {{ seatsLabel }}
       </span>
-      <button
-        type="button"
-        class="btn-primary ranked-match-card__choose"
+      <Button
+        size="sm"
         :disabled="busy || availableSeats === 0 || match.already_selected"
-        @click="$emit('choose')"
+        @click.stop="$emit('choose')"
       >
         <LoaderCircle v-if="busy" class="h-4 w-4 animate-spin" aria-hidden="true" />
-        <CircleCheckBig v-else class="h-4 w-4" aria-hidden="true" />
-        {{ match.already_selected ? "Déjà sélectionné" : "Choisir ce trajet" }}
-      </button>
+        <Check v-else-if="match.already_selected" class="h-4 w-4" aria-hidden="true" />
+        {{ match.already_selected ? "Déjà demandé" : "Choisir" }}
+        <ChevronRight v-if="!busy && !match.already_selected" class="h-4 w-4" aria-hidden="true" />
+      </Button>
     </div>
   </article>
 </template>
 
 <script setup>
 import { computed } from "vue";
-import { ArrowRight, CircleCheckBig, Clock3, LoaderCircle, MapPin, Route, UsersRound } from "lucide-vue-next";
+import { Check, ChevronRight, Clock3, LoaderCircle, MapPin, Route, Star, UsersRound } from "lucide-vue-next";
 
+import { Avatar, Button, DirectionBadge, TierBadge } from "./ui";
+import { isOutbound } from "../lib/direction";
+import { formatMinutes, formatTime } from "../lib/format";
+import { tripPreferenceBadges } from "../lib/preferences";
 import { passageLabel } from "../lib/week";
 
 const props = defineProps({
@@ -76,40 +89,27 @@ const props = defineProps({
 defineEmits(["focus", "choose"]);
 
 const tone = computed(() => ({ 1: "gold", 2: "silver", 3: "bronze" }[props.rank] || "standard"));
-const medalLabel = computed(() => ({ 1: "Classement or", 2: "Classement argent", 3: "Classement bronze" }[props.rank] || `Rang ${props.rank}`));
 // L'heure du conducteur est son arrivee a l'aller, son depart au retour.
-const driverTimeLabel = computed(() => (String(props.match.ride_type || "").startsWith("Vers") ? "Arrivée" : "Départ"));
-
-const formattedDeparture = computed(() => {
-  const value = String(props.match.ride_time || "");
-  if (!value) return "Horaire non défini";
-  const date = new Date(value.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("fr-FR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-});
-const formattedDetour = computed(() => Number(props.match.extra_time_min || 0).toFixed(1));
+const timeLabel = computed(() => (isOutbound(props.match.ride_type) ? "Arrivée" : "Départ"));
+const rideDate = computed(() => String(props.match.ride_time || "").replace(" ", "T"));
+// Ambiance de la voiture : ce sont les preferences du conducteur qui s'appliquent.
+const ambiance = computed(() =>
+  tripPreferenceBadges({
+    music_preference: props.match.driver_music_preference,
+    music_genres: props.match.driver_music_genres,
+    smoking_preference: props.match.driver_smoking_preference,
+  }),
+);
 const availableSeats = computed(() => {
   const value = Number(props.match.available_seats ?? props.match.car_seats);
   return Number.isFinite(value) ? Math.max(0, value) : null;
 });
 const seatsLabel = computed(() => {
   if (availableSeats.value === 0) return "Complet";
-  return `${availableSeats.value} place${availableSeats.value > 1 ? "s" : ""} restante${availableSeats.value > 1 ? "s" : ""}`;
+  return `${availableSeats.value} place${availableSeats.value > 1 ? "s" : ""} libre${availableSeats.value > 1 ? "s" : ""}`;
 });
 
-function initials(name) {
-  return String(name || "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
+function formatRating(value) {
+  return Number(value || 0).toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 </script>

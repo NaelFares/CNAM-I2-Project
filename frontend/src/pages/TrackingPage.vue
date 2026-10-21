@@ -1,169 +1,223 @@
 <template>
   <section class="page-shell">
-    <header class="page-header">
-      <h1 class="page-title">Mes courses</h1>
-      <p class="page-subtitle">
-        Chaque étape se confirme des deux côtés : vous et l'autre participant.
-      </p>
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div class="page-header">
+        <h1 class="page-title">Mes courses</h1>
+        <p class="page-subtitle">Vos courses du jour, vos demandes et votre semaine.</p>
+      </div>
+      <!-- Meme profil, deux roles : on peut n'afficher que l'un des deux -->
+      <div class="segmented" role="tablist" aria-label="Filtrer par rôle">
+        <button v-for="option in ROLE_FILTERS" :key="option.value" type="button" role="tab" :aria-selected="roleFilter === option.value" @click="roleFilter = option.value">
+          <component :is="option.icon" v-if="option.icon" class="h-4 w-4" aria-hidden="true" />
+          {{ option.label }}
+        </button>
+      </div>
     </header>
 
-    <!-- Reputation : visible en haut, c'est le resultat des notes recues -->
-    <Card v-if="store.loaded" class="flex flex-wrap items-center gap-4">
-      <div>
-        <p class="text-sm font-bold uppercase tracking-wide text-slate-500">Ma réputation</p>
-        <div class="mt-1 flex items-center gap-2">
-          <StarRating :value="summary.average || 0" readonly show-value />
-          <span class="text-sm text-slate-500">
-            {{ summary.count }} note{{ summary.count > 1 ? "s" : "" }}
-          </span>
-        </div>
-      </div>
-      <!-- Un seul palier : conduire et etre passager comptent tous les deux -->
-      <div class="ml-auto text-right">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Expérience</p>
-        <div class="mt-1 flex items-center justify-end gap-2">
-          <TierBadge :tier="tier" />
-        </div>
-        <p class="mt-1 text-xs text-slate-500">
-          {{ tier.rides_count }} course{{ plural(tier.rides_count) }} terminée{{ plural(tier.rides_count) }}
-          <span v-if="tier.rides_to_next">· encore {{ tier.rides_to_next }} avant le palier suivant</span>
-        </p>
-        <p class="text-xs text-slate-400">
-          {{ summary.rides_as_driver || 0 }} comme conducteur · {{ summary.rides_as_passenger || 0 }} comme passager
-        </p>
-      </div>
-
-      <!-- Avis recus : replies par defaut, pour ne pas noyer la page -->
-      <div v-if="receivedRatings.length" class="w-full border-t border-slate-100 pt-3">
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 text-sm font-semibold text-primary"
-          @click="showRatings = !showRatings"
-        >
-          <ChevronRight :class="['h-4 w-4 transition', showRatings ? 'rotate-90' : '']" />
-          {{ showRatings ? "Masquer les avis reçus" : `Voir les ${receivedRatings.length} avis reçus` }}
-        </button>
-
-        <RatingList v-if="showRatings" class="mt-3" :ratings="receivedRatings" />
-      </div>
-    </Card>
-
-    <div v-if="!store.loaded && store.loading" class="text-sm text-slate-500">
-      Chargement de vos courses…
-    </div>
+    <p v-if="!store.loaded && store.loading" class="muted">Chargement de vos courses…</p>
 
     <template v-else>
-      <!-- Demandes de trajet : seules celles qui n'ont pas encore
-           de suivi sont listees ici. Une demande confirmee bascule dans
-           "En cours", ou commence le suivi de la course. -->
-      <section class="space-y-4">
-        <div>
-          <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Mes demandes de trajet</h2>
-          <p class="text-xs text-slate-500">
-            Une fois confirmée par le conducteur, la course apparaît dans « En cours ».
-          </p>
+      <!-- 1. En cours : chaque etape se confirme des deux cotes -->
+      <section class="space-y-3">
+        <SectionHeader title="En cours" :count="active.length || null" subtitle="Chaque étape se confirme des deux côtés." />
+        <div v-if="active.length" class="grid gap-4 lg:grid-cols-2">
+          <TrackingCard v-for="tracking in active" :key="tracking.id" :tracking="tracking" />
         </div>
+        <EmptyState
+          v-else
+          :icon="CarFront"
+          title="Aucune course aujourd'hui"
+          :text="emptyText"
+        >
+          <RouterLink v-if="!upcoming.length && roleFilter !== 'driver'" to="/matches" class="btn-primary btn-sm">
+            <Search class="h-4 w-4" aria-hidden="true" />
+            Trouver un covoiturage
+          </RouterLink>
+          <RouterLink v-if="!upcoming.length && roleFilter !== 'passenger'" to="/matches?mode=drive" class="btn-secondary btn-sm">
+            <CarFront class="h-4 w-4" aria-hidden="true" />
+            {{ waitingOffers ? "Voir mes trajets proposés" : "Proposer un trajet" }}
+          </RouterLink>
+        </EmptyState>
+      </section>
 
-        <p v-if="app.ridesViewLoading && !app.mySelections.length" class="text-sm text-slate-500">
-          Chargement de vos demandes…
-        </p>
-        <div v-else-if="openRequests.length" class="grid gap-2 md:grid-cols-2">
-          <div
-            v-for="request in openRequests"
-            :key="request.selection_id"
-            class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
-          >
-            <div class="min-w-0">
-              <p class="truncate text-sm font-bold text-slate-900">Avec {{ request.driver_name }}</p>
-              <p class="mt-0.5 text-xs text-slate-600">
-                {{ request.ride_type === "to_campus" ? "Vers le campus" : "Depuis le campus" }}
-                · {{ formatRideTime(request.ride_time) }}
-              </p>
-              <p
-                class="mt-1 text-xs font-semibold"
-                :class="request.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'"
+      <!-- 2. Demandes envoyees, en attente de la reponse du conducteur -->
+      <section v-if="openRequests.length && roleFilter !== 'driver'" class="space-y-3">
+        <SectionHeader title="Demandes envoyées" :count="openRequests.length" subtitle="Comme passager. Une demande acceptée devient une course." />
+        <ShowMore :items="openRequests" :limit="4" item-key="selection_id" list-class="grid gap-3 md:grid-cols-2">
+          <template #default="{ item: request }">
+            <Card padding="p-4" class="flex items-center gap-3">
+              <Avatar :name="request.driver_name" size="md" />
+              <div class="min-w-0 flex-1">
+                <p class="card-title truncate">{{ request.driver_name }}</p>
+                <div class="mt-1 flex flex-wrap items-center gap-2 text-[0.8125rem] text-slate-600">
+                  <DirectionBadge :ride-type="request.ride_type" />
+                  <span>{{ formatShortDateTime(request.ride_time) }}</span>
+                </div>
+                <Badge :variant="request.selection_status === 'rejected' ? 'danger' : 'warning'" class="mt-2">
+                  {{ request.selection_status === "rejected" ? "Refusée" : "En attente" }}
+                </Badge>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                :disabled="String(app.selectionLoadingRideId) === String(request.ride_id)"
+                :aria-label="request.selection_status === 'rejected' ? 'Retirer la demande' : 'Annuler la demande'"
+                @click="app.cancelRideSelection(request.ride_id)"
               >
-                {{ request.selection_status === "rejected" ? "Refusé" : "En attente du conducteur" }}
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              :disabled="String(app.selectionLoadingRideId) === String(request.ride_id)"
-              @click="app.cancelRideSelection(request.ride_id)"
-            >
-              <X class="h-4 w-4" aria-hidden="true" />
-              {{ request.selection_status === "rejected" ? "Retirer" : "Annuler" }}
-            </Button>
-          </div>
-        </div>
-        <p v-else class="text-sm text-slate-500">Aucune demande en attente.</p>
+                <X class="h-4 w-4" aria-hidden="true" />
+                {{ request.selection_status === "rejected" ? "Retirer" : "Annuler" }}
+              </Button>
+            </Card>
+          </template>
+        </ShowMore>
       </section>
 
-      <section class="space-y-4">
-        <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">En cours</h2>
-        <div v-if="store.active.length" class="grid gap-4 lg:grid-cols-2">
-          <TrackingCard v-for="tracking in store.active" :key="tracking.id" :tracking="tracking" />
-        </div>
-        <div v-else class="advice-banner">
-          Aucune course en cours. Réservez un trajet depuis la page Covoiturage pour démarrer un suivi.
-        </div>
+      <!-- 3. A venir : la semaine en calendrier -->
+      <section v-if="upcoming.length" class="space-y-3">
+        <SectionHeader title="À venir" :count="upcoming.length" />
+        <Card>
+          <WeekCalendar :monday="week" :items="calendarItems" @navigate="moveWeek">
+            <template #item="{ item }">
+              <button
+                type="button"
+                class="calendar-chip"
+                :class="item.outbound ? 'calendar-chip--out' : 'calendar-chip--back'"
+                @click="selectedId = item.tracking.id"
+              >
+                <span class="font-semibold text-slate-900">{{ item.time }}</span>
+                <span class="flex min-w-0 items-center gap-1 text-xs text-slate-500">
+                  <component :is="item.tracking.my_role === 'driver' ? CarFront : UserRound" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span class="truncate">{{ item.tracking.counterpart_name }}</span>
+                </span>
+              </button>
+            </template>
+          </WeekCalendar>
+          <p class="muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="inline-flex items-center gap-1"><CarFront class="h-3.5 w-3.5" aria-hidden="true" /> Vous conduisez</span>
+            <span class="inline-flex items-center gap-1"><UserRound class="h-3.5 w-3.5" aria-hidden="true" /> Vous êtes passager</span>
+          </p>
+        </Card>
       </section>
 
-      <section v-if="store.finished.length" class="space-y-4">
-        <h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Historique</h2>
-        <div class="grid gap-4 lg:grid-cols-2">
-          <TrackingCard v-for="tracking in store.finished" :key="tracking.id" :tracking="tracking" />
-        </div>
+      <!-- 4. Historique, le plus recent d'abord -->
+      <section v-if="finished.length" class="space-y-3">
+        <SectionHeader title="Historique" :count="finished.length" />
+        <ShowMore :items="finished" :limit="4" item-key="id" list-class="grid gap-4 lg:grid-cols-2">
+          <template #default="{ item: tracking }">
+            <TrackingCard :tracking="tracking" compact />
+          </template>
+        </ShowMore>
       </section>
     </template>
+
+    <!-- Detail d'une course a venir -->
+    <SidePanel :open="Boolean(selected)" title="Course à venir" @close="selectedId = null">
+      <TrackingCard v-if="selected" :tracking="selected" compact class="border-0 p-0 shadow-none" />
+    </SidePanel>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue";
-import { ChevronRight, X } from "lucide-vue-next";
+import { computed, onMounted, ref, watch } from "vue";
+import { RouterLink } from "vue-router";
+import { CarFront, Search, UserRound, X } from "lucide-vue-next";
 
-import RatingList from "../components/RatingList.vue";
 import TrackingCard from "../components/TrackingCard.vue";
-import { Button, Card, StarRating, TierBadge } from "../components/ui";
+import WeekCalendar from "../components/WeekCalendar.vue";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  DirectionBadge,
+  EmptyState,
+  SectionHeader,
+  ShowMore,
+  SidePanel,
+} from "../components/ui";
+import { isOutbound } from "../lib/direction";
+import { formatShortDateTime, formatTime } from "../lib/format";
+import { localDateIso, mondayIso, shiftWeek } from "../lib/week";
 import { useAppStore } from "../stores/app";
 import { useTrackingStore } from "../stores/tracking";
+
+const ROLE_FILTERS = [
+  { value: "all", label: "Tout" },
+  { value: "passenger", label: "Passager", icon: UserRound },
+  { value: "driver", label: "Conducteur", icon: CarFront },
+];
 
 const store = useTrackingStore();
 const app = useAppStore();
 
-
-// Les demandes confirmees ne sont pas repetees ici : elles ont leur carte de
-// suivi dans "En cours". Restent les demandes en attente et refusees.
+// Les demandes acceptees ont leur course (en cours ou a venir) : seules
+// restent ici celles en attente ou refusees.
 const openRequests = computed(() =>
   app.mySelections.filter((request) => request.selection_status !== "accepted")
 );
 
-function formatRideTime(value) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "Horaire non défini"
-    : date.toLocaleString("fr-FR", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+const roleFilter = ref("all");
+const byRole = (list) => (roleFilter.value === "all" ? list : list.filter((t) => t.my_role === roleFilter.value));
+const active = computed(() => byRole(store.active));
+const upcoming = computed(() => byRole(store.upcoming));
+const finished = computed(() => byRole(store.finished));
+
+// Un trajet propose ne devient une course qu'avec un passager accepte :
+// avant, il reste dans Covoiturage > Proposer.
+const waitingOffers = computed(
+  () =>
+    app.driverOffers.filter(
+      (ride) =>
+        ride.is_offer &&
+        new Date(ride.ride_time) > new Date() &&
+        !ride.passengers.some((p) => p.selection_status === "accepted"),
+    ).length,
+);
+const emptyText = computed(() => {
+  if (upcoming.value.length) return "Vos prochaines courses sont dans le calendrier ci-dessous.";
+  if (roleFilter.value !== "passenger" && waitingOffers.value)
+    return `${waitingOffers.value} trajet${waitingOffers.value > 1 ? "s" : ""} proposé${waitingOffers.value > 1 ? "s" : ""} sans passager accepté pour l'instant.`;
+  if (roleFilter.value === "driver") return "Proposez votre voiture depuis Covoiturage.";
+  if (roleFilter.value === "passenger") return "Réservez une place depuis Covoiturage.";
+  return "Réservez une place ou proposez votre voiture depuis Covoiturage.";
+});
+
+const week = ref(mondayIso(localDateIso()));
+const selectedId = ref(null);
+const selected = computed(() => upcoming.value.find((tracking) => tracking.id === selectedId.value) || null);
+
+const calendarItems = computed(() =>
+  upcoming.value.map((tracking) => {
+    const date = new Date(tracking.ride_time);
+    return {
+      key: tracking.id,
+      date: `${localDateIso(date)}T${formatTime(date)}`,
+      outbound: isOutbound(tracking.ride_type),
+      time: formatTime(date),
+      tracking,
+    };
+  }),
+);
+
+function moveWeek(offset) {
+  week.value = offset === 0 ? mondayIso(localDateIso()) : shiftWeek(week.value, offset);
 }
 
-const summary = computed(() => store.myRatings.summary);
-const receivedRatings = computed(() => store.myRatings.ratings || []);
-
-// Un seul palier par profil : chaque course terminee compte, que l'on ait
-// conduit ou ete passager. Le detail par role montre d'ou il vient.
-const tier = computed(() => summary.value.tier || {});
-const plural = (count) => (count > 1 ? "s" : "");
-const showRatings = ref(false);
+// Le calendrier s'ouvre sur la semaine de la prochaine course.
+let weekChosen = false;
+watch(
+  () => store.upcoming[0],
+  (first) => {
+    if (weekChosen || !first) return;
+    weekChosen = true;
+    week.value = mondayIso(localDateIso(new Date(first.ride_time)));
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   store.load();
-  store.loadMyRatings();
   app.loadMySelections();
+  app.loadDriverOffers();
 });
 </script>

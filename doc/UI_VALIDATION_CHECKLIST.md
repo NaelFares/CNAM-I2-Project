@@ -5,7 +5,7 @@
 - `/register`
 - `/profile`
 - `/schedule`
-- `/matches` (onglets « Recherche rapide » et « Recherche par semaine » ; `/rides` redirige ici)
+- `/matches` (onglets « Passager » et « Conducteur » ; `?mode=drive` ouvre directement « Conducteur ») ; une adresse inconnue affiche la page 404
 - `/matches/recap/:rideId`
 - `/tracking`
 

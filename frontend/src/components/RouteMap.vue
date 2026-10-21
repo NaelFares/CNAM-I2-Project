@@ -10,6 +10,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { COLORS } from "../lib/colors";
+import { formatMinutes } from "../lib/format";
 
 const props = defineProps({
   routeGeometry: { type: Array, default: () => [] },
@@ -105,7 +106,7 @@ function addSharedRoutes(bounds) {
 
     if (selected) {
       line.bringToFront();
-      line.bindTooltip(`Choix n° ${rank} · +${Number(route.extra_time_min || 0).toFixed(1)} min`, {
+      line.bindTooltip(`Choix n° ${rank} · +${formatMinutes(route.extra_time_min)}`, {
         permanent: true,
         direction: "top",
         className: "route-badge route-badge--selected",
@@ -131,7 +132,7 @@ function addEstimateNotice() {
 
 function buildMap() {
   if (!mapEl.value) return;
-  map = L.map(mapEl.value, { zoomControl: true }).setView([46.603354, 1.888334], 5);
+  map = L.map(mapEl.value, { zoomControl: true }).setView([43.6045, 1.444], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors",

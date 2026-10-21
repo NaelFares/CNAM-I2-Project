@@ -65,7 +65,7 @@ Comptes utiles pour tester :
 
 | Compte | Profil | À tester |
 |---|---|---|
-| `etudiant01` | Léa, passagère, INSA (Ramonville) | Recherche rapide et par semaine (aucune réservation, tout est libre), dépose en chemin par quelqu'un d'une autre école (Camille, qui va à la N7 : aller lundi 8h, retour mercredi 12h), « ladies only », course en cours (fin du suivi, annulation refusée), courses passées à noter |
+| `etudiant01` | Léa, passagère, INSA (Ramonville) | Covoiturage > Passager : « Ma semaine de cours » et « Un trajet précis » (aucune réservation, tout est libre), dépose en chemin par quelqu'un d'une autre école (Camille, qui va à la N7 : aller lundi 8h, retour mercredi 12h), « ladies only », course en cours (fin du suivi, annulation refusée), courses passées à noter |
 | `etudiant05`, `etudiant20`, `etudiant21` | Chloé (N7), Théo (Capitole), Alice (Jean Jaurès) | Autres comptes passagers libres : recherche et réservation depuis d'autres écoles et quartiers |
 | `etudiant02` | Thomas, conducteur, INSA | Palier « Expérimenté » |
 | `etudiant04`, `etudiant06` | Hugo (N7), Inès (IUT) | Palier « Intermédiaire » |

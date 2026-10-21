@@ -1,36 +1,32 @@
 <template>
-  <section class="matches-explorer" aria-label="Explorateur des covoiturages compatibles">
-    <aside class="matches-explorer__results">
-      <div class="matches-explorer__toolbar">
-        <div>
-          <strong>{{ displayedMatches.length }} trajet{{ displayedMatches.length > 1 ? "s" : "" }}</strong>
-          <span>classé{{ displayedMatches.length > 1 ? "s" : "" }} par compatibilité</span>
-        </div>
-        <label>
+  <section class="matches-explorer" aria-label="Covoiturages compatibles">
+    <div class="matches-explorer__results">
+      <div class="flex items-center justify-between gap-3">
+        <p class="text-sm text-slate-600">
+          <span class="font-semibold text-slate-900">{{ displayedMatches.length }} trajet{{ displayedMatches.length > 1 ? "s" : "" }}</span>
+          compatible{{ displayedMatches.length > 1 ? "s" : "" }}
+        </p>
+        <label class="inline-flex items-center gap-2 text-sm text-slate-500">
+          <ArrowDownUp class="h-4 w-4" aria-hidden="true" />
           <span class="sr-only">Trier les trajets</span>
-          <select v-model="sortMode" class="matches-explorer__sort">
-            <option value="compatibility">Compatibilité</option>
-            <option value="detour">Détour</option>
-            <option value="departure">Départ</option>
+          <select v-model="sortMode" class="input w-auto py-1.5 pr-8 text-sm">
+            <option value="compatibility">Meilleur choix</option>
+            <option value="detour">Plus petit détour</option>
+            <option value="departure">Heure</option>
           </select>
         </label>
       </div>
 
-      <div ref="resultsList" class="matches-explorer__scroll">
-        <p v-if="!displayedMatches.length" class="rounded-xl bg-white p-4 text-sm font-semibold text-slate-600">
-          Aucun trajet compatible pour ce jour. Utilisez les flèches pour voir les autres jours.
-        </p>
-        <section v-if="goldMatches.length" class="matches-explorer__gold-group">
-          <header>
-            <Trophy class="matches-explorer__award-icon" aria-hidden="true" />
-            <div>
-              <strong>Meilleurs choix</strong>
-              <small>{{ goldMatches.length }} trajet{{ goldMatches.length > 1 ? "s" : "" }} en tête</small>
-            </div>
-          </header>
+      <EmptyState
+        v-if="!displayedMatches.length"
+        :icon="SearchX"
+        title="Aucun trajet compatible ce jour-là"
+        text="Choisissez un autre jour dans le calendrier."
+      />
+
+      <ShowMore v-else :items="displayedMatches" :limit="6" item-key="key">
+        <template #default="{ item: entry }">
           <RankedMatchCard
-            v-for="entry in goldMatches"
-            :key="entry.key"
             :match="entry.match"
             :rank="entry.rank"
             :selected="entry.index === selectedIndex"
@@ -38,20 +34,9 @@
             @focus="selectMatch(entry.index)"
             @choose="$emit('choose-ride', entry.match)"
           />
-        </section>
-
-        <RankedMatchCard
-          v-for="entry in remainingMatches"
-          :key="entry.key"
-          :match="entry.match"
-          :rank="entry.rank"
-          :selected="entry.index === selectedIndex"
-          :busy="isRideLoading(entry.match.ride_id)"
-          @focus="selectMatch(entry.index)"
-          @choose="$emit('choose-ride', entry.match)"
-        />
-      </div>
-    </aside>
+        </template>
+      </ShowMore>
+    </div>
 
     <div class="matches-explorer__map-panel">
       <RouteMap
@@ -65,7 +50,7 @@
       />
 
       <div class="matches-explorer__legend" aria-label="Légende de la carte">
-        <span><i class="route-legend route-legend--selected"></i> Trajet affiché</span>
+        <span><i class="route-legend"></i> Trajet affiché</span>
         <span><i class="route-legend route-legend--muted"></i> Autres trajets</span>
         <span><i class="point-legend point-legend--pickup"></i> Prise en charge</span>
         <span><i class="point-legend point-legend--dropoff"></i> Dépose</span>
@@ -77,10 +62,11 @@
 
 <script setup>
 import { computed, ref, watch } from "vue";
-import { Trophy } from "lucide-vue-next";
+import { ArrowDownUp, SearchX } from "lucide-vue-next";
 
 import RankedMatchCard from "./RankedMatchCard.vue";
 import RouteMap from "./RouteMap.vue";
+import { EmptyState, ShowMore } from "./ui";
 
 const props = defineProps({
   matches: { type: Array, default: () => [] },
@@ -94,7 +80,6 @@ defineEmits(["choose-ride"]);
 
 const sortMode = ref("compatibility");
 const selectedIndex = ref(0);
-const resultsList = ref(null);
 
 const uniqueMatches = computed(() => {
   const byRide = new Map();
@@ -136,8 +121,6 @@ const displayedMatches = computed(() => {
   return entries.map((entry, index) => ({ ...entry, index }));
 });
 
-const goldMatches = computed(() => displayedMatches.value.filter((entry) => entry.rank === 1));
-const remainingMatches = computed(() => displayedMatches.value.filter((entry) => entry.rank !== 1));
 const mapRoutes = computed(() => displayedMatches.value.map((entry) => ({ ...entry.match, rank: entry.rank })));
 
 function selectMatch(index) {
@@ -152,12 +135,10 @@ watch(
   () => props.matches,
   () => {
     selectedIndex.value = 0;
-    resultsList.value?.scrollTo({ top: 0, behavior: "smooth" });
   },
 );
 
 watch(sortMode, () => {
   selectedIndex.value = 0;
-  resultsList.value?.scrollTo({ top: 0, behavior: "smooth" });
 });
 </script>

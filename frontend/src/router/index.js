@@ -4,6 +4,7 @@ import AppLayout from "../layouts/AppLayout.vue";
 import DashboardPage from "../pages/DashboardPage.vue";
 import LoginPage from "../pages/LoginPage.vue";
 import MatchesPage from "../pages/MatchesPage.vue";
+import NotFoundPage from "../pages/NotFoundPage.vue";
 import RideRecapPage from "../pages/RideRecapPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
 import RegisterPage from "../pages/RegisterPage.vue";
@@ -24,10 +25,11 @@ const router = createRouter({
         { path: "", component: DashboardPage },
         { path: "profile", component: ProfilePage },
         { path: "schedule", component: SchedulePage },
-        { path: "rides", redirect: "matches" },
         { path: "matches", component: MatchesPage },
         { path: "tracking", component: TrackingPage },
         { path: "matches/recap/:rideId", component: RideRecapPage },
+        // Toute adresse inconnue : page 404 dans le cadre de l'application.
+        { path: ":pathMatch(.*)*", component: NotFoundPage },
       ],
     },
   ],

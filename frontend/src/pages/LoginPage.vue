@@ -38,7 +38,7 @@
         </div>
         <div>
           <label class="mb-1.5 block text-sm font-semibold text-slate-700">Mot de passe</label>
-          <input v-model="password" type="password" required class="input" placeholder="Veuillez taper votre mot de passe" />
+          <input v-model="password" type="password" required class="input" placeholder="Votre mot de passe" />
         </div>
         <button class="btn-primary w-full" :disabled="auth.loading">
           <LoaderCircle v-if="auth.loading" class="h-4 w-4 animate-spin" />

@@ -1,12 +1,12 @@
 <template>
   <transition name="toast">
-    <div v-if="feedback.text" class="pointer-events-none fixed left-1/2 top-[5.75rem] z-30 w-[min(94vw,40rem)] -translate-x-1/2 md:top-[6.25rem]">
-      <div class="pointer-events-auto rounded-2xl border px-4 py-3 shadow-[0_14px_32px_rgba(18,33,59,0.18)] backdrop-blur-sm" :class="toneClass">
+    <div v-if="feedback.text" class="pointer-events-none fixed right-4 top-20 z-50 w-[min(92vw,24rem)]" role="status" aria-live="polite">
+      <div class="pointer-events-auto rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
         <div class="flex items-start gap-3">
-          <component :is="currentIcon" class="mt-0.5 h-5 w-5 shrink-0" />
-          <p class="flex-1 text-sm font-semibold leading-relaxed">{{ feedback.text }}</p>
-          <button class="rounded-md px-2 py-1 text-xs font-bold opacity-80 transition hover:opacity-100" @click="feedback.clear">
-            Fermer
+          <component :is="currentIcon" class="mt-0.5 h-5 w-5 shrink-0" :class="toneClass" aria-hidden="true" />
+          <p class="flex-1 text-sm font-medium leading-relaxed text-slate-800">{{ feedback.text }}</p>
+          <button class="-mr-1 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Fermer" @click="feedback.clear">
+            <X class="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -16,7 +16,7 @@
 
 <script setup>
 import { computed, watch } from "vue";
-import { AlertCircle, CheckCircle2, Info } from "lucide-vue-next";
+import { AlertCircle, CheckCircle2, Info, X } from "lucide-vue-next";
 
 import { useFeedbackStore } from "../stores/feedback";
 
@@ -24,12 +24,12 @@ const feedback = useFeedbackStore();
 
 const toneClass = computed(() => {
   if (feedback.kind === "error") {
-    return "border-rose-200 bg-rose-50/95 text-rose-800";
+    return "text-danger";
   }
   if (feedback.kind === "info") {
-    return "border-sky-200 bg-sky-50/95 text-sky-800";
+    return "text-info";
   }
-  return "border-emerald-200 bg-emerald-50/95 text-emerald-800";
+  return "text-success";
 });
 
 const currentIcon = computed(() => {
@@ -56,6 +56,6 @@ watch(
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translate(-50%, -10px);
+  transform: translateY(-8px);
 }
 </style>

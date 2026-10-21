@@ -1,114 +1,106 @@
 <template>
-  <Card class="space-y-4">
-    <div class="grid gap-4 md:grid-cols-2">
-      <div>
-        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Départ</label>
-        <Input v-model="origin.address" placeholder="Adresse de départ…" @input="originAuto.onInput">
-          <template #icon><MapPin class="h-4 w-4" /></template>
-        </Input>
-        <ul v-if="originAuto.suggestions.value.length" class="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-          <li v-for="item in originAuto.suggestions.value" :key="`${item.display_name}-${item.lat}`">
-            <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-primary-soft" @click="originAuto.select(item)">
-              <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
-              <div class="text-xs text-slate-500">{{ item.place_label }}</div>
-            </button>
-          </li>
-        </ul>
-      </div>
-
-      <div>
-        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Arrivée</label>
-        <Input v-model="destination.address" placeholder="Adresse d'arrivée…" @input="destinationAuto.onInput">
-          <template #icon><School class="h-4 w-4" /></template>
-        </Input>
-        <ul v-if="destinationAuto.suggestions.value.length" class="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-          <li v-for="item in destinationAuto.suggestions.value" :key="`${item.display_name}-${item.lat}`">
-            <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-primary-soft" @click="destinationAuto.select(item)">
-              <div class="font-semibold text-slate-800">{{ item.display_name }}</div>
-              <div class="text-xs text-slate-500">{{ item.place_label }}</div>
-            </button>
-          </li>
-        </ul>
+  <Card class="space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="segmented" role="tablist" aria-label="Que rechercher ?">
+        <button type="button" role="tab" :aria-selected="scope === 'week'" @click="scope = 'week'">
+          <CalendarDays class="h-4 w-4" aria-hidden="true" />
+          Ma semaine de cours
+        </button>
+        <button type="button" role="tab" :aria-selected="scope === 'trip'" @click="scope = 'trip'">
+          <MapPinned class="h-4 w-4" aria-hidden="true" />
+          Un trajet précis
+        </button>
       </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <!-- Toute la semaine : un aller et un retour par jour de cours. -->
+    <div v-if="scope === 'week'" class="grid gap-4 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)] md:items-end">
       <div>
-        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Sens du trajet</label>
-        <div class="flex gap-2">
-          <Button
-            type="button"
-            :variant="rideType === 'to_campus' ? 'primary' : 'secondary'"
-            class="flex-1"
-            @click="rideType = 'to_campus'"
-          >
-            <ArrowRight class="h-4 w-4" />
-            Aller au campus
-          </Button>
-          <Button
-            type="button"
-            :variant="rideType === 'from_campus' ? 'primary' : 'secondary'"
-            class="flex-1"
-            @click="rideType = 'from_campus'"
-          >
-            <ArrowLeft class="h-4 w-4" />
-            Retour du campus
-          </Button>
-        </div>
+        <label for="search-week" class="mb-1.5 block text-sm font-medium text-slate-700">Semaine</label>
+        <input id="search-week" v-model="weekDate" type="date" class="input" />
+      </div>
+      <p class="muted flex items-center gap-2 md:pb-2.5">
+        <Info class="h-4 w-4 shrink-0" aria-hidden="true" />
+        Un aller et un retour pour chaque jour de cours de votre planning, du {{ weekDays[0]?.label }} au {{ weekDays[4]?.label }}.
+      </p>
+    </div>
+
+    <!-- Un trajet ponctuel : adresses pre-remplies depuis le profil. -->
+    <template v-else>
+      <div class="segmented" role="radiogroup" aria-label="Sens du trajet">
+        <button type="button" role="radio" :aria-checked="rideType === 'to_campus'" :aria-pressed="rideType === 'to_campus'" @click="rideType = 'to_campus'">
+          <School class="h-4 w-4 text-outbound" aria-hidden="true" />
+          Aller · vers le campus
+        </button>
+        <button type="button" role="radio" :aria-checked="rideType === 'from_campus'" :aria-pressed="rideType === 'from_campus'" @click="rideType = 'from_campus'">
+          <House class="h-4 w-4 text-return" aria-hidden="true" />
+          Retour · vers la maison
+        </button>
       </div>
 
-      <div>
+      <div class="grid gap-4 md:grid-cols-2">
+        <AddressField :target="origin" label="Départ" :icon="CircleDot" />
+        <AddressField :target="destination" label="Arrivée" :icon="MapPin" />
+      </div>
+
+      <div class="max-w-xs">
         <!-- A l'aller on vise une heure d'arrivee (debut du cours), au
              retour une heure de depart (fin du cours) : c'est ce que compare
              le matching. -->
-        <label class="mb-1.5 block text-sm font-semibold text-slate-700">
-          {{ rideType === "to_campus" ? "Heure d'arrivée" : "Heure de départ" }}
+        <label for="search-time" class="mb-1.5 block text-sm font-medium text-slate-700">
+          {{ rideType === "to_campus" ? "Arriver avant" : "Partir à partir de" }}
         </label>
-        <input v-model="rideTimeLocal" type="datetime-local" class="input" />
+        <input id="search-time" v-model="rideTimeLocal" type="datetime-local" class="input" />
       </div>
+    </template>
+
+    <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <label v-if="ladiesOnlyAvailable" class="inline-flex items-center gap-2 text-sm text-slate-700">
+        <input v-model="ladiesOnly" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
+        <Venus class="h-4 w-4 text-pink-600" aria-hidden="true" />
+        Uniquement des conductrices
+      </label>
+      <span v-else></span>
+      <Button :disabled="app.loading || !canSearch" @click="onSubmit">
+        <Search class="h-4 w-4" aria-hidden="true" />
+        Rechercher
+      </Button>
     </div>
-
-    <label v-if="ladiesOnlyAvailable" class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <input v-model="ladiesOnly" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
-      <span>
-        <span class="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
-          <Venus class="h-4 w-4 text-pink-600" />
-          Covoiturer entre femmes
-        </span>
-        <span class="mt-0.5 block text-xs text-slate-500">
-          Cette recherche ne proposera que des utilisatrices. Votre profil reste visible dans les
-          recherches des autres.
-        </span>
-      </span>
-    </label>
-
-    <Button :disabled="app.loading || !canSearch" @click="onSubmit">
-      <UsersRound class="h-4 w-4" />
-      Rechercher un covoiturage
-    </Button>
   </Card>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
-import { ArrowLeft, ArrowRight, MapPin, School, UsersRound, Venus } from "lucide-vue-next";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import {
+  CalendarDays,
+  CircleDot,
+  House,
+  Info,
+  MapPin,
+  MapPinned,
+  School,
+  Search,
+  Venus,
+} from "lucide-vue-next";
 
-import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
+import AddressField from "./AddressField.vue";
 import { canUseLadiesOnly } from "../lib/gender";
-import { nextUpcomingEvent } from "../lib/week";
+import { localDateIso, mondayIso, nextUpcomingEvent, schoolWeekDays } from "../lib/week";
 import { useAppStore } from "../stores/app";
-import { Button, Card, Input } from "./ui";
+import { Button, Card } from "./ui";
 
 const app = useAppStore();
 const emit = defineEmits(["search"]);
 
-const origin = reactive({ address: "", lat: 46.603354, lon: 1.888334, placeLabel: "" });
-const destination = reactive({ address: "", lat: 46.603354, lon: 1.888334, placeLabel: "" });
-const originAuto = useAddressAutocomplete(origin);
-const destinationAuto = useAddressAutocomplete(destination);
-
+// "week" : tous les trajets de cours d'une semaine ; "trip" : un trajet ponctuel.
+const scope = ref("week");
+const origin = reactive({ address: "", lat: null, lon: null, placeLabel: "", confirmed: true });
+const destination = reactive({ address: "", lat: null, lon: null, placeLabel: "", confirmed: true });
 const rideType = ref("to_campus");
 const ladiesOnly = ref(false);
+const weekDate = ref(localDateIso());
+const weekStart = computed(() => mondayIso(weekDate.value));
+const weekDays = computed(() => schoolWeekDays(weekStart.value));
 
 const ladiesOnlyAvailable = computed(() => canUseLadiesOnly(app.profile));
 
@@ -121,40 +113,58 @@ function nextQuarterHour() {
 
 const rideTimeLocal = ref(nextQuarterHour());
 
-const canSearch = computed(() => origin.address.trim() && destination.address.trim());
+const canSearch = computed(() => {
+  if (scope.value === "week") return Boolean(weekStart.value);
+  return Boolean(origin.address.trim() && destination.address.trim() && origin.lat != null && destination.lat != null);
+});
+
+// Le sens du trajet inverse depart et arrivee : domicile -> ecole a l'aller.
+function fillAddresses() {
+  const p = app.profile;
+  if (!p) return;
+  const home = { address: p.start_address || "", lat: p.start_lat ?? null, lon: p.start_lon ?? null };
+  const school = { address: p.school_address || "", lat: p.school_lat ?? null, lon: p.school_lon ?? null };
+  const [from, to] = rideType.value === "to_campus" ? [home, school] : [school, home];
+  Object.assign(origin, from, { confirmed: true });
+  Object.assign(destination, to, { confirmed: true });
+}
 
 onMounted(async () => {
-  if (!app.profile) {
-    await app.loadProfile();
-  }
-  // Heure pre-remplie : celle du prochain cours, quand il y en a un.
+  if (!app.profile) await app.loadProfile();
+  // Semaine et heure pre-remplies : celles du prochain cours, quand il y en a un.
   if (!app.events.length) await app.loadScheduleEvents();
   const nextEvent = nextUpcomingEvent(app.events);
   if (nextEvent) {
+    weekDate.value = String(nextEvent.start_time).slice(0, 10);
     rideTimeLocal.value = String(nextEvent.start_time).slice(0, 16);
-    rideType.value = "to_campus";
   }
-  if (app.profile) {
-    origin.address = app.profile.start_address || "";
-    origin.lat = app.profile.start_lat || origin.lat;
-    origin.lon = app.profile.start_lon || origin.lon;
-    destination.address = app.profile.school_address || "";
-    destination.lat = app.profile.school_lat || destination.lat;
-    destination.lon = app.profile.school_lon || destination.lon;
-  }
+  fillAddresses();
 });
 
 function onSubmit() {
+  // La case n'est affichee qu'aux utilisatrices, mais on ne se fie pas au
+  // rendu : le flag est neutralise si le profil ne le permet pas.
+  const ladies = ladiesOnlyAvailable.value && ladiesOnly.value;
+  if (scope.value === "week") {
+    emit("search", { scope: "week", weekStart: weekStart.value, ladiesOnly: ladies });
+    return;
+  }
   emit("search", {
+    scope: "trip",
     originLat: origin.lat,
     originLon: origin.lon,
     destLat: destination.lat,
     destLon: destination.lon,
     rideTime: rideTimeLocal.value,
     rideType: rideType.value,
-    // La case n'est affichee qu'aux utilisatrices, mais on ne se fie pas au
-    // rendu : le flag est neutralise si le profil ne le permet pas.
-    ladiesOnly: ladiesOnlyAvailable.value && ladiesOnly.value,
+    ladiesOnly: ladies,
   });
 }
+
+// Changer de sens echange depart et arrivee.
+watch(rideType, () => {
+  const tmp = { address: origin.address, lat: origin.lat, lon: origin.lon };
+  Object.assign(origin, { address: destination.address, lat: destination.lat, lon: destination.lon });
+  Object.assign(destination, tmp);
+});
 </script>
