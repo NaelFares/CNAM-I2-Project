@@ -61,7 +61,7 @@ def update_profile(payload: ProfileUpdateRequest, user: User = Depends(require_c
     if not same_email:
         existing = db.get_user_by_email(str(payload.email).strip().lower())
         if existing and existing.id != user.id:
-            raise_api_error("REGISTER_REQUIRED_FIELDS")
+            raise_api_error("PROFILE_EMAIL_TAKEN", http_status=status.HTTP_409_CONFLICT)
 
     next_user = User(
         id=user.id,

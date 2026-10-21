@@ -379,7 +379,8 @@ async function generateFromTimetable() {
 }
 
 onMounted(async () => {
-  if (!app.profile) await app.loadProfile();
+  // Toujours recharger : un profil en memoire peut etre perime.
+  await app.loadProfile();
   await app.loadDriverOffers();
 });
 </script>

@@ -2,7 +2,14 @@
 
 import { extractApiError } from "../api/api";
 import { fetchSession, login, logout, register } from "../api/endpoints";
+import { useAppStore } from "./app";
 import { useFeedbackStore } from "./feedback";
+
+// Vide les donnees du compte precedent (profil, trajets...) pour qu'un
+// autre compte ne les reutilise pas apres un changement d'utilisateur.
+function resetUserData() {
+  useAppStore().$reset();
+}
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -37,6 +44,7 @@ export const useAuthStore = defineStore("auth", {
           feedback.showSuccess(data.feedback.message);
           return { registerRequired: true };
         }
+        resetUserData();
         this.user = data.user;
         this.isLoggedIn = true;
         this.pendingEmail = "";
@@ -54,6 +62,7 @@ export const useAuthStore = defineStore("auth", {
       this.loading = true;
       try {
         const data = await register(payload);
+        resetUserData();
         this.user = data.user;
         this.isLoggedIn = true;
         this.pendingEmail = "";
@@ -68,6 +77,7 @@ export const useAuthStore = defineStore("auth", {
     },
     async logout() {
       await logout();
+      resetUserData();
       this.isLoggedIn = false;
       this.user = null;
       this.pendingEmail = "";
