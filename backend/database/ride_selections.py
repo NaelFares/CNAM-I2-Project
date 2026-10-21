@@ -95,3 +95,70 @@ def confirm_step(selection_id: int, column: str) -> Optional[RideSelection]:
     conn.commit()
     conn.close()
     return RideSelection.from_dict(row) if row else None
+
+
+def count_completed_rides(user_id: int) -> dict:
+    """Nombre de courses terminees par cet utilisateur, par role.
+
+    Une course compte quand les deux parties ont confirme la fin : c'est le
+    seul etat incontestable, et il ne peut pas etre gonfle unilateralement.
+
+    Retourne {"driver": n, "passenger": n}. Le palier se calcule sur leur
+    somme ; le detail par role sert seulement a l'affichage.
+    """
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) FILTER (WHERE r.user_id = %s) AS as_driver,
+            COUNT(*) FILTER (WHERE s.passenger_id = %s) AS as_passenger
+        FROM ride_selections s
+        JOIN rides r ON r.id = s.ride_id
+        WHERE s.status = 'accepted'
+          AND s.driver_completed_at IS NOT NULL
+          AND s.passenger_arrived_at IS NOT NULL
+          AND (r.user_id = %s OR s.passenger_id = %s)
+        """,
+        (user_id, user_id, user_id, user_id),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return {"driver": int(row[0] or 0), "passenger": int(row[1] or 0)}
+
+
+def count_completed_rides_total(user_ids: List[int]) -> dict:
+    """Courses terminees, tous roles confondus, pour plusieurs utilisateurs.
+
+    Une course compte pour son conducteur et pour son passager. Requete
+    groupee : afficher le palier sur une liste de resultats ne doit pas
+    declencher une lecture par ligne.
+    """
+    if not user_ids:
+        return {}
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        WITH completed AS (
+            SELECT r.user_id AS driver_id, s.passenger_id
+            FROM ride_selections s
+            JOIN rides r ON r.id = s.ride_id
+            WHERE s.status = 'accepted'
+              AND s.driver_completed_at IS NOT NULL
+              AND s.passenger_arrived_at IS NOT NULL
+        )
+        SELECT user_id, COUNT(*)
+        FROM (
+            SELECT driver_id AS user_id FROM completed
+            UNION ALL
+            SELECT passenger_id FROM completed
+        ) participants
+        WHERE user_id = ANY(%s)
+        GROUP BY user_id
+        """,
+        (list(user_ids),),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return {row[0]: int(row[1]) for row in rows}

@@ -58,7 +58,12 @@
       </div>
 
       <div>
-        <label class="mb-1.5 block text-sm font-semibold text-slate-700">Heure</label>
+        <!-- A l'aller on vise une heure d'arrivee (debut du cours), au
+             retour une heure de depart (fin du cours) : c'est ce que compare
+             le matching. -->
+        <label class="mb-1.5 block text-sm font-semibold text-slate-700">
+          {{ rideType === "to_campus" ? "Heure d'arrivée" : "Heure de départ" }}
+        </label>
         <input v-model="rideTimeLocal" type="datetime-local" class="input" />
       </div>
     </div>
@@ -90,6 +95,7 @@ import { ArrowLeft, ArrowRight, MapPin, School, UsersRound, Venus } from "lucide
 
 import { useAddressAutocomplete } from "../composables/useAddressAutocomplete";
 import { canUseLadiesOnly } from "../lib/gender";
+import { nextUpcomingEvent } from "../lib/week";
 import { useAppStore } from "../stores/app";
 import { Button, Card, Input } from "./ui";
 
@@ -120,6 +126,13 @@ const canSearch = computed(() => origin.address.trim() && destination.address.tr
 onMounted(async () => {
   if (!app.profile) {
     await app.loadProfile();
+  }
+  // Heure pre-remplie : celle du prochain cours, quand il y en a un.
+  if (!app.events.length) await app.loadScheduleEvents();
+  const nextEvent = nextUpcomingEvent(app.events);
+  if (nextEvent) {
+    rideTimeLocal.value = String(nextEvent.start_time).slice(0, 16);
+    rideType.value = "to_campus";
   }
   if (app.profile) {
     origin.address = app.profile.start_address || "";

@@ -7,17 +7,15 @@ from datetime import datetime, time, timedelta
 from fastapi import APIRouter, Depends, status
 
 from backend.core.config import config
+from backend.database import ride_ratings as ratings_db
+from backend.database import ride_selections as selections_db
 from backend.database.manager import db
 from backend.models.ride import Ride
 from backend.models.user import User
 from backend.services.matching import matching_service
-from backend.services.routing import (
-    RoutingQuotaExceededError,
-    RoutingRateLimitError,
-    routing_service,
-)
+from backend.services.routing import routing_service
 
-from backend.api.deps import require_passenger
+from backend.api.deps import require_current_user
 from backend.api.feedback import make_feedback, raise_api_error
 from backend.api.schemas import MatchDTO, MatchesResponse, MatchSearchRequest, MatchSearchResponse, PlanningMatchRequest
 
@@ -35,8 +33,9 @@ def _check_ladies_only_allowed(user: User, ladies_only: bool):
 @router.post("/find", response_model=MatchesResponse)
 def find_matches(
     body: PlanningMatchRequest,
+    user: User = Depends(require_current_user),
+    # Apres `user` : l'ordre (body, user) est celui des appels existants.
     ladies_only: bool = False,
-    user: User = Depends(require_passenger),
 ):
     _check_ladies_only_allowed(user, ladies_only)
 
@@ -54,28 +53,30 @@ def find_matches(
         if ride.ride_time and max(start, now) <= ride.ride_time < end
     ]
     selection_counts = db.get_ride_selection_counts()
+    # Reputation des conducteurs candidats, chargee en une requete pour
+    # eviter un N+1 sur la liste de resultats.
+    rating_summaries = ratings_db.get_summaries([ride.user_id for ride in all_rides])
+    driver_ride_counts = selections_db.count_completed_rides_total(
+        [ride.user_id for ride in all_rides]
+    )
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
-    reserved_times = db.get_passenger_reserved_times(user.id)
-    try:
-        matches = matching_service.find_matches(
-            current_user=user,
-            my_rides=my_rides,
-            all_rides=all_rides,
-            selection_counts=selection_counts,
-            selected_ride_ids=selected_ride_ids,
-            reserved_times=reserved_times,
-            ladies_only=ladies_only,
-        )
-    except RoutingQuotaExceededError:
-        raise_api_error(
-            "MATCHES_ROUTING_QUOTA_EXCEEDED",
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
-    except RoutingRateLimitError:
-        raise_api_error(
-            "MATCHES_ROUTING_RATE_LIMITED",
-            status.HTTP_429_TOO_MANY_REQUESTS,
-        )
+    # Creneaux indisponibles : deja reserves comme passager, ou proposes
+    # comme conducteur -- on ne peut pas etre des deux cotes a la fois.
+    reserved_times = db.get_passenger_reserved_times(user.id) | db.get_offer_times(user.id)
+    # Si OSRM est indisponible, le service d'itineraire bascule sur une
+    # estimation (route_estimated=True) : la recherche ne tombe plus en erreur.
+    matches = matching_service.find_matches(
+        current_user=user,
+        my_rides=my_rides,
+        all_rides=all_rides,
+        selection_counts=selection_counts,
+        selected_ride_ids=selected_ride_ids,
+        reserved_times=reserved_times,
+        ladies_only=ladies_only,
+        rating_summaries=rating_summaries,
+        driver_ride_counts=driver_ride_counts,
+        accepted_stops=db.get_accepted_stops([ride.id for ride in all_rides]),
+    )
 
     return MatchesResponse(
         matches=[MatchDTO(**match) for match in matches],
@@ -120,7 +121,7 @@ def _ensure_week_rides(user: User, start: datetime, end: datetime, now: datetime
 
 
 @router.post("/search", response_model=MatchSearchResponse)
-def search_matches(body: MatchSearchRequest, user: User = Depends(require_passenger)):
+def search_matches(body: MatchSearchRequest, user: User = Depends(require_current_user)):
     _check_ladies_only_allowed(user, body.ladies_only)
 
     transient_ride = Ride(
@@ -139,35 +140,35 @@ def search_matches(body: MatchSearchRequest, user: User = Depends(require_passen
         if ride.ride_time and ride.ride_time >= now
     ]
     selection_counts = db.get_ride_selection_counts()
+    rating_summaries = ratings_db.get_summaries([ride.user_id for ride in all_rides])
+    driver_ride_counts = selections_db.count_completed_rides_total(
+        [ride.user_id for ride in all_rides]
+    )
     selected_ride_ids = db.get_passenger_selected_ride_ids(user.id)
-    reserved_times = db.get_passenger_reserved_times(user.id)
-    try:
-        matches = matching_service.find_matches(
-            current_user=user,
-            my_rides=[transient_ride],
-            all_rides=all_rides,
-            selection_counts=selection_counts,
-            selected_ride_ids=selected_ride_ids,
-            reserved_times=reserved_times,
-            ladies_only=body.ladies_only,
-        )
-        geometry = routing_service.get_route_geometry(
-            (body.origin_lat, body.origin_lon),
-            (body.dest_lat, body.dest_lon),
-        ) or []
-    except RoutingQuotaExceededError:
-        raise_api_error(
-            "MATCHES_ROUTING_QUOTA_EXCEEDED",
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
-    except RoutingRateLimitError:
-        raise_api_error(
-            "MATCHES_ROUTING_RATE_LIMITED",
-            status.HTTP_429_TOO_MANY_REQUESTS,
-        )
+    # Creneaux indisponibles : deja reserves comme passager, ou proposes
+    # comme conducteur -- on ne peut pas etre des deux cotes a la fois.
+    reserved_times = db.get_passenger_reserved_times(user.id) | db.get_offer_times(user.id)
+    # Meme repli que pour /matches/find : pas d'erreur si OSRM est indisponible.
+    matches = matching_service.find_matches(
+        current_user=user,
+        my_rides=[transient_ride],
+        all_rides=all_rides,
+        selection_counts=selection_counts,
+        selected_ride_ids=selected_ride_ids,
+        reserved_times=reserved_times,
+        ladies_only=body.ladies_only,
+        rating_summaries=rating_summaries,
+        driver_ride_counts=driver_ride_counts,
+        accepted_stops=db.get_accepted_stops([ride.id for ride in all_rides]),
+    )
+    search_route = routing_service.get_route_details(
+        (body.origin_lat, body.origin_lon),
+        (body.dest_lat, body.dest_lon),
+    )
 
     return MatchSearchResponse(
         matches=[MatchDTO(**match) for match in matches],
-        search_route_geometry=[list(point) for point in geometry],
+        search_route_geometry=[list(point) for point in search_route["geometry"]],
+        search_route_estimated=search_route["estimated"],
         feedback=make_feedback("MATCHES_FOUND", count=len(matches)),
     )

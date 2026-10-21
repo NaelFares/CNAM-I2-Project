@@ -51,6 +51,24 @@ export function ridesForWeek(rides, monday) {
   }).sort((a, b) => String(a.ride_time).localeCompare(String(b.ride_time)));
 }
 
+// Prochain cours du planning (start_time au format ISO local), ou null.
+// Sert a ouvrir les recherches sur une periode qui a des trajets, plutot
+// que sur aujourd'hui, souvent vide (week-end, cours deja passes).
+export function nextUpcomingEvent(events, now = new Date()) {
+  const nowIso = `${localDateIso(now)}T${now.toTimeString().slice(0, 5)}`;
+  return (events || [])
+    .filter((event) => String(event.start_time || "") > nowIso)
+    .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)))[0] || null;
+}
+
+// Heure ou le conducteur passe chez le passager : il le depose a l'aller,
+// le prend au retour. Le backend la calcule le long de la vraie route.
+export function passageLabel(match) {
+  if (!match?.passage_time) return "";
+  const wayIn = String(match.ride_type || "").startsWith("Vers");
+  return `${wayIn ? "Dépose" : "Prise en charge"} vers ${match.passage_time}`;
+}
+
 export function matchesForDay(matches, day) {
   return matches.filter((match) => String(match.ride_time || "").slice(0, 10) === day);
 }

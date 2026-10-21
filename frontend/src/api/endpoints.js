@@ -82,12 +82,31 @@ export async function getMyRideOffers() {
   return (await apiClient.get("/rides/my-offers")).data;
 }
 
-export async function selectRide(rideId) {
-  return (await apiClient.post(`/rides/${rideId}/select`)).data;
+// Proposer un trajet independamment de l'emploi du temps.
+export async function createOffer(payload) {
+  return (await apiClient.post("/rides/offers", payload)).data;
 }
 
-export async function decideRidePassenger(rideId, passengerId, decision) {
-  return (await apiClient.post(`/rides/${rideId}/passengers/${passengerId}/${decision}`)).data;
+// Annuler un trajet propose (supprime s'il a ete cree a la main).
+export async function withdrawOffer(rideId) {
+  return (await apiClient.delete(`/rides/${rideId}/offer`)).data;
+}
+
+// Interrupteur "Je prends ma voiture" sur un de mes trajets.
+export async function setRideOffer(rideId, isOffer) {
+  return (await apiClient.put(`/rides/${rideId}/offer`, { is_offer: isOffer })).data;
+}
+
+// `stop` : correspondance choisie (prise en charge, depose, heure de
+// passage, detour), enregistree avec la demande pour le conducteur.
+export async function selectRide(rideId, stop = null) {
+  return (await apiClient.post(`/rides/${rideId}/select`, stop || undefined)).data;
+}
+
+// force : accepter malgre l'avertissement de detour total trop long.
+export async function decideRidePassenger(rideId, passengerId, decision, force = false) {
+  const params = force ? { force: true } : undefined;
+  return (await apiClient.post(`/rides/${rideId}/passengers/${passengerId}/${decision}`, null, { params })).data;
 }
 
 export async function cancelRideSelection(rideId) {
@@ -97,6 +116,20 @@ export async function cancelRideSelection(rideId) {
 // --- Suivi de la course (une fois la reservation acceptee) ---
 export async function fetchTrackings() {
   return (await apiClient.get("/tracking")).data;
+}
+
+export async function rateRide(selectionId, score, comment = "") {
+  return (
+    await apiClient.post(`/tracking/selections/${selectionId}/rating`, { score, comment })
+  ).data;
+}
+
+export async function fetchMyRatings() {
+  return (await apiClient.get("/ratings/me")).data;
+}
+
+export async function fetchUserRatings(userId) {
+  return (await apiClient.get(`/ratings/users/${userId}`)).data;
 }
 
 export async function confirmTrackingStep(selectionId, step) {

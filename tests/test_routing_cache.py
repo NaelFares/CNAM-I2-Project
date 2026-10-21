@@ -1,69 +1,70 @@
-"""Tests for persistent routing caching and ORS quota protection."""
+"""Tests for the routing facade: cache first, then OSRM, then estimate."""
 
 import unittest
 from unittest.mock import Mock, patch
 
-from backend.core.config import config
-from backend.services.routing import RoutingQuotaExceededError, RoutingService
+from backend.services.routing import RoutingService
+
+START, END = (43.60, 1.44), (43.61, 1.45)
+OSRM_RESULT = {
+    "geometry": [(43.60, 1.44), (43.605, 1.447), (43.61, 1.45)],
+    "distance_m": 1500.0,
+    "duration_s": 240.0,
+}
 
 
 class RoutingCacheTests(unittest.TestCase):
-    def test_cache_hit_does_not_call_ors(self):
-        cached = {
-            "geometry": [[43.60, 1.44], [43.61, 1.45]],
-            "distance_m": 1200.0,
-            "duration_s": 240.0,
-        }
-        service = RoutingService()
+    def setUp(self):
+        self.client = Mock()
+        self.service = RoutingService(client=self.client)
 
-        with (
-            patch("backend.services.routing.db.get_routing_cache", return_value=cached),
-            patch("backend.services.routing.requests.request") as request,
-        ):
-            result = service.get_route_details((43.60, 1.44), (43.61, 1.45))
+    def test_cache_hit_does_not_call_osrm(self):
+        cached = {"geometry": [[43.60, 1.44], [43.61, 1.45]], "distance_m": 1200.0, "duration_s": 240.0}
 
-        self.assertEqual(result, cached)
-        request.assert_not_called()
+        with patch("backend.services.routing.db.get_routing_cache", return_value=cached):
+            result = self.service.get_route_details(START, END)
 
-    def test_successful_ors_result_is_saved(self):
-        response = Mock(status_code=200, headers={})
-        response.json.return_value = {
-            "features": [
-                {
-                    "geometry": {"coordinates": [[1.44, 43.60], [1.45, 43.61]]},
-                    "properties": {"summary": {"distance": 1200, "duration": 240}},
-                }
-            ]
-        }
-        service = RoutingService()
+        self.assertEqual(result, {**cached, "estimated": False})
+        self.client.route.assert_not_called()
+
+    def test_osrm_result_is_returned_and_cached(self):
+        self.client.route.return_value = dict(OSRM_RESULT)
 
         with (
             patch("backend.services.routing.db.get_routing_cache", return_value=None),
             patch("backend.services.routing.db.upsert_routing_cache") as upsert,
-            patch("backend.services.routing.requests.request", return_value=response) as request,
-            patch.object(config, "ORS_API_KEY", "test-key"),
         ):
-            result = service.get_route_details((43.60, 1.44), (43.61, 1.45))
+            result = self.service.get_route_details(START, END)
 
-        self.assertEqual(result["duration_s"], 240.0)
-        request.assert_called_once()
+        self.assertEqual(result, {**OSRM_RESULT, "estimated": False})
+        self.client.route.assert_called_once_with([START, END])
         upsert.assert_called_once()
 
-    def test_daily_quota_error_blocks_following_requests_immediately(self):
-        response = Mock(status_code=403, headers={})
-        service = RoutingService()
+    def test_via_route_passes_the_pickup_point_between_start_and_end(self):
+        via = (43.605, 1.445)
+        self.client.route.return_value = dict(OSRM_RESULT)
 
         with (
             patch("backend.services.routing.db.get_routing_cache", return_value=None),
-            patch("backend.services.routing.requests.request", return_value=response) as request,
-            patch.object(config, "ORS_API_KEY", "test-key"),
+            patch("backend.services.routing.db.upsert_routing_cache"),
         ):
-            with self.assertRaises(RoutingQuotaExceededError):
-                service.get_route_details((43.60, 1.44), (43.61, 1.45))
-            with self.assertRaises(RoutingQuotaExceededError):
-                service.get_route_details((43.62, 1.46), (43.63, 1.47))
+            self.service.get_route_via_waypoints(START, [via], END)
 
-        request.assert_called_once()
+        self.client.route.assert_called_once_with([START, via, END])
+
+    def test_unavailable_osrm_falls_back_to_an_uncached_estimate(self):
+        """OSRM arrete : estimation renvoyee, jamais ecrite dans le cache."""
+        self.client.route.return_value = None
+
+        with (
+            patch("backend.services.routing.db.get_routing_cache", return_value=None),
+            patch("backend.services.routing.db.upsert_routing_cache") as upsert,
+        ):
+            result = self.service.get_route_details(START, END)
+
+        self.assertTrue(result["estimated"])
+        self.assertEqual(result["geometry"], [START, END])
+        upsert.assert_not_called()
 
     def test_direct_and_via_routes_have_different_cache_keys(self):
         direct = RoutingService._cache_key([(43.60, 1.44), (43.61, 1.45)])

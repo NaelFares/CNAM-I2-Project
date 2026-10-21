@@ -1,57 +1,63 @@
-"""Paliers de reputation conducteur/passager.
+"""Palier d'experience d'un profil.
 
-Fonction pure, volontairement isolee du reste : elle ne lit ni la base ni
-aucun modele, seulement deux nombres. Les deux sources qui l'alimenteront
-n'existent pas encore dans le projet :
+Le palier depend uniquement du nombre de courses effectivement realisees,
+c'est-a-dire confirmees comme terminees par les deux parties. La note
+moyenne est affichee a cote mais n'entre pas dans le calcul : elle dit la
+qualite, le palier dit l'experience.
 
-  - `rides_count` viendra des courses effectivement realisees, c'est-a-dire
-    de la table de reservation en cours de developpement par ailleurs ;
-  - `rating_avg` viendra de la notation, reportee tant que cette table n'est
-    pas connue.
+Un seul palier par profil, quel que soit le role : chaque course terminee
+compte pour une, que la personne ait conduit ou ete passagere. Le detail
+par role reste affiche a cote, a titre d'information.
 
-Tant que ces deux sources manquent, ce module n'est branche nulle part : rien
-ne l'appelle dans l'API, et aucun badge n'est affiche. Le jour ou les courses
-et les notes existent, il suffit de lui passer les deux valeurs -- aucune
-decision sur le schema de reservation n'est prise ici, ce qui est justement
-le but.
+Fonction pure, sans acces base ni dependance au reste : elle ne recoit
+qu'un nombre.
 """
 
 from __future__ import annotations
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 
 class Tier(NamedTuple):
-    """Un palier : son identifiant technique, son libelle et ses seuils."""
+    """Un palier : identifiant technique, libelle affiche, seuil d'entree."""
 
     key: str
     label: str
     min_rides: int
-    min_rating: float
 
 
 # Du plus exigeant au moins exigeant : le premier palier atteint gagne.
 TIERS: tuple[Tier, ...] = (
-    Tier("expert", "Expérimenté", min_rides=20, min_rating=4.5),
-    Tier("confirmed", "Confirmé", min_rides=5, min_rating=4.0),
-    Tier("newcomer", "Nouveau", min_rides=0, min_rating=0.0),
+    Tier("expert", "Expérimenté", min_rides=50),
+    Tier("intermediate", "Intermédiaire", min_rides=20),
+    Tier("beginner", "Débutant", min_rides=0),
 )
 
 DEFAULT_TIER = TIERS[-1]
 
 
-def compute_tier(rides_count: int, rating_avg: Optional[float]) -> Tier:
-    """Retourne le palier correspondant a un nombre de courses et une moyenne.
+def compute_tier(rides_count: int) -> Tier:
+    """Palier correspondant a un nombre de courses terminees.
 
-    `rating_avg` vaut None tant qu'aucune note n'a ete recue : l'utilisateur
-    reste alors au palier de depart, quel que soit son nombre de courses. Un
-    profil tres actif mais jamais note ne doit pas heriter d'un palier eleve
-    par defaut -- c'est la note qui distingue les paliers, pas le volume seul.
+    Debutant de 0 a 19 courses, Intermediaire de 20 a 49, Experimente a
+    partir de 50.
     """
-    if rating_avg is None:
-        return DEFAULT_TIER
-
+    count = max(0, int(rides_count or 0))
     for tier in TIERS:
-        if rides_count >= tier.min_rides and rating_avg >= tier.min_rating:
+        if count >= tier.min_rides:
             return tier
     return DEFAULT_TIER
+
+
+def rides_to_next_tier(rides_count: int) -> int | None:
+    """Courses restantes avant le palier suivant, ou None au dernier palier.
+
+    Sert a afficher une progression lisible plutot qu'un palier opaque.
+    """
+    count = max(0, int(rides_count or 0))
+    # TIERS est trie du plus exigeant au moins exigeant : on remonte pour
+    # trouver le premier seuil encore devant nous.
+    for tier in reversed(TIERS):
+        if count < tier.min_rides:
+            return tier.min_rides - count
+    return None

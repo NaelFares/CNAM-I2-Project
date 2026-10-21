@@ -29,23 +29,22 @@
               <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Itinéraire proposé</p>
               <h2 class="mt-1 text-lg font-bold text-slate-900">{{ directionLabel }}</h2>
             </div>
-            <span class="rounded-full bg-blue-50 px-3 py-1.5 text-sm font-bold text-blue-800">
-              {{ ride.score }} % compatible
-            </span>
           </div>
 
           <RouteMap
             :route-geometry="ride.route_geometry || []"
             :passenger-coords="ride.passenger_coords || null"
+            :dropoff-coords="ride.passenger_dropoff_coords || null"
             :dest-coords="ride.campus_coords || null"
             height="430px"
             route-label="Trajet sélectionné"
+            :estimated="Boolean(ride.route_estimated)"
           />
 
           <div class="grid gap-3 sm:grid-cols-3">
             <div class="rounded-xl bg-slate-50 p-3">
               <Clock3 class="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">Départ</p>
+              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">{{ driverTimeLabel }}</p>
               <p class="mt-1 text-sm font-bold text-slate-900">{{ formattedRideTime }}</p>
             </div>
             <div class="rounded-xl bg-slate-50 p-3">
@@ -55,8 +54,8 @@
             </div>
             <div class="rounded-xl bg-slate-50 p-3">
               <MapPin class="h-5 w-5 text-blue-700" aria-hidden="true" />
-              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">Distance au départ</p>
-              <p class="mt-1 text-sm font-bold text-slate-900">{{ formattedDistance }} km</p>
+              <p class="mt-2 text-xs font-bold uppercase tracking-wide text-slate-500">Passage du conducteur</p>
+              <p class="mt-1 text-sm font-bold text-slate-900">{{ passageLabel(ride) || "—" }}</p>
             </div>
           </div>
         </Card>
@@ -139,6 +138,7 @@ import {
 
 import RouteMap from "../components/RouteMap.vue";
 import { Button, Card } from "../components/ui";
+import { passageLabel } from "../lib/week";
 import { useAppStore } from "../stores/app";
 
 const app = useAppStore();
@@ -153,6 +153,9 @@ const ride = computed(() => {
 const isConfirming = computed(
   () => ride.value && String(app.selectionLoadingRideId) === String(ride.value.ride_id),
 );
+// L'heure du conducteur est son arrivee a l'aller, son depart au retour.
+const driverTimeLabel = computed(() => (String(ride.value?.ride_type || "").startsWith("Vers") ? "Arrivée du conducteur" : "Départ du conducteur"));
+
 const directionLabel = computed(() => {
   const value = String(ride.value?.ride_type || "");
   if (value === "to_campus") return "Aller vers le campus";
@@ -161,7 +164,6 @@ const directionLabel = computed(() => {
 });
 const formattedRideTime = computed(() => ride.value?.ride_time || "Horaire non défini");
 const formattedDetour = computed(() => Number(ride.value?.extra_time_min || 0).toFixed(1));
-const formattedDistance = computed(() => Number(ride.value?.distance_km || 0).toFixed(1));
 const availableSeats = computed(() => {
   const value = Number(ride.value?.available_seats ?? ride.value?.car_seats);
   return Number.isFinite(value) ? Math.max(0, value) : 0;

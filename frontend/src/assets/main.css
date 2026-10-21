@@ -864,6 +864,8 @@ a {
 .point-legend { width: 9px; height: 9px; border-radius: 999px; }
 .point-legend--pickup { background: #f97316; }
 .point-legend--destination { background: #ef4444; }
+/* Depose en chemin : meme couleur que la prise en charge, creuse. */
+.point-legend--dropoff { background: #fff; box-shadow: inset 0 0 0 2px #f97316; }
 
 .shared-map-rank {
   padding: 0;
@@ -900,6 +902,18 @@ a {
   color: #12305b !important;
   font-weight: 800 !important;
   box-shadow: 0 5px 15px rgba(15, 23, 42, 0.18) !important;
+}
+
+/* Mention "itineraire estime" (RouteMap), quand le calcul d'itineraire est indisponible. */
+.route-estimate-note {
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: #fffbeb;
+  padding: 0.25rem 0.5rem;
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
 }
 
 @media (max-width: 900px) {

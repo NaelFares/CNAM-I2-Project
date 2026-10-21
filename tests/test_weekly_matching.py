@@ -13,7 +13,7 @@ from backend.models.user import User
 
 class WeeklyMatchingTests(unittest.TestCase):
     def setUp(self):
-        self.user = User(id=1, role="passenger", start_lat=43.6, start_lon=1.4,
+        self.user = User(id=1, start_lat=43.6, start_lon=1.4,
                          school_lat=43.61, school_lon=1.41)
 
     def test_creates_only_missing_rides_without_deleting_existing_ones(self):
@@ -52,13 +52,19 @@ class WeeklyMatchingTests(unittest.TestCase):
         with (
             patch.object(matches_route, "db") as database,
             patch.object(matches_route, "matching_service") as matching,
+            # Reputation et compteurs de courses : sans base dans un test unitaire.
+            patch.object(matches_route, "ratings_db") as ratings,
+            patch.object(matches_route, "selections_db") as selections,
         ):
+            ratings.get_summaries.return_value = {}
+            selections.count_completed_rides_total.return_value = {}
             database.get_events_by_user.return_value = []
             database.get_active_rides_by_user.return_value = [inside, weekend, before]
             database.get_all_active_rides.return_value = [driver, weekend, before]
             database.get_ride_selection_counts.return_value = {}
             database.get_passenger_selected_ride_ids.return_value = set()
             database.get_passenger_reserved_times.return_value = set()
+            database.get_offer_times.return_value = set()
             matching.find_matches.return_value = []
 
             matches_route.find_matches(

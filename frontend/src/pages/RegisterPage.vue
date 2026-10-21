@@ -77,7 +77,8 @@
 
         <div class="md:col-span-2">
           <p class="text-xs text-slate-500">
-            La photo de profil se renseigne ensuite depuis votre profil.
+            Vous pourrez chercher un trajet et proposer le vôtre. La photo de profil et le
+            nombre de places de votre voiture se renseignent ensuite depuis votre profil.
           </p>
         </div>
 
@@ -92,20 +93,6 @@
           <p v-if="passwordMismatch" class="mt-1 text-sm text-red-600">
             Les mots de passe ne correspondent pas.
           </p>
-        </div>
-
-        <div>
-          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Je souhaite être</label>
-          <select v-model="form.role" class="input" required>
-            <option value="passenger">Passager</option>
-            <option value="driver">Conducteur</option>
-          </select>
-        </div>
-
-        <div v-if="form.role === 'driver'">
-          <label class="mb-1.5 block text-sm font-semibold text-slate-700">Places disponibles</label>
-          <input v-model.number="form.car_seats" type="number" min="1" max="4" required class="input" />
-          <p class="mt-1 text-xs text-slate-500">De 1 à 4 places passagers.</p>
         </div>
 
         <div class="md:col-span-2 mt-2">
@@ -153,8 +140,6 @@ const form = reactive({
   smoking_preference: "peu_importe",
   password: "",
   passwordConfirmation: "",
-  role: "passenger",
-  car_seats: null,
 });
 
 const passwordMismatch = computed(
@@ -183,7 +168,6 @@ async function onSubmit() {
   const { passwordConfirmation, ...values } = form;
   const payload = {
     ...values,
-    car_seats: values.role === "driver" ? Number(values.car_seats || 1) : null,
     // Cf. profil : pas de styles déclarés sans musique.
     music_genres: showMusicGenres.value ? values.music_genres : [],
   };

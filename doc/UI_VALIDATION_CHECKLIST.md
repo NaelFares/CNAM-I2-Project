@@ -5,8 +5,9 @@
 - `/register`
 - `/profile`
 - `/schedule`
-- `/rides`
-- `/matches`
+- `/matches` (onglets « Recherche rapide » et « Recherche par semaine » ; `/rides` redirige ici)
+- `/matches/recap/:rideId`
+- `/tracking`
 
 ## Scenarios feedback
 - Erreur de formulaire vide: message centre, lisible, fermable.
@@ -23,6 +24,9 @@
 - Import CSV/ICS invalide: message non technique.
 - Generation trajets: ride types coherents (`to_campus`, `from_campus`).
 - Recherche correspondances: pas d'erreur runtime, resultat ou message metier.
+- Itineraires: traces qui suivent les routes, sans mention « Itineraire estime ».
+- OSRM arrete (`docker stop covoiturage-osrm`): la recherche renvoie quand meme des resultats, avec la mention « Itineraire estime » sur la carte.
+- Course commencee (une etape de suivi confirmee): l'annulation est refusee avec un message clair.
 
 ## Responsive
 - Largeur mobile (<= 390px): callouts restent centres, texte wrap, bouton fermeture accessible.

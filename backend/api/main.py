@@ -17,6 +17,7 @@ from backend.api.routes.dashboard import router as dashboard_router
 from backend.api.routes.geocode import router as geocode_router
 from backend.api.routes.matches import router as matches_router
 from backend.api.routes.profile import router as profile_router
+from backend.api.routes.ratings import router as ratings_router
 from backend.api.routes.rides import router as rides_router
 from backend.api.routes.routing import router as routing_router
 from backend.api.routes.schedule import router as schedule_router
@@ -75,3 +76,4 @@ app.include_router(matches_router)
 app.include_router(routing_router)
 app.include_router(dashboard_router)
 app.include_router(tracking_router)
+app.include_router(ratings_router)

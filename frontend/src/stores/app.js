@@ -4,6 +4,7 @@ import { extractApiError } from "../api/api";
 import {
   cancelRideSelection,
   confirmSchedule,
+  createOffer,
   dashboardSummary,
   decideRidePassenger,
   deleteProfilePhoto,
@@ -15,11 +16,14 @@ import {
   getScheduleEvents,
   previewSchedule,
   searchCarpoolMatches,
+  setRideOffer,
   selectRide,
   updateProfile,
   uploadProfilePhoto,
+  withdrawOffer,
 } from "../api/endpoints";
 import { useAuthStore } from "./auth";
+import { useConfirmStore } from "./confirm";
 import { useFeedbackStore } from "./feedback";
 
 const PENDING_RIDE_STORAGE_KEY = "studride.pendingRide";
@@ -42,7 +46,9 @@ export const useAppStore = defineStore("app", {
     matches: [],
     searchResults: [],
     searchRouteGeometry: [],
+    searchRouteEstimated: false,
     mySelections: [],
+    offerSaving: false,
     driverOffers: [],
     pendingRide: loadPendingRide(),
     ridesViewLoading: false,
@@ -229,11 +235,73 @@ export const useAppStore = defineStore("app", {
         this.ridesViewLoading = false;
       }
     },
+    async createOffer(payload) {
+      const feedback = useFeedbackStore();
+      this.offerSaving = true;
+      try {
+        const data = await createOffer(payload);
+        await this.loadDriverOffers();
+        feedback.showSuccess(data.feedback.message);
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.offerSaving = false;
+      }
+    },
+    async withdrawOffer(rideId) {
+      const feedback = useFeedbackStore();
+      this.selectionLoadingRideId = rideId;
+      try {
+        const data = await withdrawOffer(rideId);
+        await this.loadDriverOffers();
+        feedback.showSuccess(data.feedback.message);
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.selectionLoadingRideId = null;
+      }
+    },
+    async toggleRideOffer(rideId, isOffer) {
+      const feedback = useFeedbackStore();
+      this.selectionLoadingRideId = rideId;
+      try {
+        const data = await setRideOffer(rideId, isOffer);
+        // Mise a jour locale immediate, sans recharger toute la semaine.
+        const ride = this.driverOffers.find((item) => item.id === rideId);
+        if (ride) ride.is_offer = data.is_offer;
+        feedback.showSuccess(data.feedback.message);
+        return true;
+      } catch (err) {
+        feedback.showError(extractApiError(err).message);
+        return false;
+      } finally {
+        this.selectionLoadingRideId = null;
+      }
+    },
     async decidePassenger(rideId, passengerId, decision) {
       const feedback = useFeedbackStore();
       this.selectionLoadingRideId = rideId;
       try {
-        const data = await decideRidePassenger(rideId, passengerId, decision);
+        let data;
+        try {
+          data = await decideRidePassenger(rideId, passengerId, decision);
+        } catch (err) {
+          // Detour total trop long : c'est un avertissement, le conducteur
+          // peut accepter quand meme apres l'avoir lu.
+          const error = extractApiError(err);
+          if (error.code !== "RIDE_DETOUR_TOO_LONG") throw err;
+          const confirmed = await useConfirmStore().ask({
+            title: "Détour total important",
+            message: error.message,
+            confirmLabel: "Accepter quand même",
+          });
+          if (!confirmed) return false;
+          data = await decideRidePassenger(rideId, passengerId, decision, true);
+        }
         await this.loadDriverOffers();
         feedback.showSuccess(data.feedback?.message || "Demande traitée.");
         return true;
@@ -253,7 +321,13 @@ export const useAppStore = defineStore("app", {
 
       this.selectionLoadingRideId = rideId;
       try {
-        const data = await selectRide(rideId);
+        const match = String(this.pendingRide?.ride_id) === String(rideId) ? this.pendingRide : null;
+        const data = await selectRide(rideId, match && {
+          pickup: match.passenger_coords,
+          dropoff: match.passenger_dropoff_coords,
+          passage_time: match.passage_time,
+          detour_min: match.extra_time_min,
+        });
         const reservedMinute = String(this.pendingRide?.ride_time || "").slice(0, 16).replace("T", " ");
         const stillAvailable = (match) =>
           String(match.ride_id) !== String(rideId)
@@ -316,6 +390,7 @@ export const useAppStore = defineStore("app", {
         });
         this.searchResults = data.matches;
         this.searchRouteGeometry = data.search_route_geometry;
+        this.searchRouteEstimated = Boolean(data.search_route_estimated);
         feedback.showSuccess(data.feedback.message);
         return true;
       } catch (err) {

@@ -115,11 +115,7 @@ const links = computed(() => [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
   { to: "/profile", label: "Profil", icon: UserRound },
   { to: "/schedule", label: "Planning", icon: CalendarDays },
-  {
-    to: "/matches",
-    label: auth.user?.role === "driver" ? "Mes trajets proposés" : "Covoiturage",
-    icon: UsersRound,
-  },
+  { to: "/matches", label: "Covoiturage", icon: UsersRound },
   { to: "/tracking", label: "Mes courses", icon: Route },
 ]);
 

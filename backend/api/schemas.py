@@ -28,8 +28,6 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8)
-    role: Literal["driver", "passenger"] = "passenger"
-    car_seats: int | None = Field(default=None, ge=1, le=4)
     gender: Gender  # obligatoire a l'inscription, pas de valeur par defaut
     music_preference: MusicPreference = "peu_importe"
     music_genres: list[str] = []
@@ -55,7 +53,7 @@ class UserDTO(BaseModel):
     id: int
     name: str
     email: EmailStr
-    role: Literal["driver", "passenger"]
+    # Places dans la voiture ; None tant qu'aucune n'est renseignee.
     car_seats: int | None = None
     gender: Gender = "autre"
     # URL publique reconstruite par l'API depuis photo_filename ; vide si
@@ -81,7 +79,7 @@ class SessionResponse(BaseModel):
 class ProfileUpdateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    role: Literal["driver", "passenger"]
+    # Facultatif : sans places, on peut chercher un trajet mais pas en proposer.
     car_seats: int | None = Field(default=None, ge=1, le=4)
     gender: Gender
     music_preference: MusicPreference = "peu_importe"
@@ -144,6 +142,9 @@ class RideDTO(BaseModel):
     end_lon: float
     status: Literal["active", "archived"] = "active"
     archived_at: datetime | None = None
+    is_offer: bool = False
+    start_address: str = ""
+    end_address: str = ""
 
 
 class RidesGenerateResponse(BaseModel):
@@ -164,6 +165,14 @@ class MatchDTO(BaseModel):
     # s'appliquent, puisque c'est sa voiture.
     driver_music_preference: MusicPreference = "peu_importe"
     driver_music_genres: list[str] = []
+    # Reputation du conducteur : None tant qu'il n'a recu aucune note.
+    driver_rating_average: float | None = None
+    driver_rating_count: int = 0
+    # Palier d'experience du conducteur, base sur toutes ses courses terminees
+    # (comme conducteur et comme passager).
+    driver_tier_key: str = "beginner"
+    driver_tier_label: str = "Débutant"
+    driver_rides_count: int = 0
     driver_smoking_preference: SmokingPreference = "peu_importe"
     passenger_name: str
     passenger_id: int
@@ -172,14 +181,21 @@ class MatchDTO(BaseModel):
     ride_time: str
     ride_type: str
     time_diff_min: int
+    # Heure de depose (aller) ou de prise en charge (retour), "HH:MM".
+    passage_time: str | None = None
+    # Plus grand ecart (km) entre la route du conducteur et le passager.
     distance_km: float
     extra_time_min: float = 0.0
     score: int
     driver_coords: tuple[float, float]
     passenger_coords: tuple[float, float]
     campus_coords: tuple[float, float]
+    # Point de depose du passager ; None pour d'anciens clients.
+    passenger_dropoff_coords: tuple[float, float] | None = None
     route_geometry: list[list[float]] = []
     route_distance_km: float = 0.0
+    # True quand OSRM etait indisponible : trace et detour sont estimes.
+    route_estimated: bool = False
     car_seats: int
     available_seats: int
 
@@ -208,6 +224,7 @@ class MatchSearchRequest(BaseModel):
 class MatchSearchResponse(BaseModel):
     matches: list[MatchDTO]
     search_route_geometry: list[list[float]] = []
+    search_route_estimated: bool = False
     feedback: ApiMessage
 
 
@@ -238,6 +255,10 @@ class RideTrackingDTO(BaseModel):
     passenger_onboard_at: datetime | None = None
     driver_completed_at: datetime | None = None
     passenger_arrived_at: datetime | None = None
+    # Notation : `can_rate` pilote l'affichage du formulaire, `my_rating`
+    # rappelle la note deja donnee (definitive, donc non modifiable).
+    can_rate: bool = False
+    my_rating: int | None = None
 
 
 class RideTrackingListResponse(BaseModel):
@@ -247,6 +268,71 @@ class RideTrackingListResponse(BaseModel):
 class RideTrackingResponse(BaseModel):
     tracking: RideTrackingDTO
     feedback: ApiMessage
+
+
+class RideRatingCreateRequest(BaseModel):
+    score: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=500)
+
+
+class RideRatingDTO(BaseModel):
+    id: int
+    ride_selection_id: int
+    rater_id: int
+    rated_id: int
+    score: int
+    comment: str = ""
+    created_at: datetime
+
+
+class RideRatingResponse(BaseModel):
+    rating: RideRatingDTO
+    feedback: ApiMessage
+
+
+class ExperienceTierDTO(BaseModel):
+    """Palier d'experience d'un profil."""
+
+    # Courses terminees, tous roles confondus.
+    rides_count: int = 0
+    tier_key: str = "beginner"
+    tier_label: str = "Débutant"
+    # Courses restantes avant le palier suivant ; None au dernier palier.
+    rides_to_next: int | None = None
+
+
+class RatingSummaryDTO(BaseModel):
+    """Reputation agregee d'un utilisateur."""
+
+    # None tant qu'aucune note n'a ete recue : distinct d'une mauvaise
+    # moyenne, ce qui permet d'afficher "pas encore note".
+    average: float | None = None
+    count: int = 0
+    # Un seul palier par profil : chaque course terminee compte, que la
+    # personne ait conduit ou ete passagere. Le detail par role est affiche
+    # a titre d'information.
+    tier: ExperienceTierDTO = ExperienceTierDTO()
+    rides_as_driver: int = 0
+    rides_as_passenger: int = 0
+
+
+class ReceivedRatingDTO(BaseModel):
+    """Note recue, telle qu'affichee sur un profil."""
+
+    id: int
+    score: int
+    comment: str = ""
+    created_at: datetime
+    # Auteur de l'avis. Un compte supprime laisse son avis en place, d'ou
+    # le repli sur un nom neutre plutot qu'un champ vide.
+    rater_id: int | None = None
+    rater_name: str = "Utilisateur supprimé"
+    rater_photo_url: str = ""
+
+
+class UserRatingsResponse(BaseModel):
+    summary: RatingSummaryDTO
+    ratings: list[ReceivedRatingDTO]
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -262,9 +348,21 @@ class SelectedPassengerDTO(BaseModel):
     email: EmailStr
     selected_at: datetime
     selection_status: Literal["pending", "accepted", "rejected"]
+    # Heure de depose (aller) ou de prise en charge (retour), detour, et
+    # arrets en chemin : None pour les reservations plus anciennes.
+    passage_time: str | None = None
+    detour_min: float | None = None
+    pickup_on_the_way: bool | None = None
+    dropoff_on_the_way: bool | None = None
 
 
 class DriverOfferDTO(BaseModel):
+    """Un trajet de l'utilisateur, tel qu'affiche dans "Mes trajets".
+
+    Les recherches y figurent aussi (is_offer = False) : c'est la que
+    l'utilisateur decide, trajet par trajet, s'il prend sa voiture.
+    """
+
     id: int
     ride_type: Literal["to_campus", "from_campus"]
     ride_time: datetime
@@ -274,6 +372,11 @@ class DriverOfferDTO(BaseModel):
     end_lon: float
     status: Literal["active", "archived"]
     archived_at: datetime | None = None
+    is_offer: bool = False
+    # None pour un trajet cree a la main, hors emploi du temps.
+    event_id: int | None = None
+    start_address: str = ""
+    end_address: str = ""
     car_seats: int
     occupied_seats: int
     available_seats: int
@@ -302,6 +405,44 @@ class PassengerSelectionDTO(BaseModel):
 
 class PassengerSelectionsResponse(BaseModel):
     rides: list[PassengerSelectionDTO]
+
+
+class OfferCreateRequest(BaseModel):
+    """Trajet propose a la main, independamment de l'emploi du temps."""
+
+    ride_type: Literal["to_campus", "from_campus"]
+    ride_time: datetime
+    start_address: str = Field(default="", max_length=300)
+    start_lat: float
+    start_lon: float
+    end_address: str = Field(default="", max_length=300)
+    end_lat: float
+    end_lon: float
+
+
+class OfferCreateResponse(BaseModel):
+    ride_id: int
+    feedback: ApiMessage
+
+
+class RideOfferRequest(BaseModel):
+    is_offer: bool
+
+
+class RideOfferResponse(BaseModel):
+    ride_id: int
+    is_offer: bool
+    feedback: ApiMessage
+
+
+class RideSelectRequest(BaseModel):
+    """Correspondance choisie par le passager, telle que calculee par le
+    matching : elle est enregistree avec la demande."""
+
+    pickup: tuple[float, float] | None = None
+    dropoff: tuple[float, float] | None = None
+    passage_time: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}$")
+    detour_min: float | None = Field(default=None, ge=0, le=120)
 
 
 class RideSelectionResponse(BaseModel):

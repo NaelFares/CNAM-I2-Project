@@ -5,9 +5,11 @@
 La base PostgreSQL conserve les profils, les cours importes, les trajets
 generes, les choix de covoiturage et le cache technique des itineraires.
 
-Les roles sont exclusifs : un utilisateur est soit `driver`, soit
-`passenger`. Un conducteur declare dans son profil entre une et quatre places
-passagers. Le conducteur lui-meme n'est pas inclus dans ce nombre.
+Il n'y a pas de role exclusif : tout utilisateur peut chercher une place et
+proposer sa voiture. C'est chaque trajet qui porte sa nature (`rides.is_offer`) :
+une recherche par defaut, une offre quand son proprietaire active « Je prends
+ma voiture ». Proposer suppose d'avoir declare au profil entre une et quatre
+places passagers, conducteur non compris.
 
 ## Diagramme ER
 
@@ -24,7 +26,6 @@ erDiagram
         TEXT name
         TEXT email UK
         TEXT hashed_password
-        TEXT role
         INTEGER car_seats
         TEXT start_address
         DOUBLE_PRECISION start_lat
@@ -57,6 +58,9 @@ erDiagram
         DOUBLE_PRECISION end_lon
         TEXT status
         TIMESTAMPTZ archived_at
+        BOOLEAN is_offer
+        TEXT start_address
+        TEXT end_address
     }
 
     ride_selections {
@@ -99,23 +103,27 @@ de la version du cache.
 | `name` | TEXT | NOT NULL | Nom complet |
 | `email` | TEXT | UNIQUE, NOT NULL | Adresse de connexion |
 | `hashed_password` | TEXT | NOT NULL | Mot de passe hache |
-| `role` | TEXT | NOT NULL, CHECK | `driver` ou `passenger` uniquement |
-| `car_seats` | INTEGER | NULL, CHECK | Places passagers du conducteur, de 1 a 4 |
+| `car_seats` | INTEGER | NULL, CHECK | Places passagers, de 1 a 4 ; NULL sans voiture |
 | `start_address` | TEXT |  | Adresse de depart |
 | `start_lat`, `start_lon` | DOUBLE PRECISION | NOT NULL | Coordonnees de depart |
 | `time_tolerance_min` | INTEGER | NOT NULL | Tolerance horaire |
 | `school_address` | TEXT |  | Adresse de l'etablissement |
 | `school_lat`, `school_lon` | DOUBLE PRECISION | NOT NULL | Coordonnees de l'etablissement |
 
-La contrainte de capacite est liee au role :
+La capacite est facultative :
 
 ```text
-driver    -> car_seats entre 1 et 4
-passenger -> car_seats = NULL
+car_seats NULL     -> peut chercher, ne peut pas proposer
+car_seats 1 a 4    -> peut chercher et proposer
 ```
 
-La capacite est une propriete du profil conducteur. Elle n'est pas dupliquee
-dans chaque trajet.
+La capacite est une propriete du profil. Elle n'est pas dupliquee dans chaque
+trajet. Elle ne peut pas descendre sous le nombre de passagers deja acceptes,
+ni etre retiree tant que des trajets sont proposes.
+
+La colonne `role` a existe : une migration unique de `init.sql` l'a supprimee
+apres avoir transforme en offres les trajets des anciens conducteurs, pour que
+leurs reservations restent valides.
 
 ## Table `events`
 
@@ -141,6 +149,8 @@ dans chaque trajet.
 | `end_lat`, `end_lon` | DOUBLE PRECISION | NOT NULL | Destination |
 | `status` | TEXT | NOT NULL, CHECK | `active` ou `archived` |
 | `archived_at` | TIMESTAMPTZ | NULL | Date d'archivage |
+| `is_offer` | BOOLEAN | NOT NULL, DEFAULT FALSE | Offre (je prends ma voiture) ou recherche |
+| `start_address`, `end_address` | TEXT | NOT NULL, DEFAULT '' | Adresses lisibles ; vides pour un trajet issu du planning |
 
 Les trajets termines restent dans cette table. Ils passent de `active` a
 `archived` et sont exclus du matching. Aucun transfert vers une seconde table
@@ -193,8 +203,12 @@ parametres de routing produit une nouvelle `cache_key`.
 
 ## Regles d'integrite principales
 
-- Les roles `driver` et `passenger` sont mutuellement exclusifs.
-- Seul un conducteur possede une capacite, comprise entre 1 et 4.
+- Seul un trajet `is_offer` peut recevoir des demandes de places.
+- Un trajet sans `event_id` a ete propose a la main, hors emploi du temps :
+  il survit a un reimport du planning, qui ne regenere que les trajets de cours.
+- Proposer un trajet exige une capacite, comprise entre 1 et 4.
+- Un utilisateur n'est jamais conducteur et passager a la meme minute : on ne
+  propose pas un creneau ou l'on a une demande, et inversement.
 - Une personne ne peut selectionner deux fois le meme trajet.
 - La selection et l'annulation sont effectuees pour l'utilisateur connecte.
 - L'acceptation de la derniere place est protegee par une transaction et un

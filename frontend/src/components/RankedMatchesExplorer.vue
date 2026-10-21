@@ -25,7 +25,7 @@
             <Trophy class="matches-explorer__award-icon" aria-hidden="true" />
             <div>
               <strong>Meilleurs choix</strong>
-              <small>{{ goldMatches.length }} trajet{{ goldMatches.length > 1 ? "s" : "" }} à {{ goldMatches[0].match.score }} %</small>
+              <small>{{ goldMatches.length }} trajet{{ goldMatches.length > 1 ? "s" : "" }} en tête</small>
             </div>
           </header>
           <RankedMatchCard
@@ -60,13 +60,15 @@
         :routes="mapRoutes"
         :selected-route-index="selectedIndex"
         :my-route-geometry="referenceGeometry"
+        :estimated="referenceEstimated"
         @select-route="selectMatch"
       />
 
       <div class="matches-explorer__legend" aria-label="Légende de la carte">
         <span><i class="route-legend route-legend--selected"></i> Trajet affiché</span>
         <span><i class="route-legend route-legend--muted"></i> Autres trajets</span>
-        <span><i class="point-legend point-legend--pickup"></i> Passager</span>
+        <span><i class="point-legend point-legend--pickup"></i> Prise en charge</span>
+        <span><i class="point-legend point-legend--dropoff"></i> Dépose</span>
         <span><i class="point-legend point-legend--destination"></i> Destination</span>
       </div>
     </div>
@@ -83,6 +85,8 @@ import RouteMap from "./RouteMap.vue";
 const props = defineProps({
   matches: { type: Array, default: () => [] },
   referenceGeometry: { type: Array, default: () => [] },
+  // Le trajet de reference (recherche rapide) a ete estime faute d'OSRM.
+  referenceEstimated: { type: Boolean, default: false },
   loadingRideId: { type: [Number, String], default: null },
 });
 

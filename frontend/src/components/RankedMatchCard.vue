@@ -6,7 +6,7 @@
   >
     <div class="ranked-match-card__heading">
       <span class="ranked-match-card__medal" :aria-label="medalLabel">{{ rank }}</span>
-      <strong>{{ match.score }} %</strong>
+      <strong>Choix n° {{ rank }}</strong>
       <button
         type="button"
         :class="selected ? 'ranked-match-card__selected' : 'ranked-match-card__action'"
@@ -36,9 +36,9 @@
     </div>
 
     <div class="ranked-match-card__details">
-      <span><Clock3 aria-hidden="true" /> Départ {{ formattedDeparture }}</span>
+      <span><Clock3 aria-hidden="true" /> {{ driverTimeLabel }} {{ formattedDeparture }}</span>
       <span><Route aria-hidden="true" /> +{{ formattedDetour }} min de détour</span>
-      <span><MapPin aria-hidden="true" /> {{ formattedDistance }} km</span>
+      <span v-if="match.passage_time"><MapPin aria-hidden="true" /> {{ passageLabel(match) }}</span>
     </div>
 
     <div class="ranked-match-card__footer">
@@ -64,6 +64,8 @@
 import { computed } from "vue";
 import { ArrowRight, CircleCheckBig, Clock3, LoaderCircle, MapPin, Route, UsersRound } from "lucide-vue-next";
 
+import { passageLabel } from "../lib/week";
+
 const props = defineProps({
   match: { type: Object, required: true },
   rank: { type: Number, required: true },
@@ -75,6 +77,9 @@ defineEmits(["focus", "choose"]);
 
 const tone = computed(() => ({ 1: "gold", 2: "silver", 3: "bronze" }[props.rank] || "standard"));
 const medalLabel = computed(() => ({ 1: "Classement or", 2: "Classement argent", 3: "Classement bronze" }[props.rank] || `Rang ${props.rank}`));
+// L'heure du conducteur est son arrivee a l'aller, son depart au retour.
+const driverTimeLabel = computed(() => (String(props.match.ride_type || "").startsWith("Vers") ? "Arrivée" : "Départ"));
+
 const formattedDeparture = computed(() => {
   const value = String(props.match.ride_time || "");
   if (!value) return "Horaire non défini";
@@ -90,7 +95,6 @@ const formattedDeparture = computed(() => {
   }).format(date);
 });
 const formattedDetour = computed(() => Number(props.match.extra_time_min || 0).toFixed(1));
-const formattedDistance = computed(() => Number(props.match.distance_km || 0).toFixed(1));
 const availableSeats = computed(() => {
   const value = Number(props.match.available_seats ?? props.match.car_seats);
   return Number.isFinite(value) ? Math.max(0, value) : null;

@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     name                TEXT NOT NULL,
     email               TEXT UNIQUE NOT NULL,
     hashed_password     TEXT NOT NULL DEFAULT '',
-    role                TEXT NOT NULL DEFAULT 'passenger',
+    -- Places proposees aux passagers. NULL tant que l'utilisateur n'a pas
+    -- renseigne de voiture : il peut alors chercher, mais pas proposer.
     car_seats           INTEGER,
     gender              TEXT NOT NULL DEFAULT 'autre',
     photo_filename      TEXT NOT NULL DEFAULT '',
@@ -31,26 +32,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lat      DOUBLE PRECISION DEFA
 ALTER TABLE users ADD COLUMN IF NOT EXISTS school_lon      DOUBLE PRECISION DEFAULT 0.0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS car_seats       INTEGER;
 
--- Migration vers deux roles exclusifs. Les anciens profils mixtes deviennent
--- passagers ; les conducteurs existants recoivent la capacite maximale.
-UPDATE users SET role = 'passenger' WHERE role NOT IN ('driver', 'passenger');
-UPDATE users SET car_seats = 4 WHERE role = 'driver' AND car_seats IS NULL;
-UPDATE users SET car_seats = NULL WHERE role = 'passenger';
--- Conserve le scenario de demonstration historique : etudiant01 recherche
--- et etudiant07 propose le meme trajet.
-UPDATE users
-SET role = 'driver', car_seats = 4
-WHERE email = 'etudiant07@studride-test.fr';
-ALTER TABLE users ALTER COLUMN role SET DEFAULT 'passenger';
-ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check
-    CHECK (role IN ('driver', 'passenger'));
+-- Places : 1 a 4, ou NULL quand l'utilisateur n'a pas de voiture. Le role
+-- exclusif conducteur/passager a ete supprime : tout compte peut chercher un
+-- trajet ET en proposer un. La migration des donnees se fait apres la
+-- creation de la table rides (cf. "Fin des roles exclusifs" plus bas).
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_car_seats_check;
 ALTER TABLE users ADD CONSTRAINT users_car_seats_check
-    CHECK (
-        (role = 'passenger' AND car_seats IS NULL)
-        OR (role = 'driver' AND car_seats BETWEEN 1 AND 4)
-    );
+    CHECK (car_seats IS NULL OR car_seats BETWEEN 1 AND 4);
 
 -- Sexe : les comptes anterieurs prennent le repli neutre 'autre'.
 -- Le filtre "ladies only" n'est pas stocke ici : c'est une option ponctuelle
@@ -107,6 +95,38 @@ ALTER TABLE rides ADD CONSTRAINT rides_status_check
     CHECK (status IN ('active', 'archived'));
 CREATE INDEX IF NOT EXISTS idx_rides_status_time ON rides(status, ride_time);
 
+-- Nature du trajet : offre (je prends ma voiture) ou recherche (je cherche
+-- une voiture). Porte par le trajet lui-meme et non plus par un role
+-- d'utilisateur : la meme personne peut conduire le lundi et chercher le
+-- mercredi. Un trajet issu du planning est une recherche par defaut.
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS is_offer BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Adresses lisibles du depart et de l'arrivee. Utiles surtout aux trajets
+-- proposes a la main (hors emploi du temps), dont le depart et l'arrivee sont
+-- libres ; vides pour les trajets generes depuis le planning, qui vont du
+-- domicile a l'ecole du profil. Un trajet sans event_id est un trajet cree a
+-- la main : il ne disparait pas quand on reimporte son emploi du temps.
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS start_address TEXT NOT NULL DEFAULT '';
+ALTER TABLE rides ADD COLUMN IF NOT EXISTS end_address   TEXT NOT NULL DEFAULT '';
+
+-- Fin des roles exclusifs (migration unique). Tant que la colonne role
+-- existe, les trajets des conducteurs deviennent des offres -- leurs
+-- reservations restent ainsi valides -- puis la colonne est supprimee.
+-- Le bloc ne s'execute plus ensuite, et jamais sur une base neuve.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'role'
+    ) THEN
+        UPDATE rides r SET is_offer = TRUE
+        FROM users u
+        WHERE u.id = r.user_id AND u.role = 'driver';
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+        ALTER TABLE users DROP COLUMN role;
+    END IF;
+END $$;
+
 -- Migration data : normalisation ride_type (no-op si deja applique)
 UPDATE rides SET ride_type = 'to_campus'   WHERE ride_type = 'aller';
 UPDATE rides SET ride_type = 'from_campus' WHERE ride_type = 'retour';
@@ -129,6 +149,23 @@ ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_status_check
     CHECK (status IN ('pending', 'accepted', 'rejected'));
 CREATE INDEX IF NOT EXISTS idx_ride_selections_passenger
     ON ride_selections(passenger_id);
+
+-- Realignement des bases creees par une premiere version de la branche de
+-- suivi : leur ride_selections avait ete creee sans ON DELETE CASCADE, et le
+-- CREATE TABLE IF NOT EXISTS ci-dessus ne corrige pas une table existante.
+-- Sans cela, supprimer un trajet ou un utilisateur reserve echoue (ex. reset
+-- du seed au demarrage). Inoffensif sur une base neuve.
+ALTER TABLE ride_selections DROP CONSTRAINT IF EXISTS ride_selections_ride_id_fkey;
+ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_ride_id_fkey
+    FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE;
+ALTER TABLE ride_selections DROP CONSTRAINT IF EXISTS ride_selections_passenger_id_fkey;
+ALTER TABLE ride_selections ADD CONSTRAINT ride_selections_passenger_id_fkey
+    FOREIGN KEY (passenger_id) REFERENCES users(id) ON DELETE CASCADE;
+-- Colonnes d'annulation de cette meme premiere version, remplacees depuis par
+-- status = 'rejected'. cancelled_by portait une cle etrangere vers users qui
+-- bloquerait elle aussi la suppression d'un compte.
+ALTER TABLE ride_selections DROP COLUMN IF EXISTS cancelled_by;
+ALTER TABLE ride_selections DROP COLUMN IF EXISTS cancelled_at;
 
 -- ROUTING CACHE
 -- Resultats techniques reutilisables des calculs d'itineraires externes.
@@ -167,3 +204,49 @@ ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_picked_up_at   TIMES
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_onboard_at  TIMESTAMPTZ;
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS driver_completed_at   TIMESTAMPTZ;
 ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passenger_arrived_at  TIMESTAMPTZ;
+
+-- Ou monte et descend le passager, quand et a quel cout pour le conducteur.
+-- Renseigne a la reservation, a partir de la correspondance calculee : le
+-- conducteur le voit avant d'accepter, et le matching additionne les detours
+-- des passagers deja acceptes. NULL pour les reservations plus anciennes.
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS pickup_lat    DOUBLE PRECISION;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS pickup_lon    DOUBLE PRECISION;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS dropoff_lat   DOUBLE PRECISION;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS dropoff_lon   DOUBLE PRECISION;
+-- Heure de depose (aller) ou de prise en charge (retour), "HH:MM".
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS passage_time  TEXT;
+ALTER TABLE ride_selections ADD COLUMN IF NOT EXISTS detour_min    REAL;
+
+-- RIDE_RATINGS
+-- Notation d'une course terminee. Une note porte sur une reservation precise
+-- (le couple conducteur/passager d'un trajet donne), pas sur un utilisateur
+-- en general : c'est ce qui la rend verifiable -- on ne peut noter que
+-- quelqu'un avec qui on a reellement roule.
+--
+-- Les deux parties se notent mutuellement, d'ou `rater_id` / `rated_id` :
+-- deux lignes au maximum par reservation, une dans chaque sens.
+CREATE TABLE IF NOT EXISTS ride_ratings (
+    id                BIGSERIAL PRIMARY KEY,
+    ride_selection_id BIGINT NOT NULL REFERENCES ride_selections(id) ON DELETE CASCADE,
+    rater_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rated_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    score             SMALLINT NOT NULL,
+    comment           TEXT NOT NULL DEFAULT '',
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Une seule note par personne et par course : la contrainte rend
+    -- l'unicite impossible a contourner, meme par un double clic.
+    UNIQUE (ride_selection_id, rater_id)
+);
+
+ALTER TABLE ride_ratings DROP CONSTRAINT IF EXISTS ride_ratings_score_check;
+ALTER TABLE ride_ratings ADD CONSTRAINT ride_ratings_score_check
+    CHECK (score BETWEEN 1 AND 5);
+
+-- Personne ne se note soi-meme : sans cette contrainte, un utilisateur
+-- pourrait gonfler sa propre moyenne en inserant des lignes.
+ALTER TABLE ride_ratings DROP CONSTRAINT IF EXISTS ride_ratings_no_self_check;
+ALTER TABLE ride_ratings ADD CONSTRAINT ride_ratings_no_self_check
+    CHECK (rater_id <> rated_id);
+
+-- Lecture typique : la moyenne et le nombre de notes recues par un profil.
+CREATE INDEX IF NOT EXISTS idx_ride_ratings_rated ON ride_ratings(rated_id);

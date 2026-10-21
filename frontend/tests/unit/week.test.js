@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { calendarWeekDays, matchesForDay, mondayIso, ridesForWeek, schoolWeekDays, shiftWeek } from "../../src/lib/week";
+import {
+  calendarWeekDays, matchesForDay, mondayIso, nextUpcomingEvent, ridesForWeek, schoolWeekDays, shiftWeek,
+} from "../../src/lib/week";
 
 describe("recherche hebdomadaire", () => {
   it("sélectionne la semaine de cours contenant la date choisie", () => {
@@ -32,5 +34,17 @@ describe("recherche hebdomadaire", () => {
     ];
     expect(ridesForWeek(rides, "2026-09-28")).toEqual([rides[2], rides[1]]);
     expect(ridesForWeek(rides, "2026-10-05")).toEqual([rides[0]]);
+  });
+
+  it("ouvre la recherche sur le prochain cours, pas sur un cours passé", () => {
+    const now = new Date(2026, 9, 21, 15, 0);
+    const events = [
+      { start_time: "2026-10-28T08:00:00" },
+      { start_time: "2026-10-21T08:00:00" },
+      { start_time: "2026-10-26T10:00:00" },
+    ];
+    expect(nextUpcomingEvent(events, now)).toBe(events[2]);
+    expect(nextUpcomingEvent([{ start_time: "2026-10-20T08:00:00" }], now)).toBeNull();
+    expect(nextUpcomingEvent([], now)).toBeNull();
   });
 });

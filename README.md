@@ -13,7 +13,11 @@ Faciliter les trajets quotidiens entre étudiants en proposant des correspondanc
 - Visualisation du planning en calendrier hebdomadaire
 - Génération des trajets à partir des cours
 - Recherche ponctuelle ou par semaine de planning, avec résultats navigables jour par jour
-- Consultation des trajets proposés par semaine pour les conducteurs
+- Double rôle : chaque compte peut proposer des trajets (conducteur) et en réserver (passager)
+- Proposition de trajets libres, indépendants de l'emploi du temps
+- Option « ladies only » pour les utilisatrices
+- Suivi de la course en quatre étapes, puis avis et palier d'expérience unique par profil (courses comme conducteur et comme passager)
+- Itinéraires calculés en local par OSRM (carte OpenStreetMap de Toulouse), sans clé ni quota
 
 ## Demarrage rapide avec Groq
 

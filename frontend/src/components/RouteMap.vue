@@ -18,9 +18,14 @@ const props = defineProps({
   selectedRouteIndex: { type: Number, default: 0 },
   driverCoords: { type: Array, default: null },
   passengerCoords: { type: Array, default: null },
+  // Ou le passager descend, quand ce n'est pas la destination du conducteur.
+  dropoffCoords: { type: Array, default: null },
   destCoords: { type: Array, default: null },
   height: { type: String, default: "280px" },
   routeLabel: { type: String, default: "" },
+  // Vrai quand le backend n'a pas pu joindre le service d'itineraire :
+  // le trace est alors une ligne droite et les durees sont approximatives.
+  estimated: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["select-route"]);
@@ -34,6 +39,13 @@ const routePalette = ["#2563eb", "#7c3aed", "#0891b2", "#b45309", "#0f766e", "#b
 function routePoints(route) {
   if (Array.isArray(route)) return route;
   return route?.route_geometry || route?.geometry || [];
+}
+
+// Deux points a moins de ~300 m l'un de l'autre (meme seuil que le backend,
+// SAME_PLACE_KM) : un seul marqueur suffit.
+function samePlace(a, b) {
+  if (!a || !b) return false;
+  return Math.abs(a[0] - b[0]) < 0.003 && Math.abs(a[1] - b[1]) < 0.004;
 }
 
 function pointIcon(color, label) {
@@ -93,7 +105,7 @@ function addSharedRoutes(bounds) {
 
     if (selected) {
       line.bringToFront();
-      line.bindTooltip(`${Number(route.score || 0)} % compatible · +${Number(route.extra_time_min || 0).toFixed(1)} min`, {
+      line.bindTooltip(`Choix n° ${rank} · +${Number(route.extra_time_min || 0).toFixed(1)} min`, {
         permanent: true,
         direction: "top",
         className: "route-badge route-badge--selected",
@@ -102,6 +114,19 @@ function addSharedRoutes(bounds) {
     }
     bounds.push(...points);
   });
+}
+
+// Mention affichee dans un coin de la carte, sous forme de controle Leaflet
+// pour ne pas toucher a la mise en page des pages qui utilisent la carte.
+function addEstimateNotice() {
+  const notice = L.control({ position: "bottomleft" });
+  notice.onAdd = () => {
+    const el = L.DomUtil.create("div", "route-estimate-note");
+    el.textContent = "Itinéraire estimé : durées approximatives";
+    el.title = "Le service de calcul d'itinéraire est indisponible : le tracé est une ligne droite.";
+    return el;
+  };
+  notice.addTo(map);
 }
 
 function buildMap() {
@@ -130,6 +155,7 @@ function buildMap() {
   const driverCoords = selectedRoute?.driver_coords || props.driverCoords;
   const passengerCoords = selectedRoute?.passenger_coords || props.passengerCoords;
   const destCoords = selectedRoute?.campus_coords || props.destCoords;
+  const dropoffCoords = selectedRoute?.passenger_dropoff_coords || props.dropoffCoords;
 
   if (driverCoords && !props.routes.length) {
     L.marker(driverCoords, { icon: pointIcon(COLORS.driver, "D") }).bindTooltip("Conducteur").addTo(map);
@@ -143,6 +169,15 @@ function buildMap() {
     L.marker(destCoords, { icon: pointIcon(COLORS.destination, "A") }).bindTooltip("Destination").addTo(map);
     bounds.push(destCoords);
   }
+  // Depose en chemin (autre ecole, domicile au retour) : seulement si elle
+  // ne se confond pas avec la destination du conducteur.
+  if (dropoffCoords && !samePlace(dropoffCoords, destCoords)) {
+    L.marker(dropoffCoords, { icon: pointIcon(COLORS.passenger, "↓") }).bindTooltip("Dépose du passager").addTo(map);
+    bounds.push(dropoffCoords);
+  }
+
+  // En mode multi-trajets, c'est le trajet selectionne qui decide.
+  if (props.estimated || selectedRoute?.route_estimated) addEstimateNotice();
 
   if (bounds.length) map.fitBounds(bounds, { padding: [38, 38] });
   window.setTimeout(() => map?.invalidateSize(), 0);
@@ -156,7 +191,7 @@ function rebuildMap() {
 
 onMounted(buildMap);
 watch(
-  () => [props.routeGeometry, props.myRouteGeometry, props.routes, props.selectedRouteIndex, props.driverCoords, props.passengerCoords, props.destCoords, props.routeLabel],
+  () => [props.routeGeometry, props.myRouteGeometry, props.routes, props.selectedRouteIndex, props.driverCoords, props.passengerCoords, props.dropoffCoords, props.destCoords, props.routeLabel, props.estimated],
   rebuildMap,
   { deep: true },
 );

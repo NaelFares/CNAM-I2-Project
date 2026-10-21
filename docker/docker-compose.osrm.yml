@@ -1,0 +1,53 @@
+# Calcul d'itineraires local (OSRM), inclus par les fichiers docker-compose.*.yml.
+#
+# Au premier lancement, deux services ephemeres preparent la carte dans le
+# volume covoiturage_osrm_data (1 a 2 min), puis "osrm" sert les itineraires
+# au backend sur http://osrm:5000. Aux lancements suivants, la preparation
+# est sautee. Rien n'est versionne : la carte est telechargee automatiquement.
+
+services:
+  # 1. Telecharge la carte OSM et la decoupe a la zone de l'application.
+  osrm-map:
+    # Debian : osmium-tool (decoupe de carte) y est disponible, pas sous Alpine.
+    image: debian:bookworm-slim
+    container_name: covoiturage-osrm-map
+    volumes:
+      - covoiturage_osrm_data:/data
+      - ./osrm:/scripts:ro
+    environment:
+      # Zone couverte : min_lon,min_lat,max_lon,max_lat (Toulouse et sa
+      # peripherie, avec une large marge autour du jeu de donnees).
+      - OSRM_BBOX=${OSRM_BBOX:-1.10,43.40,1.70,43.82}
+      - OSM_SOURCE_URL=${OSM_SOURCE_URL:-https://download.bbbike.org/osm/bbbike/Toulouse/Toulouse.osm.pbf}
+      - OSM_FALLBACK_URL=${OSM_FALLBACK_URL:-https://download.geofabrik.de/europe/france/midi-pyrenees-latest.osm.pbf}
+    command: ["sh", "/scripts/prepare-map.sh"]
+    restart: "no"
+
+  # 2. Construit le graphe routier a partir de la carte.
+  osrm-prepare:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    container_name: covoiturage-osrm-prepare
+    volumes:
+      - covoiturage_osrm_data:/data
+      - ./osrm:/scripts:ro
+    command: ["sh", "/scripts/build-graph.sh"]
+    depends_on:
+      osrm-map:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # 3. Sert les itineraires (API HTTP OSRM).
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    container_name: covoiturage-osrm
+    volumes:
+      - covoiturage_osrm_data:/data
+    command: ["osrm-routed", "--algorithm", "mld", "/data/map.osrm"]
+    depends_on:
+      osrm-prepare:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  covoiturage_osrm_data:
+    name: covoiturage_osrm_data

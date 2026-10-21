@@ -1,152 +1,47 @@
 <template>
   <section class="page-shell">
     <header class="page-header">
-      <h1 class="page-title">{{ isDriver ? "Mes trajets proposés" : "Covoiturage" }}</h1>
+      <h1 class="page-title">Covoiturage</h1>
       <p class="page-subtitle">
-        {{ isDriver
-          ? "Acceptez ou refusez les demandes de passagers pour vos trajets."
-          : "Trouvez un trajet compatible et demandez une place au conducteur." }}
+        Cherchez une place dans la voiture de quelqu'un, ou proposez la vôtre sur vos trajets.
       </p>
     </header>
 
-    <template v-if="isDriver">
-      <Card v-if="app.ridesViewLoading" class="text-sm font-semibold text-slate-600">
-        Chargement de vos trajets proposés...
-      </Card>
+    <!-- Plus de role exclusif : chacun cherche ET propose, selon le trajet -->
+    <div class="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+      <button
+        type="button"
+        :class="['flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition', mode === 'search' ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-100']"
+        @click="mode = 'search'"
+      >
+        <UsersRound class="h-4 w-4" aria-hidden="true" />
+        Je cherche une place
+      </button>
+      <button
+        type="button"
+        :class="['flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition', mode === 'drive' ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-100']"
+        @click="mode = 'drive'"
+      >
+        <CarFront class="h-4 w-4" aria-hidden="true" />
+        Je propose ma voiture
+      </button>
+    </div>
 
-      <Card v-else-if="!app.driverOffers.length" class="space-y-4">
-        <div>
-          <h2 class="text-lg font-bold text-slate-900">Aucun trajet proposé</h2>
-          <p class="mt-1 text-sm text-slate-600">
-            Importez d'abord votre planning, puis générez les trajets associés.
-          </p>
-        </div>
-        <Button :disabled="app.loading" @click="generateDriverOffers">
-          <CarFront class="h-4 w-4" aria-hidden="true" />
-          Générer mes trajets
-        </Button>
-      </Card>
-
-      <div v-else class="space-y-4">
-        <div class="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-          <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 text-blue-700 hover:bg-blue-50" aria-label="Semaine précédente" @click="changeDriverWeek(-1)">
-            <ChevronLeft class="h-5 w-5" aria-hidden="true" />
-          </button>
-          <div class="min-w-0 flex-1 text-center">
-            <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Mes trajets proposés</p>
-            <h2 class="text-sm font-bold text-slate-900 sm:text-base">Du {{ driverWeekDays[0]?.label }} au {{ driverWeekDays[6]?.label }}</h2>
-          </div>
-          <button type="button" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-300 text-blue-700 hover:bg-blue-50" aria-label="Semaine suivante" @click="changeDriverWeek(1)">
-            <ChevronRight class="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
-        <Card v-if="!driverOffersForWeek.length" class="text-sm font-semibold text-slate-600">
-          Aucun trajet proposé pour cette semaine. Utilisez les flèches pour voir une autre semaine.
-        </Card>
-
-        <div v-else class="grid gap-4 lg:grid-cols-2">
-        <Card v-for="ride in driverOffersForWeek" :key="ride.id" class="space-y-4">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p class="text-xs font-bold uppercase tracking-wide text-blue-700">{{ directionLabel(ride.ride_type) }}</p>
-              <h2 class="mt-1 text-base font-bold text-slate-900">{{ formatRideTime(ride.ride_time) }}</h2>
-            </div>
-            <span
-              class="rounded-full px-3 py-1 text-xs font-bold"
-              :class="ride.available_seats ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
-            >
-              {{ ride.available_seats ? seatsLabel(ride.available_seats) : "Complet" }}
-            </span>
-          </div>
-
-          <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
-            <UsersRound class="h-4 w-4 text-blue-700" aria-hidden="true" />
-            {{ ride.occupied_seats }} / {{ ride.car_seats }} place{{ ride.car_seats > 1 ? "s" : "" }} réservée{{ ride.occupied_seats > 1 ? "s" : "" }}
-          </div>
-
-          <div v-if="ride.passengers.length" class="space-y-2 border-t border-slate-200 pt-3">
-            <p class="text-xs font-bold uppercase tracking-wide text-slate-500">Demandes et passagers</p>
-            <div
-              v-for="passenger in ride.passengers"
-              :key="passenger.id"
-              class="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2"
-            >
-              <UserRoundCheck class="h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-bold text-slate-800">{{ passenger.name }}</p>
-                <p class="truncate text-xs text-slate-500">{{ passenger.email }}</p>
-                <p class="text-xs font-semibold" :class="passenger.selection_status === 'accepted' ? 'text-emerald-700' : passenger.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'">
-                  {{ selectionStatusLabel(passenger.selection_status) }}
-                </p>
-              </div>
-              <div v-if="passenger.selection_status !== 'rejected'" class="flex shrink-0 items-center gap-1">
-                <button
-                  v-if="passenger.selection_status === 'pending'"
-                  type="button"
-                  class="rounded-lg p-2 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-                  :disabled="app.selectionLoadingRideId === ride.id"
-                  :aria-label="`Accepter ${passenger.name}`"
-                  :title="`Accepter ${passenger.name}`"
-                  @click="app.decidePassenger(ride.id, passenger.id, 'accept')"
-                >
-                  <Check class="h-5 w-5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  class="rounded-lg p-2 text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                  :disabled="app.selectionLoadingRideId === ride.id"
-                  :aria-label="`Refuser ${passenger.name}`"
-                  :title="`Refuser ${passenger.name}`"
-                  @click="app.decidePassenger(ride.id, passenger.id, 'reject')"
-                >
-                  <X class="h-5 w-5" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          </div>
-          <p v-else class="border-t border-slate-200 pt-3 text-sm text-slate-500">Aucune demande pour le moment.</p>
-        </Card>
-        </div>
-      </div>
-    </template>
+    <!-- Je propose ma voiture : formulaire, trajets proposes et suggestions -->
+    <DriverPanel v-if="mode === 'drive'" />
 
     <template v-else>
-      <Card class="space-y-3">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-bold text-slate-900">Mes demandes de trajet</h2>
-            <p class="text-sm text-slate-600">Suivez la réponse du conducteur à vos demandes.</p>
-          </div>
-          <CircleCheckBig class="h-6 w-6 shrink-0 text-blue-700" aria-hidden="true" />
-        </div>
-
-        <p v-if="app.ridesViewLoading" class="text-sm font-semibold text-slate-500">Chargement...</p>
-        <p v-else-if="!app.mySelections.length" class="text-sm text-slate-500">Vous n'avez encore demandé aucun trajet.</p>
-        <div v-else class="grid gap-2 md:grid-cols-2">
-          <div
-            v-for="ride in app.mySelections"
-            :key="ride.selection_id"
-            class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
-          >
-            <div class="min-w-0">
-              <p class="truncate text-sm font-bold text-slate-900">Avec {{ ride.driver_name }}</p>
-              <p class="mt-0.5 text-xs text-slate-600">{{ directionLabel(ride.ride_type) }} · {{ formatRideTime(ride.ride_time) }}</p>
-              <p class="mt-1 text-xs font-semibold" :class="ride.selection_status === 'accepted' ? 'text-emerald-700' : ride.selection_status === 'rejected' ? 'text-rose-700' : 'text-amber-700'">
-                {{ selectionStatusLabel(ride.selection_status) }}
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              :disabled="String(app.selectionLoadingRideId) === String(ride.ride_id)"
-              @click="app.cancelRideSelection(ride.ride_id)"
-            >
-              <X class="h-4 w-4" aria-hidden="true" />
-              Annuler
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <!-- Les demandes et leur suivi vivent desormais sur la page Mes courses -->
+      <RouterLink
+        to="/tracking"
+        class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+      >
+        <span class="flex items-center gap-2">
+          <CircleCheckBig class="h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
+          Vos demandes de trajet et leur suivi sont dans « Mes courses »
+        </span>
+        <ChevronRight class="h-4 w-4 shrink-0" aria-hidden="true" />
+      </RouterLink>
 
       <div class="flex flex-wrap gap-2">
         <Button :variant="activeTab === 'quick' ? 'primary' : 'secondary'" @click="activeTab = 'quick'">
@@ -173,6 +68,7 @@
             v-if="app.searchResults.length"
             :matches="app.searchResults"
             :reference-geometry="app.searchRouteGeometry"
+            :reference-estimated="app.searchRouteEstimated"
             :loading-ride-id="app.selectionLoadingRideId"
             @choose-ride="chooseRide"
           />
@@ -250,21 +146,20 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
-import { CarFront, Check, ChevronLeft, ChevronRight, CircleCheckBig, UserRoundCheck, UsersRound, Venus, X } from "lucide-vue-next";
+import { RouterLink, useRouter } from "vue-router";
+import { CarFront, ChevronLeft, ChevronRight, CircleCheckBig, UsersRound, Venus } from "lucide-vue-next";
 
 import CarpoolSearchForm from "../components/CarpoolSearchForm.vue";
+import DriverPanel from "../components/DriverPanel.vue";
 import RankedMatchesExplorer from "../components/RankedMatchesExplorer.vue";
 import { Button, Card } from "../components/ui";
-import { calendarWeekDays, localDateIso, matchesForDay, mondayIso, ridesForWeek, schoolWeekDays, shiftWeek } from "../lib/week";
+import { localDateIso, matchesForDay, mondayIso, nextUpcomingEvent, schoolWeekDays } from "../lib/week";
 import { useAppStore } from "../stores/app";
 import { canUseLadiesOnly } from "../lib/gender";
-import { useAuthStore } from "../stores/auth";
 
 const app = useAppStore();
 const ladiesOnly = ref(false);
 const ladiesOnlyAvailable = computed(() => canUseLadiesOnly(app.profile));
-const auth = useAuthStore();
 const router = useRouter();
 const activeTab = ref("quick");
 const quickSearchPerformed = ref(false);
@@ -277,14 +172,17 @@ const searchedDays = computed(() => schoolWeekDays(searchedWeekStart.value));
 const activeDayIndex = ref(0);
 const activeDay = computed(() => searchedDays.value[activeDayIndex.value]);
 const dayMatches = computed(() => matchesForDay(app.matches, activeDay.value?.iso));
-const isDriver = computed(() => auth.user?.role === "driver");
-const driverWeekStart = ref(mondayIso(localDateIso()));
-const driverWeekDays = computed(() => calendarWeekDays(driverWeekStart.value));
-const driverOffersForWeek = computed(() => ridesForWeek(app.driverOffers, driverWeekStart.value));
+// "search" : je cherche une place ; "drive" : je propose ma voiture.
+const mode = ref("search");
 
-onMounted(() => {
-  if (isDriver.value) app.loadDriverOffers();
-  else app.loadMySelections();
+onMounted(async () => {
+  if (!app.profile) app.loadProfile();
+  // La recherche par semaine s'ouvre sur la semaine du prochain cours : la
+  // semaine en cours est souvent deja passee ou vide (apres un import CSV,
+  // les cours peuvent etre plusieurs semaines plus loin).
+  await app.loadScheduleEvents();
+  const nextEvent = nextUpcomingEvent(app.events);
+  if (nextEvent) selectedWeekDate.value = String(nextEvent.start_time).slice(0, 10);
 });
 
 async function runQuickSearch(payload) {
@@ -296,6 +194,7 @@ function resetQuickSearch() {
   quickSearchPerformed.value = false;
   app.searchResults = [];
   app.searchRouteGeometry = [];
+  app.searchRouteEstimated = false;
 }
 
 async function runPlanningSearch() {
@@ -326,41 +225,5 @@ function resetPlanningSearch() {
 function chooseRide(match) {
   app.prepareRideSelection(match);
   router.push(`/matches/recap/${match.ride_id}`);
-}
-
-async function generateDriverOffers() {
-  const generated = await app.generateRides();
-  if (generated) await app.loadDriverOffers();
-}
-
-function directionLabel(rideType) {
-  return rideType === "from_campus" ? "Retour du campus" : "Aller vers le campus";
-}
-
-function seatsLabel(count) {
-  return `${count} place${count > 1 ? "s" : ""} restante${count > 1 ? "s" : ""}`;
-}
-
-function changeDriverWeek(offset) {
-  driverWeekStart.value = shiftWeek(driverWeekStart.value, offset);
-}
-
-function selectionStatusLabel(status) {
-  if (status === "accepted") return "Confirmé";
-  if (status === "rejected") return "Refusé";
-  return "En attente du conducteur";
-}
-
-function formatRideTime(value) {
-  if (!value) return "Horaire non défini";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("fr-FR", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }
 </script>

@@ -18,15 +18,18 @@ def dashboard_summary(user: User = Depends(require_current_user)):
     events_count = len(db.get_events_by_user(user.id))
     rides_count = len(db.get_active_rides_by_user(user.id))
 
-    if user.is_driver():
-        matches_count = sum(
-            offer["occupied_seats"] for offer in db.get_driver_offers(user.id)
-        )
-    else:
-        matches_count = sum(
-            ride["selection_status"] == "accepted"
-            for ride in db.get_passenger_selections(user.id)
-        )
+    # Covoiturages confirmes, des deux cotes : passagers acceptes sur mes
+    # trajets proposes, et places obtenues chez d'autres conducteurs.
+    as_driver = sum(
+        offer["occupied_seats"]
+        for offer in db.get_driver_offers(user.id)
+        if offer["is_offer"]
+    )
+    as_passenger = sum(
+        ride["selection_status"] == "accepted"
+        for ride in db.get_passenger_selections(user.id)
+    )
+    matches_count = as_driver + as_passenger
 
     return DashboardSummaryResponse(
         events_count=events_count,
