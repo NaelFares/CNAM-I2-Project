@@ -42,6 +42,9 @@
   const CURSOR = `<svg viewBox="0 0 12 19" width="13" height="20"><path d="M.5.5v15.6l3.7-3.6 2.4 5.6 2.2-.9-2.3-5.5h5.1z" fill="#fff" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg>`;
   const el = (id) => { let n = document.getElementById(id); if (!n) { n = document.createElement("div"); n.id = id; document.documentElement.appendChild(n); } return n; };
   const PARTS = ["Import planning IA", "Passager", "Conducteur"];
+  // État conservé d'une page à l'autre (window.name survit aux rechargements).
+  const state = () => { try { return JSON.parse(window.name.startsWith("{") ? window.name : "{}"); } catch { return {}; } };
+  const save = (patch) => { window.name = JSON.stringify({ ...state(), ...patch }); };
   // Idempotent : recrée style, curseur et repère s'ils manquent (le chargement
   // de la page peut les retirer). Appelé tout de suite, au DOMContentLoaded et en boucle.
   function boot() {
@@ -53,8 +56,13 @@
       const c = el("demo-cursor"); c.innerHTML = CURSOR;
       const p = window.__demoPos || { x: -50, y: -50 }; c.style.left = p.x + "px"; c.style.top = p.y + "px";
     }
+    const cover = state().cover;
+    if (cover && !document.getElementById("demo-card")) {
+      const c = el("demo-card"); c.style.transition = "none"; c.innerHTML = cover; c.classList.add("show");
+      const k = document.getElementById("demo-cursor"); if (k) k.style.visibility = "hidden";
+    }
     if (!document.getElementById("demo-tag")) {
-      const m = /demo-part=(\d)/.exec(window.name || ""); const part = m ? Number(m[1]) : 0;
+      const part = state().part || 0;
       if (part) window.__demo.tag(part);
     }
   }
@@ -66,7 +74,7 @@
   const esc = (t) => String(t).replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
   window.__demo = {
     tag(part) {
-      window.name = "demo-part=" + part;
+      save({ part });
       const t = el("demo-tag");
       t.innerHTML = PARTS.map((p, i) => `<div class="row ${i + 1 === part ? "on" : i + 1 < part ? "done" : ""}"><i>${i + 1}</i>${esc(p)}</div>`).join("");
       t.classList.toggle("show", part > 0);
@@ -91,10 +99,15 @@
     },
     hideNote() { const n = document.getElementById("demo-note"); if (n) n.classList.remove("show"); this.box(null); },
     card(html) { boot(); document.getElementById("demo-cursor").style.visibility = "hidden"; const c = el("demo-card"); c.innerHTML = html; requestAnimationFrame(() => c.classList.add("show")); },
+    // Garde le carton affiché à travers un changement de page (null pour arrêter).
+    cover(html) { save({ cover: html || null }); },
     hideCard() { const c = document.getElementById("demo-card"); if (c) { c.classList.remove("show"); setTimeout(() => { c.remove(); const k = document.getElementById("demo-cursor"); if (k) k.style.visibility = ""; }, 550); } },
   };
   const safeBoot = () => { if (document.documentElement) try { boot(); } catch {} };
   safeBoot();
   document.addEventListener("DOMContentLoaded", safeBoot);
   setInterval(safeBoot, 50);
+  // Dès que <html> existe (avant le premier affichage), on remet carton et repère.
+  const mo = new MutationObserver(() => { if (document.documentElement) { safeBoot(); if (document.body) mo.disconnect(); } });
+  mo.observe(document, { childList: true, subtree: true });
 })();

@@ -127,19 +127,28 @@ async function card(html, ms, { keep = false } = {}) {
 }
 const LOGO = '<img src="/logo.png" alt="">';
 const PARTS = ["Import du planning par IA", "Parcours passager", "Parcours conducteur"];
-async function chapter(n) {
+// Carton de partie : la page de connexion se charge et se remplit derrière,
+// le carton disparaît quand les champs sont déjà remplis.
+async function chapter(n, acc) {
   await page.evaluate(() => window.__demo.tag(0));
-  await card(`${LOGO}<div class="num">${n}</div><h1>${PARTS[n - 1]}</h1>`, 1600);
-  await page.evaluate((n) => window.__demo.tag(n), n);
-}
-
-// Connexion : les champs sont déjà remplis, on clique seulement sur « Se connecter ».
-async function login(acc) {
+  const html = `${LOGO}<div class="num">${n}</div><h1>${PARTS[n - 1]}</h1>`;
+  await page.evaluate((h) => { window.__demo.card(h); window.__demo.cover(h); }, html);
+  await wait(1600);
+  // Déconnexion en coulisse (sous le carton) : on vide la session.
+  await context.clearCookies();
+  await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch {} });
   await page.goto(`${APP}/login`);
   await page.waitForSelector("input[type=email]");
   await page.fill("input[type=email]", acc.email);
   await page.fill("input[type=password]", PASSWORD);
-  await wait(600);
+  await page.evaluate((n) => { window.__demo.cover(null); window.__demo.tag(n); }, n);
+  await wait(300);
+  await page.evaluate(() => window.__demo.hideCard());
+  await wait(900);
+}
+
+// Connexion : champs déjà remplis par chapter(), on clique seulement.
+async function login() {
   await click(page.getByRole("button", { name: "Se connecter" }));
   await page.waitForURL((u) => !u.pathname.startsWith("/login"));
   await wait(600);
@@ -158,8 +167,8 @@ const introAt = (Date.now() - t0) / 1000;
 await card(`${LOGO}<div class="parts">${PARTS.map((p, i) => `<div><b>${i + 1}</b>${p}</div>`).join("")}</div>`, 2800, { keep: true });
 
 // ===== 1. Import CSV par IA (Maëlys, CNAM) =====
-await chapter(1);
-await login(ACCOUNTS.import);
+await chapter(1, ACCOUNTS.import);
+await login();
 await nav("Planning");
 await click(page.getByRole("button", { name: /Importer un planning|Réimporter/ }));
 await page.locator("input[type=file]").setInputFiles(CSV);
@@ -184,11 +193,10 @@ await wait(1000);
 await annotate("Le planning est prêt", [
   "Chaque jour de cours donne un aller et un retour",
 ], { ms: 3500 });
-await logout();
 
 // ===== 2. Passager (Léa, INSA) =====
-await chapter(2);
-await login(ACCOUNTS.passenger);
+await chapter(2, ACCOUNTS.passenger);
+await login();
 await annotate("Un seul compte, deux rôles", [
   "On peut être passager un jour, conducteur un autre",
 ], { ms: 3800 });
@@ -228,11 +236,10 @@ await click(page.getByRole("button", { name: "Confirmer" }));
 await annotate("On note après chaque course", [
   "La note construit la réputation du conducteur",
 ], { ms: 3500 });
-await logout();
 
 // ===== 3. Conducteur (Julie, N7) =====
-await chapter(3);
-await login(ACCOUNTS.driver);
+await chapter(3, ACCOUNTS.driver);
+await login();
 await nav("Covoiturage");
 await click(page.getByRole("tab", { name: "Conducteur" }));
 await wait(1000);
@@ -259,8 +266,25 @@ await annotate("Proposer un trajet", [
   "Quelques clics suffisent",
 ], { target: page.locator("div").filter({ has: page.getByRole("heading", { name: "Proposer un trajet" }) }).filter({ hasText: "Heure" }).last(), ms: 4000 });
 
+// Mes courses côté conducteur : la course acceptée apparaît dans « À venir ».
+await page.getByRole("button", { name: "Annuler" }).first().click({ timeout: 1500 }).catch(() => {});
+await nav("Mes courses");
+await wait(700);
+await click(page.getByRole("tab", { name: "Conducteur" }));
+await wait(600);
+const charlie = page.locator(".calendar-chip").filter({ hasText: "Charlie" });
+if (!(await charlie.first().isVisible())) {
+  await click(page.getByRole("button", { name: "Semaine suivante" }));
+  await wait(600);
+}
+await annotate("Mes courses, côté conducteur", [
+  "La course acceptée apparaît dans la semaine",
+  "Le jour J, le suivi se fait étape par étape",
+], { target: page.locator(".week-calendar").first(), ms: 4500 });
+
+// Carton de fin : il reste affiché jusqu'à la dernière image.
 await page.evaluate(() => window.__demo.tag(0));
-await card(`${LOGO}<h1>Merci !</h1>`, 2800);
+await card(`${LOGO}<h1>Merci !</h1>`, 3000, { keep: true });
 
 const video = page.video();
 const tEnd = (Date.now() - t0) / 1000;
