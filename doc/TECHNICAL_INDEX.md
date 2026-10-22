@@ -1,6 +1,6 @@
-﻿# Technical Docs Index
+﻿# Documentation technique
 
-## Actives
+## Documents
 
 - `doc/ARCHITECTURE.md`: architecture, roles, flux runtime + mermaid
 - `doc/CONFIGURATION.md`: variables d'environnement et politique de config
@@ -8,7 +8,7 @@
 - `doc/MATCHING_ALGORITHM.md`: algorithme de matching covoiturage (filtrage, score, detour OSRM)
 - `doc/UI_VALIDATION_CHECKLIST.md`: checklist de validation UI
 
-## Utilitaire equipe
+## Scripts de lancement
 
 - `scripts/start-local.ps1`: demarrage standard avec Groq cloud, sans Ollama
 - `scripts/start-local-ollama.ps1`: demarrage explicite avec Ollama local en CPU

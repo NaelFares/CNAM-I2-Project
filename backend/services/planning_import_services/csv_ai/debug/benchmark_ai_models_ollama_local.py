@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark Ollama models against the CSV AI planning import workflow.
-
-The script intentionally reuses `CsvAiPlanningParser` for the
-CSV reading, prompt building, Ollama call, mapping validation and event rebuild.
-It only adds the benchmark loop around that existing workflow.
-"""
+"""Comparaison des modèles Ollama en réutilisant le parseur CSV du projet."""
 
 from __future__ import annotations
 

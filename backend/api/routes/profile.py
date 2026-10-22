@@ -1,4 +1,4 @@
-"""Profile endpoints."""
+"""Gestion du profil."""
 
 from __future__ import annotations
 

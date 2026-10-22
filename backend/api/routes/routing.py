@@ -1,4 +1,4 @@
-"""Route preview endpoint."""
+"""Aperçu de l’itinéraire sur la carte."""
 
 from __future__ import annotations
 

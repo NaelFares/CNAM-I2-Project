@@ -1,4 +1,4 @@
-"""Dashboard summary endpoints."""
+"""Résumé du tableau de bord."""
 
 from __future__ import annotations
 

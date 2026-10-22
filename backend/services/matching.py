@@ -111,8 +111,7 @@ class Match:
         self.route_estimated = route_estimated
         self.car_seats = int(driver.car_seats or 0)
         self.available_seats = max(0, self.car_seats - occupied_seats)
-        # Reputation injectee par l'appelant : le moteur ne doit pas emettre
-        # une requete par match.
+        # Réputation déjà chargée : éviter une requête par résultat.
         self.driver_rating = driver_rating
         self.driver_rides_count = driver_rides_count
         self.score = self._calculate_score()
@@ -481,9 +480,7 @@ class MatchingService:
                 # il suffit que l'un des deux soit estime pour qu'il le soit.
                 route_estimated=bool(detour.get("estimated") or direct.get("estimated")),
             )
-            # Pas de score minimum : les regles ci-dessus eliminent, le score
-            # ne sert qu'a classer. Un seuil filtrait une seconde fois sur les
-            # memes criteres (une depose 8 min avant le cours etait ecartee).
+            # Pas de score minimum : les filtres éliminent, le score classe.
             matches.append(match)
 
         # Tri principal par score, secondaire par temps de détour ajouté (asc).

@@ -15,7 +15,6 @@
 </template>
 
 <script setup>
-// Titre de section commun : toujours plus visible que le contenu qu'il annonce.
 defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: "" },

@@ -54,7 +54,7 @@ flowchart TB
 
     UI -->|Appels HTTP| HTTP
     CORE -->|Read/Write SQL| DATA
-    CORE -->|Prompt CSV 6 lignes| LLM
+    CORE -->|En-têtes CSV + 1 ligne, sauf mode confidentialité| LLM
     CORE -->|Itineraires voiture| ROUTER
   end
 ```

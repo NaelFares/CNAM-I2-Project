@@ -1,4 +1,4 @@
-"""Examples of expected IA response for CSV mapping."""
+"""Exemples de réponse IA pour les colonnes CSV."""
 
 EXAMPLE_MAPPING = {
     "summary": "Objet mappe vers title. Debut/Fin combines pour les datetime.",

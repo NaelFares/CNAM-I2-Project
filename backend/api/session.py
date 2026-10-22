@@ -1,4 +1,4 @@
-"""Signed session cookie helpers for API auth."""
+"""Cookie signé pour la session."""
 
 from __future__ import annotations
 

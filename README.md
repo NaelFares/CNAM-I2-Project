@@ -53,7 +53,3 @@ Accès local:
 1. Créer une branche depuis `main`
 2. Faire des commits atomiques et explicites
 3. Vérifier que l'application démarre correctement avant push
-
-## Licence
-
-Projet universitaire.

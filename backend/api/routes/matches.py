@@ -1,4 +1,4 @@
-"""Matching endpoints."""
+"""Recherche de covoiturages."""
 
 from __future__ import annotations
 

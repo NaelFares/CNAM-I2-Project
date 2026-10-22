@@ -91,14 +91,7 @@ class GeocodingService:
     @staticmethod
     def reverse_geocode_details(lat: float, lon: float) -> Optional[Dict]:
         """
-        Convertit des coordonnees en adresse complete et lieu-dit.
-
-        Args:
-            lat: Latitude
-            lon: Longitude
-
-        Returns:
-            Dictionnaire avec display_name, place_label, lat, lon ou None.
+        Adresse et lieu-dit depuis les coordonnées ; None si rien trouvé.
         """
         try:
             response = requests.get(
@@ -135,6 +128,4 @@ class GeocodingService:
             return None
         return result.get("display_name") or None
 
-
-# Instance globale
 geocoding_service = GeocodingService()

@@ -1,4 +1,4 @@
-"""In-memory cache for schedule preview workflow."""
+"""Aperçu du planning gardé en mémoire avant confirmation."""
 
 from __future__ import annotations
 

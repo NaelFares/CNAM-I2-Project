@@ -1,4 +1,4 @@
-"""Pydantic DTOs for the HTTP API layer."""
+"""Formats des données reçues et renvoyées par l’API."""
 
 from __future__ import annotations
 

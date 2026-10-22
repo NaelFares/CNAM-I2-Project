@@ -1,4 +1,4 @@
-"""Common entry point for schedule imports."""
+"""Entrée commune aux imports de planning."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from backend.services.planning_import_services.ics import parse_ics as parse_ics
 
 
 class PlanningImportParser:
-    """Import schedules from supported planning file formats."""
+    """Import ICS ou CSV."""
 
     @staticmethod
     def parse_ics(file_content: bytes) -> list[Event]:

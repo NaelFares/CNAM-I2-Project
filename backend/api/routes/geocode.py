@@ -1,4 +1,4 @@
-"""Geocoding endpoints."""
+"""Recherche d’adresses."""
 
 from __future__ import annotations
 

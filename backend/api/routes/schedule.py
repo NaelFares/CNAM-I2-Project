@@ -1,4 +1,4 @@
-"""Schedule import endpoints."""
+"""Import du planning."""
 
 from __future__ import annotations
 

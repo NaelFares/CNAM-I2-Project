@@ -52,7 +52,7 @@ flowchart TD
 
 ## 1. Offres et recherches
 
-Il n'y a plus de role exclusif. Chaque trajet porte sa nature :
+Un utilisateur peut proposer des trajets et réserver une place. Chaque trajet porte sa nature :
 
 ```text
 is_offer = FALSE  -> recherche : je cherche une place (par defaut)

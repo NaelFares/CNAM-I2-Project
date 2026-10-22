@@ -21,7 +21,7 @@ const mapEl = ref(null);
 let map = null;
 let marker = null;
 
-// Force explicit marker asset URLs for bundlers (Vite/nginx build).
+// URLs explicites, sinon les marqueurs disparaissent après le build Vite.
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,

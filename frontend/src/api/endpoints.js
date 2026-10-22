@@ -29,8 +29,7 @@ export async function updateProfile(payload) {
 export async function uploadProfilePhoto(file) {
   const form = new FormData();
   form.append("file", file);
-  // Content-Type volontairement non fixe : axios doit poser lui-meme la
-  // frontiere multipart.
+  // Laisser axios définir la frontière multipart.
   return (await apiClient.post("/profile/photo", form, { timeout: 30000 })).data;
 }
 
@@ -82,7 +81,6 @@ export async function getMyRideOffers() {
   return (await apiClient.get("/rides/my-offers")).data;
 }
 
-// Proposer un trajet independamment de l'emploi du temps.
 export async function createOffer(payload) {
   return (await apiClient.post("/rides/offers", payload)).data;
 }
@@ -92,7 +90,6 @@ export async function withdrawOffer(rideId) {
   return (await apiClient.delete(`/rides/${rideId}/offer`)).data;
 }
 
-// Interrupteur "Je prends ma voiture" sur un de mes trajets.
 export async function setRideOffer(rideId, isOffer) {
   return (await apiClient.put(`/rides/${rideId}/offer`, { is_offer: isOffer })).data;
 }

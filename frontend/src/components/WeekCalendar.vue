@@ -48,10 +48,8 @@
 </template>
 
 <script setup>
-// Calendrier d'une semaine, commun au planning, aux trajets proposes, a la
-// recherche par semaine et a "Mes courses". Chaque jour est coupe en Aller
-// (vers le campus) et Retour (vers la maison), avec les memes couleurs partout.
-// Le contenu de chaque case est fourni par le parent (slot "item").
+// Calendrier partagé entre les pages ; le parent remplit les cases (slot item).
+// Aller / retour séparés, sauf pour les cours.
 import { computed } from "vue";
 import { ChevronLeft, ChevronRight, House, School } from "lucide-vue-next";
 

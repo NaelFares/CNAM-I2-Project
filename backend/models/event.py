@@ -19,7 +19,6 @@ class Event:
     description: str = ""
 
     def to_dict(self) -> dict:
-        """Convertit l'événement en dictionnaire"""
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -32,7 +31,6 @@ class Event:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Event":
-        """Crée un événement depuis un dictionnaire"""
         start_time = None
         end_time = None
 
@@ -59,7 +57,6 @@ class Event:
         )
 
     def format_time(self) -> str:
-        """Formate l'heure pour l'affichage"""
         if self.start_time:
             return self.start_time.strftime("%Y-%m-%d %H:%M")
         return "N/A"

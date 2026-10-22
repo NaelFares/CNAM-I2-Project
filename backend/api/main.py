@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for the standalone HTTP backend."""
+"""Démarrage de l’API."""
 
 from __future__ import annotations
 

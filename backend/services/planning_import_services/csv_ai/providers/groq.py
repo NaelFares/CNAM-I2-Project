@@ -1,4 +1,4 @@
-"""Fournisseur Groq — appelle l'API cloud Groq (gratuite, très rapide)."""
+"""Appel au modèle via Groq."""
 from __future__ import annotations
 
 import logging

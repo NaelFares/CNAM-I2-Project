@@ -1,4 +1,4 @@
-"""Shared API constants and lightweight domain helpers."""
+"""Constantes communes aux routes."""
 
 ROLE_VALUES = {"driver", "passenger"}
 

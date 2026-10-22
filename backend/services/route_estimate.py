@@ -1,10 +1,6 @@
-"""Estimation d'itineraire de dernier recours, sans aucun service externe.
+"""Estimation de secours quand OSRM répond pas ou ne trouve pas de route.
 
-Utilisee uniquement quand OSRM ne repond pas (conteneur arrete, carte en
-cours de preparation, point hors de la zone couverte). Assez fiable pour
-classer des conducteurs, approximative pour les durees affichees : le
-resultat est donc toujours marque `estimated: True`.
-"""
+Tracé en ligne droite, distance et durée approximatives (estimated: True)."""
 
 from __future__ import annotations
 
@@ -12,19 +8,14 @@ from typing import Dict, List, Tuple
 
 from backend.core.geo import haversine_distance
 
-# La route reelle est en moyenne ~30 % plus longue que la ligne droite
-# (detours des rues, ponts, rocade), et la vitesse moyenne d'un trajet
-# urbain/periurbain tourne autour de 30 km/h, feux et bouchons compris.
+# Hypothèses de secours : distance x 1,3 et vitesse de 30 km/h.
+# Pas calibré sur des trajets réels.
 ROAD_FACTOR = 1.3
 AVERAGE_SPEED_KMH = 30.0
 
 
 def estimate_route(points: List[Tuple[float, float]]) -> Dict:
-    """Builds an approximate route through (lat, lon) points.
-
-    Distance = straight line between consecutive points x road factor,
-    duration = distance / average speed, geometry = straight segments.
-    """
+    """Estimation entre les points (lat, lon), avec un tracé en ligne droite."""
     straight_km = sum(
         haversine_distance(a[0], a[1], b[0], b[1])
         for a, b in zip(points, points[1:])

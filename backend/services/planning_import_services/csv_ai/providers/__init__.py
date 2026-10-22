@@ -1,12 +1,4 @@
-"""
-Fournisseurs IA pour le mapping de colonnes CSV.
-
-Deux implémentations disponibles :
-- OllamaProvider  : modèle local via une instance Ollama (pas besoin d'internet)
-- GroqProvider    : API cloud Groq, gratuite et très rapide (recommandé)
-
-Le fournisseur actif est choisi par la variable d'environnement AI_IMPORT_PROVIDER.
-"""
+"""Mapping CSV via Ollama ou Groq, selon AI_IMPORT_PROVIDER."""
 from __future__ import annotations
 
 import json

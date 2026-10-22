@@ -93,14 +93,10 @@ class Config:
 
     @classmethod
     def is_development(cls) -> bool:
-        """Vérifie si on est en mode développement"""
         return cls.APP_ENV == "development"
 
     @classmethod
     def get_campus_coords(cls) -> tuple[float, float]:
-        """Retourne les coordonnées du campus"""
         return (cls.CAMPUS_LAT, cls.CAMPUS_LON)
 
-
-# Instance globale de configuration
 config = Config()

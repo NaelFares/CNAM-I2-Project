@@ -3,8 +3,7 @@ import { ref } from "vue";
 import { reverseAddress, searchAddress } from "../api/endpoints";
 import { useFeedbackStore } from "../stores/feedback";
 
-// `target` is a reactive object with { address, lat, lon, placeLabel } fields
-// that this composable reads/writes directly.
+// Modifie directement address, lat, lon et placeLabel dans l’objet réactif target.
 export function useAddressAutocomplete(target) {
   const feedback = useFeedbackStore();
   const suggestions = ref([]);

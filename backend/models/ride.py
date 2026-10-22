@@ -1,6 +1,4 @@
-"""
-Data model for carpool rides generated from schedule events.
-"""
+"""Trajets issus du planning ou proposés à la main."""
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -9,7 +7,7 @@ from typing import Optional
 
 @dataclass
 class Ride:
-    """Represents a generated ride."""
+    """Un trajet, offre ou recherche."""
 
     id: Optional[int] = None
     user_id: int = 0

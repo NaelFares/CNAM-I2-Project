@@ -1,4 +1,4 @@
-"""Ride generation endpoints."""
+"""Trajets et réservations."""
 
 from __future__ import annotations
 

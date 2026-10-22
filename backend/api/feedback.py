@@ -1,4 +1,4 @@
-"""API-level helpers for standardized feedback responses."""
+"""Même format de message pour les réponses API."""
 
 from __future__ import annotations
 

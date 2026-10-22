@@ -1,4 +1,4 @@
-"""ICS planning import parser."""
+"""Import du planning au format ICS."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from backend.models.event import Event
 
 
 def parse_ics(file_content: bytes) -> list[Event]:
-    """Parse an ICS file and return planning events."""
+    """Lecture des cours depuis un fichier ICS."""
     events: list[Event] = []
     try:
         calendar = Calendar.from_ical(file_content)

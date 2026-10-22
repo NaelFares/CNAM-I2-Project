@@ -26,7 +26,6 @@ class Database:
         self.db_url = config.DATABASE_URL
 
     def get_connection(self) -> psycopg2.extensions.connection:
-        """Crée une connexion à la base de données"""
         for attempt in range(10):
             try:
                 conn = psycopg2.connect(self.db_url, connect_timeout=5)
@@ -38,7 +37,7 @@ class Database:
                 time.sleep(2)
         raise OperationalError("Impossible de se connecter à la base de données")
 
-    # --- USERS ---
+    # Utilisateurs
     """Crée un nouvel utilisateur"""
 
     def create_user(self, user: User) -> int:
@@ -79,7 +78,6 @@ class Database:
         return user_id
 
     def get_user_by_email(self, email: str) -> Optional[User]:
-        """Récupère un utilisateur par email"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
@@ -90,7 +88,6 @@ class Database:
         return None
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
-        """Récupère un utilisateur par ID"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
@@ -101,7 +98,6 @@ class Database:
         return None
 
     def get_all_users(self) -> List[User]:
-        """Récupère tous les utilisateurs"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM users")
@@ -168,9 +164,8 @@ class Database:
         conn.commit()
         conn.close()
 
-    # --- EVENTS ---
+    # Cours
     def create_event(self, event: Event) -> int:
-        """Crée un nouvel événement"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -194,7 +189,6 @@ class Database:
         return event_id
 
     def get_events_by_user(self, user_id: int) -> List[Event]:
-        """Récupère tous les événements d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute(
@@ -205,16 +199,14 @@ class Database:
         return [Event.from_dict(row) for row in rows]
 
     def delete_events_by_user(self, user_id: int):
-        """Supprime tous les événements d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM events WHERE user_id = %s", (user_id,))
         conn.commit()
         conn.close()
 
-    # --- RIDES ---
+    # Trajets
     def create_ride(self, ride: Ride) -> int:
-        """Crée un nouveau trajet"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -246,7 +238,6 @@ class Database:
         return ride_id
 
     def get_rides_by_user(self, user_id: int) -> List[Ride]:
-        """Récupère tous les trajets d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute(
@@ -257,7 +248,6 @@ class Database:
         return [Ride.from_dict(row) for row in rows]
 
     def get_ride_by_id(self, ride_id: int) -> Optional[Ride]:
-        """Récupère un trajet par ID"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM rides WHERE id = %s", (ride_id,))
@@ -284,7 +274,6 @@ class Database:
         return [Ride.from_dict(row) for row in rows]
 
     def get_all_rides(self) -> List[Ride]:
-        """Récupère tous les trajets"""
         conn = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT * FROM rides ORDER BY ride_time")
@@ -302,7 +291,6 @@ class Database:
         return [Ride.from_dict(row) for row in rows]
 
     def delete_rides_by_user(self, user_id: int):
-        """Supprime tous les trajets d'un utilisateur"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM rides WHERE user_id = %s", (user_id,))
@@ -343,7 +331,7 @@ class Database:
         conn.close()
         return count
 
-    # --- RIDE SELECTIONS ---
+    # Réservations
     def get_ride_selection_counts(self) -> dict[int, int]:
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -1129,6 +1117,5 @@ class Database:
         conn.commit()
         conn.close()
 
-# Instance globale
 
 db = Database()

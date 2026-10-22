@@ -109,6 +109,4 @@ class MapService:
             "markers": markers,
         }
 
-
-# Instance globale
 map_service = MapService()

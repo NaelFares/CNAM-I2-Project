@@ -1,4 +1,4 @@
-"""Dependency providers for FastAPI routes."""
+"""Dépendances des routes FastAPI."""
 
 from __future__ import annotations
 

@@ -27,11 +27,10 @@ class OsrmClient:
         self.base_url = base_url.rstrip("/")
 
     def route(self, points: List[Tuple[float, float]]) -> Optional[Dict]:
-        """Returns geometry (lat, lon), distance_m and duration_s, or None.
+        """Renvoie le tracé (lat, lon), distance_m et duration_s.
 
-        `points` are (lat, lon) pairs, in order: start, optional waypoints,
-        end. None means OSRM is unreachable or found no route (point outside
-        the prepared map, for instance): the caller decides what to do.
+        Les points sont dans l’ordre du trajet.
+        None si OSRM répond pas ou ne trouve pas de route.
         """
         # OSRM attend des coordonnees "lon,lat" separees par des ";".
         coordinates = ";".join(f"{lon},{lat}" for lat, lon in points)

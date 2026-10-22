@@ -1,4 +1,4 @@
-"""Authentication/session endpoints."""
+"""Connexion et session."""
 
 from __future__ import annotations
 

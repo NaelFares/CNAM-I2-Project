@@ -137,7 +137,7 @@ a {
   }
 
   .input {
-    /* text-base on mobile prevents iOS Safari's auto-zoom-on-focus (triggers below 16px) */
+    /* Au moins 16px sur mobile pour éviter le zoom automatique de Safari. */
     @apply w-full border bg-white px-3.5 py-2.5 text-base text-slate-900 transition md:text-sm;
     border-color: var(--color-stroke-strong);
     border-radius: var(--radius-control);

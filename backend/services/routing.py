@@ -1,14 +1,6 @@
-"""Routing facade used by the rest of the application.
+"""Itinéraire depuis le cache PostgreSQL, sinon OSRM.
 
-Each route request goes through three layers, in order:
-1. the persistent PostgreSQL cache (`routing_cache`);
-2. the local OSRM server (see osrm_client.py and docker-compose.osrm.yml);
-3. a straight-line estimate (see route_estimate.py) if OSRM cannot answer.
-
-Callers always get a result. Estimated routes are flagged with
-``estimated: True`` and never cached, so the real route is computed as
-soon as OSRM is back.
-"""
+Si OSRM répond pas, estimation marquée estimated et jamais mise en cache."""
 
 from __future__ import annotations
 
@@ -23,7 +15,7 @@ from backend.services.route_estimate import estimate_route
 
 
 class RoutingService:
-    """Cached route computation with an always-available fallback."""
+    """Cache, puis OSRM, puis estimation si besoin."""
 
     PROVIDER = "osrm"
     PROFILE = "driving"
@@ -91,8 +83,7 @@ class RoutingService:
         waypoints: Sequence[Tuple[float, float]],
         end: Tuple[float, float],
     ) -> Dict:
-        """Returns a route through waypoints, in order (passenger pickup,
-        then drop-off)."""
+        """Itinéraire avec prise en charge puis dépose du passager."""
         return self._get_cached_or_calculate(start, end, waypoints)
 
     def get_route_details(
@@ -100,7 +91,7 @@ class RoutingService:
         start: Tuple[float, float],
         end: Tuple[float, float],
     ) -> Dict:
-        """Returns geometry, distance and duration for a direct route."""
+        """Tracé, distance et durée du trajet direct."""
         return self._get_cached_or_calculate(start, end)
 
 
